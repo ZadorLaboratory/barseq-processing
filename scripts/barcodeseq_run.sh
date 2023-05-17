@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 
+
 username='soitu'
 server='bamdev1'
 
