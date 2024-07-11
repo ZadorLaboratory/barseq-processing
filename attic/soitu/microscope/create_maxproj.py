@@ -221,14 +221,8 @@ def create_maxproj(args):
         os.rename(maxproj_path + file, maxproj_path + 'MAX_' + labels_list[xy-1] + '.tif')
         print('Renaming file: ', file, ' to ', 'MAX_' + labels_list[xy-1] + '.tif')
     
-    
-
 
     # replace xy with the corresponding row in labels_list + 1
-
-
-
-
 
 
 def rename_files(args):
@@ -248,9 +242,6 @@ def rename_files(args):
         xy = int(xy)
         os.rename(maxproj_path + file, maxproj_path + 'MAX_' + labels_list[xy-1] + '.tif')
         print('Renaming file: ', file, ' to ', 'MAX_' + labels_list[xy-1] + '.tif')
-
-
-
 
 
 if __name__ == '__main__':

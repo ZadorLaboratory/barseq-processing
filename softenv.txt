@@ -1,11 +1,33 @@
+#!/bin/bash
+#
+#	uname -o uname -m 
+#   macos_intel   Darwin       
+#	macos_arm     Darwin       arm64
+#	linux_intel   GNU/Linux    x86_64  
+#
+
+
 if ! command -v conda&> /dev/null; then
 	echo "installing miniconda..."
-	wget https://repo.anaconda.com/miniconda/Miniconda3-py39_4.9.2-Linux-x86_64.sh
-	bash Miniconda3-py39_4.9.2-Linux-x86_64.sh -b
-	rm -f Miniconda3-py39_4.9.2-Linux-x86_64.sh
+	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
+	bash Miniconda3-latest-MacOSX-arm64.sh-b
+	rm -f Miniconda3-latest-MacOSX-arm64.sh
 	~/miniconda3/bin/conda init 
 	echo "miniconda installed. restart terminal."
 	exit 0
 else
 	echo "miniconda installed already."
 fi
+
+
+	conda update -n base -c defaults conda
+
+#	Enable additional Conda repositories:
+	conda config --add channels conda-forge
+	conda config --add channels bioconda
+	
+	conda install -y python numpy tifffile scipy  ipython pandas  
+	
+	
+	
+
