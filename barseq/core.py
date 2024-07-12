@@ -5,14 +5,11 @@ import re
 from collections import defaultdict
 from configparser import ConfigParser
 
-
-import numpy as np
 import scipy
-
+import numpy as np
 import tifffile as tif
 
 from barseq.utils import *
-
 
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
@@ -26,8 +23,7 @@ def process_maxproj_files(infiles, cp=None, outdir=None ):
     create maxproj by position and channel. 
     pos I, Z, C
     
-    '''
-    
+    '''    
     if cp is None:
         cp = get_default_config()
     
