@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import re
@@ -7,6 +8,7 @@ from configparser import ConfigParser
 
 import scipy
 import numpy as np
+import pandas as pd
 import tifffile as tif
 
 from barseq.utils import *
@@ -66,9 +68,7 @@ def process_maxproj_files(infiles, cp=None, outdir=None ):
             tif.imwrite(outfile, maxproj_stack)
         
         
-    
-
-def parse_filenames(infiles, cp):
+def parse_filenames(infiles, cp=None):
     '''
     parse filenames into position + channel sets. 
     return list of mappings of new filename to input files. 
@@ -88,6 +88,8 @@ def parse_filenames(infiles, cp):
     }
     
     '''
+    if cp is None:
+        cp = get_default_config()
     mp = cp.get('maxproj','microscope_profile')
     tile_regex = cp.get(mp, 'tile_regex')      
     
@@ -110,7 +112,55 @@ def parse_filenames(infiles, cp):
     logging.debug(f'outmap len={len(outmap)} keys={outmap.keys()} sub={outmap[ next(iter(outmap.keys()))] }')
     return outmap
 
+
+def make_tilesets(infiles, outdir, cp=None):
+    '''
+    Given 4-point coordinates, generate tile positions. 
+    
+    Assumes infile is x,y,z coordinates, 4 per position. 
+    Finds centroid and range of x,y
+    Tiles with p
+    
+    '''
+    if cp is None:
+        cp = get_default_config()
+    
+    overlap= float(cp.get('tile','overlap') )
+
+    mp = cp.get('tile','microscope_profile')
+    fov_pixels_x= int( cp.get(mp, 'fov_pixels_x'))   
+    fov_pixels_y= int( cp.get(mp, 'fov_pixels_x')) 
+    pixel_size= float( cp.get(mp, 'pixel_size') )
+    logging.debug(f'profile={mp} fov={fov_pixels_x}x{fov_pixels_y}px pixel_size={pixel_size}/um')
+    
+    if outdir is None:
+        afile = infiles[0]
+        filepath = os.path.abspath(afile)    
+        dirname = os.path.dirname(filepath)
+        outdir = dirname
+    outdir = os.path.abspath(outdir)
+    logging.debug(f'making outdir if needed: {outdir} ')
+    os.makedirs(outdir, exist_ok=True)    
+    logging.info(f'handling {len(infiles)} files...')
+    
+    for infile in infiles:
+        posdf = pd.read_csv(infile, sep=';', header=None, names=['x','y','z'])
+        logging.debug(f'got position set for {int(len(posdf)/ 4)} positions (4 points each)')
+        for i in range(0,len(posdf),4):
+            rows = posdf[i:i+4]
+            logging.debug(f'\n{rows}')
             
+            
+            
+            
+#def handle_position(posdf, overlap):
+#    '''
+#    df with x,y,z values. 
+#    '''
+    
+        
+        
+                
     
         
     
