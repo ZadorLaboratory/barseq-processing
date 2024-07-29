@@ -123,6 +123,8 @@ def make_tilesets(infiles, outdir, cp=None):
     Tiles with desired overlap. 
     
     '''
+    COLS = [ 'min_x', 'max_x', 'mid_x', 'min_y', 'max_y', 'mid_y', 'min_z', 'max_z', 'mid_z', 'pos_id' ]
+    
     if cp is None:
         cp = get_default_config()
     
@@ -149,18 +151,58 @@ def make_tilesets(infiles, outdir, cp=None):
     for infile in infiles:
         posdf = pd.read_csv(infile, sep=';', header=None, names=['x','y','z'])
         logging.debug(f'got position set for {int(len(posdf)/ 4)} positions (4 points each)')
+        pos_id = 1
         for i in range(0,len(posdf),4):
             rows = posdf[i:i+4]
             logging.debug(f'\n{rows}')
-            data_list = get_bounds(rows, x='x',y='y', z='z')
+            data_list = calc_bounds(rows, x='x',y='y', z='z')
             logging.debug(f'data_list =\n{data_list}')
+            data_list.append(str( pos_id) )
             data_lol.append(data_list)
+            pos_id += 1
     
-    sdf = pd.DataFrame(data_lol, columns= [ 'min_x', 'max_x', 'mid_x', 'min_y', 'max_y', 'mid_y', 'min_z', 'max_z', 'mid_z' ])
+    sdf = pd.DataFrame(data_lol, columns= COLS )
     logging.debug(f'slice dataframe =\n{sdf}')
     
     sdf = calc_n_tiles(sdf, fov_pixels_x, fov_pixels_y, pixel_size, overlap)
     logging.debug(f'slice dataframe w/ tilecount =\n{sdf}')
+
+    sdf.drop(['min_x', 'max_x',  'min_y', 'max_y','min_z', 'max_z'], axis=1, inplace=True)
+
+    tdf = tile_slices(sdf)
+    logging.debug(f'complete tile list=\n{tdf}')
+    
+
+def calc_bounds(ptsdf, x='x', y='y', z='z'):
+    '''
+    assumes points dataframe with 2 or more points. 
+    returns list of 3D bounds and midpoint for each set.  
+    '''            
+    minx = min(ptsdf[x])
+    maxx = max(ptsdf[x])
+    try:   
+        midx = (minx + maxx) / 2
+    except DivideByZeroException:
+        midx= 0    
+    
+    miny = min(ptsdf[y])
+    maxy = max(ptsdf[y])
+    try:
+        midy = (miny + maxy) / 2
+    except DivideByZeroException:
+        midy= 0
+    
+    minz = min(ptsdf[z])
+    maxz = max(ptsdf[z])
+    
+    try:
+        midz = (minz + maxz) / 2
+    except DivideByZeroException:
+        midz= 0    
+    
+    logging.debug(f'x midpoint of {minx} {maxx} = {midx} y midpoint of {miny} {maxy} = {midy}    ')
+    dlist = [ minx, maxx, midx, miny, maxy, midy, minz, maxz, midz ]
+    return dlist
 
 
 def calc_n_tiles(sdf, fov_pixels_x=3200, fov_pixels_y=3200, pixel_size=.33, overlap=.15):
@@ -219,26 +261,66 @@ def calc_n_tiles(sdf, fov_pixels_x=3200, fov_pixels_y=3200, pixel_size=.33, over
             
     sdf['x_tiles'] = pd.Series(n_tiles_x_vals)
     sdf['y_tiles'] = pd.Series(n_tiles_y_vals)
+    sdf['fov_x'] = fov_x
+    sdf['fov_y'] = fov_y
+    sdf['overlap'] = overlap
     return sdf
 
-
-def get_bounds(ptsdf, x='x', y='y', z='z'):
+def tile_slices(sdf):
     '''
-    assumes points dataframe with 2 or more points. 
-    returns list of 3D bounds and midpoint for each set.  
-    '''            
-    minx = min(ptsdf[x])
-    maxx = max(ptsdf[x])   
-    midx = (minx + maxx) / 2
-    miny = min(ptsdf[y])
-    maxy = max(ptsdf[y])
-    midy = (miny + maxy) / 2
-    minz = min(ptsdf[z])
-    maxz = max(ptsdf[z])
-    midz = (minz + maxz) / 2
-    logging.debug(f'x midpoint of {minx} {maxx} = {midx} y midpoint of {miny} {maxy} = {midy}    ')
-    dlist = [ minx, maxx, midx, miny, maxy, midy, minz, maxz, midz ]
-    return dlist
+    Take a set of slices in DF, 
+        min_x   max_x    mid_x   min_y   max_y    mid_y    min_z    max_z     mid_z  pos_id  x_tiles  y_tiles
+    0  46.737  51.348  49.0425 -26.162 -18.684 -22.4230  3672.45  3676.22  3674.335     1      5        9
+    1  34.320  38.908  36.6140 -26.003 -18.882 -22.4425  3666.73  3675.72  3671.225     2      5        9
+    
+    
+    @return
+    pos_id tile_id pos_x  pos_y  pos_z 
+    1        1
+    1        2
+    1        3
+    1        4
+    
+    '''
+    dflist = []
+    for i, row in sdf.iterrows():
+        tiledf = tile_slice(row)
+        dflist.append(tiledf)
+    logging.debug(f'assembled list of {len(dflist)} slice DFs.')
+    logging.debug(f'slicedf = \n{dflist[0]}')
+    tiledf = merge_dfs(dflist)
+    tiledf.sort_values(['pos_id','tile_id'], inplace=True )
+    tiledf.reset_index(drop=True, inplace=True)
+    return tiledf     
+
+    
+def tile_slice(row):
+    '''
+    Define tiles of a single slice from a slice DF: 
+    Calculates x/y slope of z positions. 
+    
+    min_x   max_x    mid_x   min_y   max_y    mid_y    min_z    max_z     mid_z pos_id  x_tiles  y_tiles  fov_x  fov_y  overlap
+ 0  46.737  51.348  49.0425 -26.162 -18.684 -22.4230  3672.45  3676.22  3674.335      1        5        9  1.056  1.056     0.15
+
+    '''
+    COLS = [ 'pos_id', 'tile_id', 'pos_x', 'pos_y', 'pos_z' ]
+    pos_id = str( row['pos_id'])
+    testdata= [ [ pos_id, 1, 47.2 , -25.2, row['mid_z'] ], 
+                [ pos_id, 2, 48.2 , -24.2, row['mid_z'] ],  
+                [ pos_id, 3, 49.2 , -23.2, row['mid_z'] ],       
+                [ pos_id, 4, 50.2 , -22.2, row['mid_z'] ],
+              ]
+    df = pd.DataFrame(testdata, columns=COLS)
+
+    logging.debug(f'slice_tiles=\n{df}') 
+    return df
+
+
+
+
+
+
+
              
 
     
