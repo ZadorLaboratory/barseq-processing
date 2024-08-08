@@ -104,7 +104,6 @@ if __name__ == '__main__':
         logStream.setFormatter(formatter)
         log.addHandler(logStream)
     
-    tiledf = make_tilesets(args.infiles, outdir=outdir, cp=cp)
+    outdf = check_focus(args.infiles, outdir=outdir, cp=cp)
     if args.outfile is not None:
         write_df(tiledf, args.outfile)
-        
