@@ -20,6 +20,17 @@ def get_default_config():
     cp.read(dc)
     return cp
 
+
+def process_barseq_all(indir, outdir=None,  cp=None):
+    '''
+    Top level function to call into sub-steps...
+    '''
+
+
+
+
+
+
 def process_maxproj_files(infiles, cp=None, outdir=None ):
     '''
     parse filenames by config regex. 

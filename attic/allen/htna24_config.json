@@ -1,0 +1,27 @@
+{
+	"dataset_id": "2024_HTNA_example",
+	"batch_num": 1,
+    "slice_num": [1],
+	"startingsliceidx": 1,
+	"use_predefined_thresh": 0,
+	"scope_settings_file": "alder.json",
+	
+	"codebook_name": "codebookM1all.mat",
+	"codebookhyb_name": "codebookhyb.mat",
+	"codebookoptional_name": "",
+	
+	"hybthresh": [[50,10,40,10],[50,10,40,10],[50,10,40,10],[50,10,40,10]],
+	"hybbgn": [[50, 60, 40, 30],[50, 60, 40, 30],[50, 60, 40, 30],[50, 60, 40, 30]],
+	"hyb_reg_ch": 3,
+	
+	"is_barcoded": 1,
+	"rolthresh": [[30, 30, 30, 30]],
+	"count_thresh": 3,
+	"err_corr_thresh": 2,
+	
+	"somabc_model_name": "",
+	"somabc_complexity_thresh": -0.9,
+	"somabc_score_thresh": 0.85,
+	"somabc_signal_thresh": 150
+	
+}

@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+#
+#
+import argparse
+import logging
+import os
+import sys
+
+from configparser import ConfigParser
+
+gitpath=os.path.expanduser("~/git/barseq-processing")
+sys.path.append(gitpath)
+
+from barseq.core import *
+from barseq.utils import *
+
+if __name__ == '__main__':
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/mapseq-processing/etc/mapseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-e','--expid', 
+                    metavar='expid',
+                    required=False,
+                    default='EXP',
+                    type=str, 
+                    help='Explicitly provided experiment id, e.g. M205')
+
+    parser.add_argument('-O','--outdir', 
+                    metavar='outdir',
+                    required=False,
+                    default=None, 
+                    type=str, 
+                    help='outdir. output file base dir if not given.')
+
+    
+    parser.add_argument('-f','--force', 
+                    action="store_true", 
+                    default=False, 
+                    help='Recalculate even if output exists.') 
+
+    parser.add_argument('infiles' ,
+                        metavar='infiles', 
+                        type=str,
+                        nargs='*',
+                        default=None, 
+                        help='Fastq input to process. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+
+    logging.debug(f'indirs={args.infiles}')
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config. {args.config}: {cdict}')
+    logging.debug(f'infiles={args.infiles}')
+
+    # set outdir / outfile
+    outdir = os.path.abspath('./')
+    if args.outdir is not None:
+        outdir = os.path.abspath(args.outdir)
+    os.makedirs(outdir, exist_ok=True)
+    
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+    sh = StatsHandler(outdir=outdir, datestr=datestr)
+
+    process_mapseq_all(args.infiles, 
+                       sampleinfo=args.sampleinfo, 
+                       bcfile=args.barcodes, 
+                       outdir=outdir, 
+                       expid=args.expid, 
+                       cp=cp )
+ 
+ 
+
+   
