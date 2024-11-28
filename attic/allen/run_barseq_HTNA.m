@@ -52,6 +52,7 @@ if config.scope_settings.automation==0
 end
 
 % Denoise geneseq %Ellie/Angela
+
 cmdout=n2v_processing(settings.gene_n2v_scriptname);
 if ~isempty(config.codebookoptional_name)
     cmdout=n2v_processing([settings.gene_n2v_scriptname,' ',settings.optseq_cyclename]);
@@ -70,6 +71,8 @@ register_seq_images_subsample_highres(settings.gene_fname, ...
     settings.gene_subsample_rate, ...
     config.scope_settings.gene_max_thresh);
 t=toc;
+
+
 
 % Make codebook for bardensr
 make_codebook(fullfile('..',config.codebook_name));

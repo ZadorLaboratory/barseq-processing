@@ -3,6 +3,8 @@ import logging
 import math
 import os
 import re
+import sys
+import traceback
 
 from collections import defaultdict
 from configparser import ConfigParser
@@ -20,16 +22,124 @@ def get_default_config():
     cp.read(dc)
     return cp
 
+    
+def get_script_dir():
+    logging.debug(f'getting current script name {sys.argv[0]}')
+    script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    logging.debug(f'script_dir = {script_dir}')
+    return script_dir
 
-def process_barseq_all(indir, outdir=None,  cp=None):
+
+def process_barseq_all(indir, outdir=None, expid=None, cp=None):
     '''
     Top level function to call into sub-steps...
     '''
+    if cp is None:
+        cp = get_default_config()
+    logging.info(f'Processing experiment directory={indir} to {outdir}')
+    
+    ddict = parse_indir(indir, cp)
+    logging.debug(f'got ordered cycle dir dict: {ddict}')
+    
+    #
+    # In sequence, perform all pipeline processing steps
+    #
+    try:
+        # denoise
+        process_denoise(ddict, cp=cp)
+ 
+        process_registration()
+        
+        process_stitching()
+        
+        process_basecalls()
+        
+        process_segmentation()
+  
+ 
+ 
+ 
+        
+    except Exception as ex:
+        logging.error(f'got exception {ex}')
+        logging.error(traceback.format_exc(None))
+
+def process_denoise( ddict, cp=None):
+    '''
+    handle de-noising of images.
+    
+    general approach to sub-conda environments...
+    
+    process = subprocess.Popen(
+    "conda run -n ${CONDA_ENV_NAME} python script.py".split(), , stdout=subprocess.PIPE
+    )
+    output, error = process.communicate()
+    
+    '''
+    logging.debug(f'handling cycle types={list( ddict.keys())}')
+    
+    if cp is None:
+        cp = get_default_config()
+
+    tool = cp.get('denoise','tool')
+    conda_env = cp.get('denoise','conda_env') 
+    script_name = f'denoise_{tool}.py'
+    script_dir = get_script_dir()
+    
+
+def process_registration( cp=None):
+    logging.warning('registration not implemented.')
+        
+def process_stitching( cp=None):
+    logging.warning('stitching not implemented.')
+        
+def process_basecalls( cp=None):
+    logging.warning('basecalls not implemented.')
+        
+def process_segmentation( cp=None):
+    logging.warning('segmentation not implemented.')
 
 
 
 
 
+
+
+
+
+def parse_indir(indir, cp=None):
+    '''
+    determine input data structure and files. 
+    return dict of lists of dirs by cycle
+    
+    '''    
+    if cp is None:
+        cp = get_default_config()
+        
+    bcp = re.compile( cp.get('barseq','bc_regex'))
+    gsp = re.compile( cp.get('barseq','gene_regex'))
+    hyp = re.compile( cp.get('barseq','hyb_regex'))
+    
+    pdict = { bcp : 'barcode',
+              gsp : 'gene',
+              hyp : 'hyb'            
+             }
+        
+    ddict = { 'barcode': [],
+              'gene'   : [],
+              'hyb'    : []
+            } 
+    
+    dlist = os.listdir(indir)
+    dlist.sort()
+    for d in dlist:
+        for p in pdict.keys():
+            if p.search(d) is not None:
+                k = pdict[p]
+                ddict[k].append(d)
+    return ddict
+        
+     
 
 def process_maxproj_files(infiles, cp=None, outdir=None ):
     '''
@@ -124,6 +234,7 @@ def parse_filenames_maxproj(infiles, cp=None):
     logging.debug(f'outmap len={len(outmap)} keys={outmap.keys()} sub={outmap[ next(iter(outmap.keys()))] }')
     return outmap
 
+
 def parse_filenames_positions(infiles, cp=None):
     '''
     parse filenames into position + channel sets. 
@@ -167,7 +278,6 @@ def parse_filenames_positions(infiles, cp=None):
         chlist[newchan].append(infile)
     logging.debug(f'outmap len={len(outmap)} keys={outmap.keys()} sub={outmap[ next(iter(outmap.keys()))] }')
     return outmap
-
 
 
 def make_tilesets(infiles, outdir, cp=None):

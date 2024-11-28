@@ -6,18 +6,22 @@
 #	linux_intel   GNU/Linux    x86_64  
 #
 
+Install Conda
 
-if ! command -v conda&> /dev/null; then
-	echo "installing miniconda..."
-	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh
-	bash Miniconda3-latest-MacOSX-arm64.sh-b
-	rm -f Miniconda3-latest-MacOSX-arm64.sh
-	~/miniconda3/bin/conda init 
-	echo "miniconda installed. restart terminal."
-	exit 0
-else
-	echo "miniconda installed already."
-fi
+Get the latest installer(Intel Linux, Intel Mac, Apple Silicon Mac) from
+
+	https://repo.anaconda.com/archive/
+
+E.g., 
+	curl -O https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh  
+	OR
+	curl -O https://repo.anaconda.com/archive/Anaconda3-2024.10-1-MacOSX-x86_64.sh
+	OR
+	curl -O https://repo.anaconda.com/archive/Anaconda3-2024.10-1-MacOSX-arm64.sh
+	
+
+Install:
+	bash Anaconda3-2024.10-1-Linux-x86_64.sh
 
 
 	conda update -n base -c defaults conda
