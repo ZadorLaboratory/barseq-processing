@@ -16,6 +16,7 @@ import tifffile as tif
 
 from barseq.utils import *
 
+
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
     cp = ConfigParser()
@@ -33,20 +34,33 @@ def get_script_dir():
 def process_barseq_all(indir, outdir=None, expid=None, cp=None):
     '''
     Top level function to call into sub-steps...
+    indir is top-level indir 
+    
+    outdirs 
+        denoised
+        registered
+        stitched
+        basecalled
+        segmented
+        
+    
     '''
     if cp is None:
         cp = get_default_config()
     logging.info(f'Processing experiment directory={indir} to {outdir}')
     
-    ddict = parse_indir(indir, cp)
+    ddict = parse_maxproj_indir(indir, cp)
     logging.debug(f'got ordered cycle dir dict: {ddict}')
     
     #
     # In sequence, perform all pipeline processing steps
+    # placing output in sub-directories by stage. 
+    #
     #
     try:
-        # denoise
-        process_denoise(ddict, cp=cp)
+        # denoise indir, outdir, ddict, cp=None
+        sub_outdir = f'{outdir}/denoised'
+        process_denoise(indir, sub_outdir, ddict, cp=cp)
  
         process_registration()
         
@@ -64,8 +78,11 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
 
-def process_denoise( ddict, cp=None):
+def process_denoise(indir, outdir, ddict, cp=None):
     '''
+    indir is top-level in directory
+    outdir is top-level out directory
+    
     handle de-noising of images.
     
     general approach to sub-conda environments...
@@ -74,18 +91,81 @@ def process_denoise( ddict, cp=None):
     "conda run -n ${CONDA_ENV_NAME} python script.py".split(), , stdout=subprocess.PIPE
     )
     output, error = process.communicate()
-    
+
     '''
     logging.debug(f'handling cycle types={list( ddict.keys())}')
     
     if cp is None:
         cp = get_default_config()
 
+    # general parameters
     tool = cp.get('denoise','tool')
-    conda_env = cp.get('denoise','conda_env') 
+    conda_env = cp.get('denoise','conda_env')
+    
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+    
     script_name = f'denoise_{tool}.py'
     script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    indir = os.path.expanduser( os.path.abspath(indir) )
+
+    mpp = re.compile( cp.get('maxproj','maxproj_regex'))
+
+    logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
+    logging.debug(f'script_name={script_name} script_dir={script_dir}')
+    logging.debug(f'ddict = {ddict}')
+
+    log_arg = ''
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+    if log_level <= logging.INFO:
+        log_arg = '-v'
     
+    command_list = []
+    
+    for itype in ddict.keys():
+        logging.info(f'handling type {itype}')
+        for idir in ddict[itype]:
+            sub_idir = f'{indir}/{idir}'
+            sub_outdir = f'{outdir}/{idir}'
+            logging.info(f'handling {sub_idir}->{sub_outdir} with image type {itype}')
+            infiles = os.listdir(sub_idir)         
+            
+            cmd = ['conda','run',
+                   '-n', conda_env , 
+                   'python', script_path,
+                   log_arg,  
+                   '--outdir', sub_outdir,                      
+                   ]           
+            # only process files that match expected pattern.             
+            for fname in infiles:
+                if mpp.search(fname) is not None:
+                    infile = f'{sub_idir}/{fname}'
+                    cmd.append(infile)
+
+            #try:
+            #    run_command_shell(cmd)
+            #except NonZeroReturnException as nzre:
+            #    logging.error(f'problem with input files.')
+            #    logging.error(traceback.format_exc(None))
+            #    raise    
+            command_list.append(cmd)
+            logging.info(f'handled {sub_idir}')
+        logging.debug(f'handled probe type {itype}')
+
+    logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
+    jstack = JobStack()
+    jstack.setlist(command_list)
+    jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+    logging.debug(f'running jobs...')
+    jset.runjobs()
+    
+    logging.info(f'done with denoising...')
+
 
 def process_registration( cp=None):
     logging.warning('registration not implemented.')
@@ -107,10 +187,14 @@ def process_segmentation( cp=None):
 
 
 
-def parse_indir(indir, cp=None):
+def parse_maxproj_indir(indir, cp=None):
     '''
     determine input data structure and files. 
-    return dict of lists of dirs by cycle
+    return dict of lists of dirs by cycle 
+    
+     geneseq | bcseq | hyb
+    
+    As probe types are added, expand this list. 
     
     '''    
     if cp is None:
@@ -119,15 +203,15 @@ def parse_indir(indir, cp=None):
     bcp = re.compile( cp.get('barseq','bc_regex'))
     gsp = re.compile( cp.get('barseq','gene_regex'))
     hyp = re.compile( cp.get('barseq','hyb_regex'))
-    
-    pdict = { bcp : 'barcode',
-              gsp : 'gene',
+            
+    pdict = { bcp : 'bcseq',
+              gsp : 'geneseq',
               hyp : 'hyb'            
              }
         
-    ddict = { 'barcode': [],
-              'gene'   : [],
-              'hyb'    : []
+    ddict = { 'bcseq'   : [],
+              'geneseq' : [],
+              'hyb'     : []
             } 
     
     dlist = os.listdir(indir)
@@ -139,7 +223,6 @@ def parse_indir(indir, cp=None):
                 ddict[k].append(d)
     return ddict
         
-     
 
 def process_maxproj_files(infiles, cp=None, outdir=None ):
     '''

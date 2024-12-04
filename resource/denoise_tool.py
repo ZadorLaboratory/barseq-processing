@@ -1,20 +1,40 @@
 #!/usr/bin/env python
 #
+#  PER-FILE -> OUTDIR
 #
+#
+# Script template to do denoising. 
+# Input:     set of image files   <base>.tif
+#            each image has N channels. 
+# Output:   denoised images in <outdir>/<base>.denoised.tif
+#
+
 import argparse
 import logging
 import os
 import sys
 
 import datetime as dt
-
 from configparser import ConfigParser
+
+import imageio
+import tifffile as tf
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
-
 from barseq.core import *
 from barseq.utils import *
+
+def denoise_tool( infiles, outdir, image_type='barcode', cp=None):
+    '''
+    image_type = [ gene | barcode | hyb ]
+    
+    '''
+    if cp is None:
+        cp = get_default_config()
+    
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
@@ -36,29 +56,21 @@ if __name__ == '__main__':
     parser.add_argument('-c','--config', 
                         metavar='config',
                         required=False,
-                        #nargs='*',
                         default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-e','--expid', 
-                    metavar='expid',
-                    required=False,
-                    default='EXP',
-                    type=str, 
-                    help='Explicitly provided experiment id, e.g. B043')
-
     parser.add_argument('-O','--outdir', 
                     metavar='outdir',
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
     
-    parser.add_argument('indir', 
-                    metavar='indir',
-                    default=None, 
-                    type=str, 
-                    help='input file base dir, containing [bc|gene]seq, hyb dirs.') 
+    parser.add_argument('infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
        
     args= parser.parse_args()
     
@@ -73,27 +85,16 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-
-    indir = os.path.abspath('./')
-    if args.indir is not None:
-        indir = os.path.expanduser( os.path.abspath(args.indir))
-    logging.debug(f'indir={indir}')
-    
+       
     outdir = os.path.abspath('./')
     if args.outdir is not None:
-        outdir = os.path.expanduser( os.path.abspath(args.outdir) )
+        outdir = os.path.abspath(args.outdir)
     os.makedirs(outdir, exist_ok=True)
-    logging.debug(f'outdir={indir}')
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    process_barseq_all( indir=indir, 
-                        outdir=outdir,
-                        expid=args.expid, 
-                        cp=cp )
+    denoise_n2v( infiles=args.infiles, 
+                 outdir=outdir, 
+                 cp=cp )
     
     logging.info(f'done processing output to {outdir}')
- 
- 
-
-   
