@@ -25,21 +25,15 @@
 	conda config --add channels conda-forge
 	conda config --add channels bioconda
 
-# After much gnashing of teeth. 	
-#
-# MacOS Apple Silicon
-#
-#
-conda create -n n2v 
-conda install -y python=3.9.0 ipython=8.12.2 scipy=1.10.1 pandas=2.2.2 keras=2.10.0 tifffile=2023.8.12 \
-				numpy=1.22.4 matplotlib-base=3.8.4 keras=2.10.0 keras-applications=1.0.8 ipython=8.12.2 \
-				hdf5=1.10.6 imageio=2.36.1 tensorflow=2.10.0 
-				
-pip install n2v==0.3.1 csbdeep==0.6.3 h5py==3.12.1
-# ignore errors. moved to keras-2.3.1
+# On Mac
+	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw
 
-pip install tensorflow==2.10.0
-# ignore errors. 
-# moves back to keras-2.10.0  WORKS
- 
-	
+# Install Fiji and add MIST plugin from add-ons. 
+#  https://github.com/USNISTGOV/MIST/wiki/Install-Guide
+
+
+# On Linux
+	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw fiji
+
+# Run ImageJ version from conda, this should work over X-windows even remotely.  
+# select MIST from add-ons.   	

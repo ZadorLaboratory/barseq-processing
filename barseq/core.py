@@ -49,44 +49,40 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         cp = get_default_config()
     logging.info(f'Processing experiment directory={indir} to {outdir}')
     
-    ddict = parse_maxproj_indir(indir, cp)
+    ddict = parse_exp_indir(indir, cp)
     logging.debug(f'got ordered cycle dir dict: {ddict}')
     
-    #
     # In sequence, perform all pipeline processing steps
     # placing output in sub-directories by stage. 
-    #
-    #
     try:
         # denoise indir, outdir, ddict, cp=None
         sub_outdir = f'{outdir}/denoised'
         process_denoise(indir, sub_outdir, ddict, cp=cp)
  
-        process_registration()
+        #process_registration()
         
+        
+        sub_outdir = f'{outdir}/stitched'
         process_stitching()
         
-        process_basecalls()
+        #process_basecalls()
         
-        process_segmentation()
+        #process_segmentation()
   
- 
- 
- 
-        
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
+
 
 def process_denoise(indir, outdir, ddict, cp=None):
     '''
     indir is top-level in directory
     outdir is top-level out directory
+    ddict is dictionary of probes/cycles
     
     handle de-noising of images.
     
     general approach to sub-conda environments...
-    
     process = subprocess.Popen(
     "conda run -n ${CONDA_ENV_NAME} python script.py".split(), , stdout=subprocess.PIPE
     )
@@ -170,8 +166,19 @@ def process_denoise(indir, outdir, ddict, cp=None):
 def process_registration( cp=None):
     logging.warning('registration not implemented.')
         
-def process_stitching( cp=None):
-    logging.warning('stitching not implemented.')
+def process_stitching(indir, outdir, ddict, cp=None):
+    '''
+    indir is top-level in directory
+    outdir is top-level out directory
+
+
+    
+    '''
+    logging.debug(f'handling cycle types={list( ddict.keys())}')
+    if cp is None:
+        cp = get_default_config() 
+    
+
         
 def process_basecalls( cp=None):
     logging.warning('basecalls not implemented.')
@@ -187,7 +194,7 @@ def process_segmentation( cp=None):
 
 
 
-def parse_maxproj_indir(indir, cp=None):
+def parse_exp_indir(indir, cp=None):
     '''
     determine input data structure and files. 
     return dict of lists of dirs by cycle 

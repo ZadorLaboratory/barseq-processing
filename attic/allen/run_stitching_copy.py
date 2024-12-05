@@ -1,3 +1,4 @@
+
 import os, glob, argparse
 import numpy as np
 import tifffile
@@ -11,7 +12,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--filedir", help="directory name where the new files will be saved") 
 parser.add_argument("--folder", help="directory name (of where the original files are")
 parser.add_argument("--ch", help="channels to stitch")
-
 
 
 def main(folder,ch=3):

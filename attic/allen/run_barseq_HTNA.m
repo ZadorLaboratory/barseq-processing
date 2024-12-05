@@ -73,7 +73,6 @@ register_seq_images_subsample_highres( settings.gene_fname, ...
 t=toc;
 
 
-
 % Make codebook for bardensr
 make_codebook(fullfile('..',config.codebook_name));
 if ~isempty(config.codebookoptional_name)
