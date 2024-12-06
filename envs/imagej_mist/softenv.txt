@@ -26,14 +26,14 @@
 	conda config --add channels bioconda
 
 # On Mac
-	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw
+	conda create -n fiji-mist  pandas pyimagej scikit-image tifffile numpy fftw ipython 
 
 # Install Fiji and add MIST plugin from add-ons. 
 #  https://github.com/USNISTGOV/MIST/wiki/Install-Guide
 
 
 # On Linux
-	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw fiji
+	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw fiji ipython
 
 # Run ImageJ version from conda, this should work over X-windows even remotely.  
 # select MIST from add-ons.   	

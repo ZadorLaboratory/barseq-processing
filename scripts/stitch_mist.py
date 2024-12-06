@@ -23,10 +23,38 @@ import numpy as np
 import tifffile
 import PIL
 from PIL import Image, ImageSequence
-from ScanImageTiffReader import ScanImageTiffReader, ScanImageTiffReaderContext
+#from ScanImageTiffReader import ScanImageTiffReader, ScanImageTiffReaderContext
 
 import imagej
 import skimage
+
+
+def stitch_mist_test( infiles, outdir, image_type='geneseq', cp=None):
+    '''
+    image_type = [ geneseq | bcseq | hyb ]
+    
+
+    '''
+    if cp is None:
+        cp = get_default_config()
+    
+    if not os.path.exists(outdir):
+        os.makedirs(outdir, exist_ok=True)
+        logging.debug(f'made outdir={outdir}')
+    
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    image_types = cp.get('barseq','image_types').split(',')
+    image_channels = cp.get(image_type, 'channels').split(',')
+    logging.debug(f'image_types={image_types} channels={image_channels}')
+    output_dtype = cp.get('stitch','output_dtype')
+
+    fiji_path = os.path.abspath( os.path.expanduser( cp.get('mist','fiji_path')))
+    logging.debug(f'fiji_path = {fiji_path}')
+    # config with imageJ
+    logging.info(f'initializing fiji at {fiji_path}...')
+    ij=imagej.init(fiji_path)
+    logging.debug(f'fiji version = {ij.getVersion()}')
+    
 
 
 def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
@@ -43,21 +71,13 @@ def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
         logging.debug(f'made outdir={outdir}')
     
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
-    basedir = os.path.join(resource_dir, 'n2vmodels')
     image_types = cp.get('barseq','image_types').split(',')
     image_channels = cp.get(image_type, 'channels').split(',')
-    stem_key = f'{image_type}_model_stem'
-    channel_key = f'{image_type}_model_channels'
-    output_dtype = cp.get('denoise','output_dtype')
-    model_channels = cp.get('n2v', channel_key ).split(',')   
-    model_stem = cp.get('n2v',stem_key)
-    do_min_subtraction = get_boolean( cp.get('n2v', 'do_min_subtraction') )
- 
     logging.debug(f'image_types={image_types} channels={image_channels}')
-    logging.debug(f'output_dtype={output_dtype} do_min_subtraction = {do_min_subtraction}')
-    logging.debug(f'model basedir={basedir} model_stem={model_stem} model_channels={model_channels}')
-    
-    
+    output_dtype = cp.get('stitch','output_dtype')
+ 
+    logging.debug(f'output_dtype={output_dtype}')
+       
     models = []
     if image_type in image_types:
         logging.debug(f'handling image_type={image_type}')
@@ -157,7 +177,7 @@ if __name__ == '__main__':
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    denoise_n2v( infiles=args.infiles, 
+    stitch_mist_test( infiles=args.infiles, 
                  outdir=outdir, 
                  cp=cp )
     
