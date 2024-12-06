@@ -33,7 +33,7 @@
 
 
 # On Linux
-	conda create -n fiji-mist  pandas scikit-image tifffile numpy fftw fiji ipython
+	conda create -n fiji-mist  pandas pyimagej scikit-image tifffile numpy fftw fiji ipython
 
 # Run ImageJ version from conda, this should work over X-windows even remotely.  
 # select MIST from add-ons.   	
