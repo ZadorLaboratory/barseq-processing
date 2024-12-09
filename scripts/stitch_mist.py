@@ -2,6 +2,26 @@
 #
 # Script to use MIST (via ImageJ/FIJI with MIST plugins to stitch images.
 #
+#    1.     --filenamePattern <string containing filename pattern>
+#    2.     --filenamePatternType <ROWCOL/SEQUENTIAL>
+#    3a.    --gridOrigin <UL/UR/LL/LR>  -- Required only for ROWCOL or SEQUENTIAL
+#    3b.    --numberingPattern <VERTICALCOMBING/VERTICALCONTINUOUS/HORIZONTALCOMBING/HORIZONTALCONTINUOUS> 
+#                -- Required only for SEQUENTIAL
+#    4.     --gridHeight <#>
+#    5.     --gridWidth <#>
+#    6.     --imageDir <PathToImageDir>
+#    7a.     --startCol <#> -- Required only for ROWCOL
+#    7b.     --startRow <#> -- Required only for ROWCOL
+#    7c.     --startTile <R> -- Required only for SEQUENTIAL
+#    8.     --programType <AUTO/JAVA/FFTW> -- Highly recommend using FFTW
+#    9.     --fftwLibraryFilename libfftw3f.dll -- Required for FFTW program type
+#    9a.     --fftwLibraryName libfftw3f -- Required for FFTW program type
+#    9b.     --fftwLibraryPath <path/to/library> -- Required for FFTW program type
+
+#    Example execution:
+#    java.exe -jar MIST_-2.1-jar-with-dependencies.jar --filenamePattern img_r{rrr}_c{ccc}.tif --filenamePatternType ROWCOL --gridHeight 5 --gridWidth 5 --gridOrigin UR --imageDir C:\Users\user\Downloads\Small_Fluorescent_Test_Dataset\image-tiles --startCol 1 --startRow 1 --programType FFTW --fftwLibraryFilename libfftw3f.dll --fftwLibraryName libfftw3f --fftwLibraryPath C:\Users\user\apps\Fiji.app\lib\fftw
+#
+#
 import argparse
 import logging
 import os
@@ -33,7 +53,8 @@ def stitch_mist_test( infiles, outdir, image_type='geneseq', cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
     
-
+    stitch images from the Small_Flourescent_Test_Dataset that comes with MIST
+    
     '''
     if cp is None:
         cp = get_default_config()
@@ -54,11 +75,20 @@ def stitch_mist_test( infiles, outdir, image_type='geneseq', cp=None):
     logging.info(f'initializing fiji at {fiji_path}...')
     ij=imagej.init(fiji_path)
     logging.debug(f'fiji version = {ij.getVersion()}')
+
+
+
+
+
     
 
 
 def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
     '''
+    infiles:    list of images for a single position to be stitched a single image. 
+        e.g. MAX_Pos1_000_000.denoised.tif MAX_Pos1_000_001.denoised.tif ...
+    output:    MAX_Pos1_stitched.denoised.tif 
+    
     image_type = [ geneseq | bcseq | hyb ]
     
 
@@ -89,34 +119,6 @@ def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
     logging.debug(f'got {len(models)} N2V models for {model_channels}')    
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]}')
 
-    for filename in infiles:
-        (dirpath, base, ext) = split_path(os.path.abspath(filename))
-        logging.debug(f'handling {filename}')
-        imgarray = imageio.imread(filename)
-        
-        pred_image = []
-        for i, img in enumerate(imgarray):
-            try:
-                logging.debug(f'{base}.{ext}[{i}] shape={img.shape} dtype={img.dtype}')
-                pimg = models[i].predict(img, axes='YX')
-                logging.debug(f'got model output: {base}.{ext}[{i}] shape={pimg.shape} dtype={pimg.dtype}')
-                pimg = pimg.astype(output_dtype)
-                if do_min_subtraction:
-                    pimg = pimg - pimg.min()  
-                logging.debug(f'new dtype={pimg.dtype}')
-                pred_image.append(pimg)
-            except:
-                logging.warning(f'ran out of models, appending channel [{i}] unchanged.')
-                pred_image.append(img)
-               
-        logging.debug(f'done predicting {base}.{ext} {len(pred_image)} channels. ')
-        outfile = f'{outdir}/{base}.denoised.{ext}'
-        newimage = np.dstack(pred_image)
-        # produces e.g. shape = ( 3200,3200,5)
-        newimage = np.rollaxis(newimage, -1)
-        # produces e.g. shape = ( 5, 3200, 3200)        
-        tf.imwrite( outfile, newimage)
-        logging.debug(f'done writing {outfile} ')
 
 
 

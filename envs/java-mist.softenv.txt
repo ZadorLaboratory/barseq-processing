@@ -1,0 +1,40 @@
+#
+# To compile executable JAR directly from MIST git.
+# ?? no need for Fiji/ImageJ?
+#
+#  Cannot work on MaxOSx because Maven pom.xml depends on CUDA, which Nvidia has ended for Mac
+#  Should work on Linux OK. 
+#
+#  May be possible to get partial functionality on Mac by builging on Linux and copying JAR.   
+#
+#
+conda install openjdk==23.0.1 maven fftw
+cd src ;  git clone https://github.com/usnistgov/MIST.git ; cd MIST
+
+#
+# Edit pom.xml to set compiler source and target: 
+# <plugin>
+#                <groupId>org.apache.maven.plugins</groupId>
+#                <artifactId>maven-compiler-plugin</artifactId>
+#                <version>3.1</version>
+#                <configuration>
+#                    <source>1.8</source>
+#                    <target>1.8</target>
+#                </configuration>
+
+
+mvn package
+cp target/MIST_-2.1-jar-with-dependencies.jar $CONDA_PREFIX/libexec/
+java -jar $CONDA_PREFIX/libexec/MIST_-2.1-jar-with-dependencies.jar --help
+
+
+# ON LINUX (x86_64)
+$CONDA_PREFIX/bin/java -jar $CONDA_PREFIX/libexec/MIST_-2.1-jar-with-dependencies.jar --programType FFTW --fftwLibraryFilename libfftw3.so --fftwLibraryName libfftw3 --fftwLibraryPath $CONDA_PREFIX/lib --help 
+
+#
+# ON MAC (M3 ARM)
+#
+$CONDA_PREFIX/lib/jvm/bin/java -jar $CONDA_PREFIX/libexec/MIST_-2.1-jar-with-dependencies.jar --programType FFTW --fftwLibraryFilename libfftw3.dylib --fftwLibraryName libfftw3 --fftwLibraryPath $CONDA_PREFIX/lib --help 
+
+OR
+$CONDA_PREFIX/lib/jvm/bin/java -jar $CONDA_PREFIX/libexec/MIST_-2.1-jar-with-dependencies.jar --programType JAVA --help 

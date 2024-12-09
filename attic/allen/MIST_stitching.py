@@ -15,7 +15,6 @@ import skimage
 import shutil
 
 
-
 def get_file_name(path,kind):  
     os.chdir(path)
     files=[]
