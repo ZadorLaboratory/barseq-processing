@@ -12,7 +12,6 @@ import os
 import subprocess
 import sys
 
-
 import datetime as dt
 
 class NonZeroReturnException(Exception):
@@ -73,11 +72,7 @@ if __name__ == '__main__':
         logging.error('no CONDA_PREFIX.')
     
     
-    
-    
-
-
-    
+        
     #logging.warning(f'args={args}')
     
     cmd = [ f'{CONDA_PREFIX}/lib/jvm/bin/java' ,

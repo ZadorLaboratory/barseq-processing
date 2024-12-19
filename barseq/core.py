@@ -35,13 +35,19 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
     '''
     Top level function to call into sub-steps...
     indir is top-level indir 
+    outdir is top-level out directory. 
+    expid is label/tag/run_id, may be used to access run/experiment-specific config. 
+    cp is combined ConfigParser object. 
     
-    outdirs 
+    overall "business logic", even idiosyncratic, is capture here. 
+    
+    input/output dirs for each step of pipeline.  
         denoised
         registered
         stitched
         basecalled
         segmented
+        ...
         
     
     '''
@@ -50,7 +56,7 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
     logging.info(f'Processing experiment directory={indir} to {outdir}')
     
     ddict = parse_exp_indir(indir, cp)
-    logging.debug(f'got ordered cycle dir dict: {ddict}')
+    logging.debug(f'got ordered cycle data dictionary: {ddict}')
     
     # In sequence, perform all pipeline processing steps
     # placing output in sub-directories by stage. 
@@ -58,12 +64,12 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         # denoise indir, outdir, ddict, cp=None
         sub_outdir = f'{outdir}/denoised'
         process_denoise(indir, sub_outdir, ddict, cp=cp)
- 
+        
         #process_registration()
         
-        
+        new_indir = sub_outdir        
         sub_outdir = f'{outdir}/stitched'
-        process_stitching()
+        #process_stitching(new_indir, sub_outdir, ddict, cp=cp)
         
         #process_basecalls()
         
@@ -80,7 +86,7 @@ def process_denoise(indir, outdir, ddict, cp=None):
     outdir is top-level out directory
     ddict is dictionary of probes/cycles
     
-    handle de-noising of images.
+    handle de-noising of all modalities, all cycles, all images.
     
     general approach to sub-conda environments...
     process = subprocess.Popen(
@@ -115,20 +121,22 @@ def process_denoise(indir, outdir, ddict, cp=None):
     logging.debug(f'script_name={script_name} script_dir={script_dir}')
     logging.debug(f'ddict = {ddict}')
 
+    # order matters.
     log_arg = ''
-    if log_level <= logging.DEBUG : 
-        log_arg = '-d'
     if log_level <= logging.INFO:
         log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
     
     command_list = []
     
-    for itype in ddict.keys():
-        logging.info(f'handling type {itype}')
-        for idir in ddict[itype]:
+    for mtype in ddict.keys():
+        logging.info(f'handling modality type {mtype}')
+        for idir in ddict[mtype]:
             sub_idir = f'{indir}/{idir}'
             sub_outdir = f'{outdir}/{idir}'
-            logging.info(f'handling {sub_idir}->{sub_outdir} with image type {itype}')
+            logging.info(f'handling {sub_idir}->{sub_outdir} with image type {mtype}')
             infiles = os.listdir(sub_idir)         
             
             cmd = ['conda','run',
@@ -151,7 +159,7 @@ def process_denoise(indir, outdir, ddict, cp=None):
             #    raise    
             command_list.append(cmd)
             logging.info(f'handled {sub_idir}')
-        logging.debug(f'handled probe type {itype}')
+        logging.debug(f'handled probe type {mtype}')
 
     logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
     jstack = JobStack()
@@ -192,8 +200,6 @@ def process_segmentation( cp=None):
 
 
 
-
-
 def parse_exp_indir(indir, cp=None):
     '''
     determine input data structure and files. 
@@ -203,6 +209,13 @@ def parse_exp_indir(indir, cp=None):
     
     As probe types are added, expand this list. 
     
+    ddict = { 'geneseq' : 
+                [ { 'geneseq01' : ['MAX_Pos1_002_001.tif', 'MAX_Pos1_000_003.tif'] }'
+    
+    
+    
+    
+    
     '''    
     if cp is None:
         cp = get_default_config()
@@ -210,6 +223,7 @@ def parse_exp_indir(indir, cp=None):
     bcp = re.compile( cp.get('barseq','bc_regex'))
     gsp = re.compile( cp.get('barseq','gene_regex'))
     hyp = re.compile( cp.get('barseq','hyb_regex'))
+    tif = re.compile( cp.get('barseq','tif_regex'))
             
     pdict = { bcp : 'bcseq',
               gsp : 'geneseq',
@@ -227,6 +241,15 @@ def parse_exp_indir(indir, cp=None):
         for p in pdict.keys():
             if p.search(d) is not None:
                 k = pdict[p]
+                #sddict = {}
+                #flist = []
+                #allfiles = os.listdir(f'{indir}/{d}/')
+                #for f in allfiles: 
+                #    if tif.search(f) is not None:
+                #        logging.debug(f'{f} is an image file.')
+                #        flist.append(f)
+                #sddict[d] = flist
+                #ddict[k].append(sddict)
                 ddict[k].append(d)
     return ddict
         
