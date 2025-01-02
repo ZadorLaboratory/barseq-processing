@@ -3,15 +3,16 @@
 # Script to use noise2void to do denoising on TIF images based on trained models. 
 # Script takes TIF file list as input and places output to outdir
 #
-#  General filename scheme:  <filebase>.<pipelinestage>.tif
-#  Filenames altered as:
+# 
+# General filename scheme:  <filebase>.<pipelinestage>.tif
+# Filenames altered as:
 #       MAX_Pos1_000_000.tif  -> MAX_Pos1_000_000.denoised.tif  
 #
-#  https://github.com/juglab/n2v
-#  https://csbdeep.bioimagecomputing.com/
-#  
-#  https://imageio.readthedocs.io/en/v2.9.0/userapi.html
-#     2.36.1 
+# https://github.com/juglab/n2v
+# https://csbdeep.bioimagecomputing.com/
+# 
+# https://imageio.readthedocs.io/en/v2.9.0/userapi.html
+#    2.36.1 
 #
 import argparse
 import logging

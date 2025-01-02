@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Script to use noise2void to do denoising on TIF images based on trained models. 
+# Script to register  one or more images to a template image.  
 # Script takes TIF file list as input and places output to outdir
 #
 #  General filename scheme:  <filebase>.<pipelinestage>.tif

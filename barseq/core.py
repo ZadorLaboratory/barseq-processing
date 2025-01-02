@@ -17,6 +17,73 @@ import tifffile as tif
 from barseq.utils import *
 
 
+
+class BarseqExperiment():
+    
+    def __init__(self, indir, cp=None):
+        '''
+        Methods and data structure to keep and deliver
+        sets of files in groupings as needed. And to abstract out modes, 
+        paths, and names. 
+        
+        '''
+        self.expdir = os.path.abspath( os.path.expanduser(indir))
+        self.cp = cp
+        if cp is None:
+            self.cp = get_default_config()
+            
+        # geneseq, bcseq, hyb ,n order. 
+        self.modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
+        # create directory dict. 
+        self.ddict = self.parse_experiment_indir(indir, cp = self.cp)
+        logging.debug('BarseqExperiment metadata object intialized. ')
+
+    def __repr__(self):
+        s = f'BarseqExperiment: ddict ={self.ddict} '
+        return s
+
+    def parse_experiment_indir(self, indir, cp=None):
+        '''
+        determine input data structure and files. 
+        return dict of lists of dirs by cycle 
+                  
+        '''    
+        if cp is None:
+            cp = get_default_config()
+        
+        re_list = []
+        pdict = {}
+        ddict = {}
+        modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
+        for mode in modes:
+            p = re.compile( cp.get( 'barseq',f'{mode}_regex'))
+            re_list.append(p)
+            pdict[p] = mode 
+            ddict[mode] = []
+                    
+        #tif = re.compile( cp.get('barseq','tif_regex'))       
+        dlist = os.listdir(indir)
+        dlist.sort()
+        for d in dlist:
+            for p in pdict.keys():
+                if p.search(d) is not None:
+                    k = pdict[p]
+                    #sddict = {}
+                    #flist = []
+                    #allfiles = os.listdir(f'{indir}/{d}/')
+                    #for f in allfiles: 
+                    #    if tif.search(f) is not None:
+                    #        logging.debug(f'{f} is an image file.')
+                    #        flist.append(f)
+                    #sddict[d] = flist
+                    #ddict[k].append(sddict)
+                    ddict[k].append(d)
+        return ddict
+        
+
+
+
+
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
     cp = ConfigParser()
@@ -252,7 +319,9 @@ def parse_exp_indir(indir, cp=None):
                 #ddict[k].append(sddict)
                 ddict[k].append(d)
     return ddict
-        
+
+
+
 
 def process_maxproj_files(infiles, cp=None, outdir=None ):
     '''
