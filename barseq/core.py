@@ -2,6 +2,7 @@ import itertools
 import logging
 import math
 import os
+import pprint
 import re
 import sys
 import traceback
@@ -15,7 +16,6 @@ import pandas as pd
 import tifffile as tif
 
 from barseq.utils import *
-
 
 
 class BarseqExperiment():
@@ -33,16 +33,27 @@ class BarseqExperiment():
             self.cp = get_default_config()
             
         # geneseq, bcseq, hyb ,n order. 
-        self.modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
+        self.modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
         # create directory dict. 
-        self.ddict = self.parse_experiment_indir(indir, cp = self.cp)
+        self.ddict = self._parse_experiment_indirs(indir, cp = self.cp)
+        self.tdict = self._parse_experiment_tiles(self.ddict, cp=self.cp)
+        self.pdict = self._parse_experiment_images(self.tdict, cp=self.cp)
+        
         logging.debug('BarseqExperiment metadata object intialized. ')
 
     def __repr__(self):
-        s = f'BarseqExperiment: ddict ={self.ddict} '
+        s = f'BarseqExperiment: \n'
+        for mode in self.modes:
+            ncyc = len(self.tdict[mode])
+            ntiles = len(self.tdict[mode][0])
+            s += f' mode={mode}\tncycles={ncyc}\tntiles={ntiles}\n'
+            skeys = list( self.pdict.keys())
+            skeys.sort()
+            for p in skeys:
+                s += f'pos={p} ntiles={len(self.pdict[p])}\n'
         return s
 
-    def parse_experiment_indir(self, indir, cp=None):
+    def _parse_experiment_indirs(self, indir, cp=None):
         '''
         determine input data structure and files. 
         return dict of lists of dirs by cycle 
@@ -68,19 +79,71 @@ class BarseqExperiment():
             for p in pdict.keys():
                 if p.search(d) is not None:
                     k = pdict[p]
-                    #sddict = {}
-                    #flist = []
-                    #allfiles = os.listdir(f'{indir}/{d}/')
-                    #for f in allfiles: 
-                    #    if tif.search(f) is not None:
-                    #        logging.debug(f'{f} is an image file.')
-                    #        flist.append(f)
-                    #sddict[d] = flist
-                    #ddict[k].append(sddict)
                     ddict[k].append(d)
         return ddict
         
+    def _parse_experiment_tiles(self, ddict, cp=None):
+        if cp is None:
+            cp = get_default_config()
+        
+        fdict = {}    
+        for m in self.modes:
+            # list of lists of files, by cycle, hashed by mode
+            fdict[m] = []
+        for m in self.modes:
+            # geneseq
+            for d in self.ddict[m]:
+                # geneseq01
+                cycledir = f'{self.expdir}/{d}'
+                logging.debug(f'listing cycle dir {cycledir}')
+                flist = os.listdir(cycledir)
+                flist.sort()
+                fnlist = []
+                for f in flist:
+                    fname = f'{cycledir}/{f}'
+                    fnlist.append(fname)
+                fdict[m].append(fnlist)
+        return fdict
+    
+    def _parse_experiment_images(self, tdict, cp=None):
+        if cp is None:
+            cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')        
+        logging.debug(f'image_regex={image_regex}')
+        pdict = {}
+        # pdict is dict of lists of filenames for position identifier. 
+        # assume for now that all cycles/modes have same filenames. 
+        for tfile in tdict[self.modes[0]][0]:
+            # cycle is list of full filenames in dir
+            # we only care about filenames in one. 
+            dp, base, ext = split_path(tfile)
+            logging.debug(f'base={base} ext={ext}')
+            m = re.search(image_regex, base)
+            pos = m.group(1)
+            x = m.group(2)
+            y = m.group(3)
+            logging.debug(f'pos={pos} x={x} y={y}')                    
+            try:
+                pdict[pos].append(f'{base}.{ext}')    
+            except:
+                pdict[pos] = []
+                pdict[pos].append(f'{base}.{ext}') 
+        return pdict
 
+    def get_tileset(self, mode):
+        ''' 
+            returns list of all tile image files across cycles for mode
+        '''
+        
+    
+    
+    def get_positionset(self, mode, cycle):
+        ''' 
+            returns list of all tile image files for mode and cycle
+        '''               
+    
+    
+    
 
 
 

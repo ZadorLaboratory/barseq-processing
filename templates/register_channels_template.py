@@ -1,18 +1,10 @@
 #!/usr/bin/env python
 #
-# Script to register  one or more images to a template image.  
-# Script takes TIF file list as input and places output to outdir
+#  PER-FILE -> PARALLEL OUTDIR
+#  Script to register channels within a single image. 
 #
-#  General filename scheme:  <filebase>.<pipelinestage>.tif
-#  Filenames altered as:
-#       MAX_Pos1_000_000.tif  -> MAX_Pos1_000_000.denoised.tif  
-#
-#  https://github.com/juglab/n2v
-#  https://csbdeep.bioimagecomputing.com/
-#  
-#  https://imageio.readthedocs.io/en/v2.9.0/userapi.html
-#     2.36.1 
-#
+#  channel-registered images in <outdir>/<base>.chreg.tif
+
 import argparse
 import logging
 import os
@@ -36,9 +28,9 @@ import tifffile as tf
 
 def register_channels_native( infiles, outdir, image_type='geneseq', cp=None):
     '''
+    Within each infile, register all channels to reference_idx channel. 
     image_type = [ geneseq | bcseq | hyb ]
   
-
     '''
     if cp is None:
         cp = get_default_config()
@@ -145,9 +137,9 @@ if __name__ == '__main__':
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    register_native( infiles=args.infiles, 
-                     outdir=outdir, 
-                     cp=cp )
+    register_channels_native( infiles=args.infiles, 
+                              outdir=outdir, 
+                              cp=cp )
     
     logging.info(f'done processing output to {outdir}')
 

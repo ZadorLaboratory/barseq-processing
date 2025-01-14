@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 #
-#  PER-FILE -> OUTDIR
-#
+#  PER-FILE -> PARALLEL OUTDIR
 #
 # Script template to do denoising. 
 # Input:     set of image files   <base>.tif
 #            each image has N channels. 
 # Output:   denoised images in <outdir>/<base>.denoised.tif
+#
 #
 
 import argparse
@@ -27,7 +27,9 @@ from barseq.utils import *
 
 def denoise_tool( infiles, outdir, image_type='barcode', cp=None):
     '''
-    image_type = [ gene | barcode | hyb ]
+    image_type = [ geneseq | bcseq | hyb ] ...
+    All input and output should be from-to the same directory. 
+    Caller handles  directory/experiment level organization.
     
     '''
     if cp is None:
