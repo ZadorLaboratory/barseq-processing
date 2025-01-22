@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import tifffile as tif
 
+from scipy.sparse import dok_matrix, csr_matrix, lil_matrix, csc_matrix, coo_matrix, bsr_matrix
+
 from barseq.utils import *
 
 
@@ -23,8 +25,22 @@ class BarseqExperiment():
     def __init__(self, indir, cp=None):
         '''
         Methods and data structure to keep and deliver
-        sets of files in groupings as needed. And to abstract out modes, 
-        paths, and names. 
+        sets of files in groupings as needed. 
+        Centralized metadata. 
+        Abstract out mode identifiers from directory names, paths from cycles, and names from position tilesets. 
+        
+        ddict   (directory dict)    keys = modes, values= list of cycle directories. 
+        tdict   (tile dict)         keys = modes, values= list of lists:  cycles, tiles   
+        pdict   (position dict)      
+        
+        Goal is to 
+        1. Fully validate (for missing images) before proceeding. 
+        2. Allow retrieving...
+            -- All tiles in flat form, grouped by chunksize (for flat processing). 
+            -- All tiles, grouped by position, and grouped by chunksize (for stitching).
+            -- All tiles within a mode, but across cycles, for a tilename (for registration) 
+        3. 
+        
         
         '''
         self.expdir = os.path.abspath( os.path.expanduser(indir))
@@ -45,12 +61,19 @@ class BarseqExperiment():
         s = f'BarseqExperiment: \n'
         for mode in self.modes:
             ncyc = len(self.tdict[mode])
-            ntiles = len(self.tdict[mode][0])
-            s += f' mode={mode}\tncycles={ncyc}\tntiles={ntiles}\n'
-            skeys = list( self.pdict.keys())
-            skeys.sort()
-            for p in skeys:
-                s += f'pos={p} ntiles={len(self.pdict[p])}\n'
+            ntiles = 0
+            for cyc in self.pdict[mode]:
+                for p in list( cyc.keys()):
+                    ntiles += len(cyc[p].flatten())          
+            s += f'  mode={mode}\tncycles={ncyc}\tntiles={ntiles}\n'
+            cyclelist = self.pdict[mode]
+            for i, cycle in enumerate( cyclelist):
+                s += f'    cycle[{i}]\n'
+                skeys = list( cycle.keys())
+                skeys.sort()
+                for p in skeys:
+                    (x,y) = cycle[p].shape
+                    s += f'     pos={p} tiles={x*y} [{x}x{y}]\n'
         return s
 
     def _parse_experiment_indirs(self, indir, cp=None):
@@ -104,45 +127,163 @@ class BarseqExperiment():
                     fnlist.append(fname)
                 fdict[m].append(fnlist)
         return fdict
-    
+
+
     def _parse_experiment_images(self, tdict, cp=None):
+        '''
+        sets of files, grouped by position 
+        
+        pdict = {  mode1 : [# list of position dicts, one per cycle
+                              { pos1 : [ f1,f2,f3],   positionlabel -> filelist
+                                pos1 : [ f1,f2,f3],
+                              },
+                              {   pos2 : [ f1,f2,f3],   positionlabel -> filelist
+                                  pos2 : [ f1,f2,f3],
+                              }
+                           ],
+                   mode2 : [# list of position dicts, one per cycle
+                              { pos1 : [ f1,f2,f3],   positionlabel -> filelist
+                                pos1 : [ f1,f2,f3],
+                              },
+                              {   pos2 : [ f1,f2,f3],   positionlabel -> filelist
+                                  pos2 : [ f1,f2,f3],
+                              }
+                           ],   
+        
+        '''
         if cp is None:
             cp = get_default_config()
         image_regex = cp.get('barseq' , 'image_regex')        
         logging.debug(f'image_regex={image_regex}')
         pdict = {}
-        # pdict is dict of lists of filenames for position identifier. 
-        # assume for now that all cycles/modes have same filenames. 
-        for tfile in tdict[self.modes[0]][0]:
-            # cycle is list of full filenames in dir
-            # we only care about filenames in one. 
-            dp, base, ext = split_path(tfile)
-            logging.debug(f'base={base} ext={ext}')
-            m = re.search(image_regex, base)
-            pos = m.group(1)
-            x = m.group(2)
-            y = m.group(3)
-            logging.debug(f'pos={pos} x={x} y={y}')                    
-            try:
-                pdict[pos].append(f'{base}.{ext}')    
-            except:
-                pdict[pos] = []
-                pdict[pos].append(f'{base}.{ext}') 
+        # 
+        # pdict[mode] -> cyclist[0] -> posdict['1'] ->  dok_matrix
+        #
+        for mode in self.modes:
+            pdict[mode] = []
+            cycfilelist = self.tdict[mode]
+            for i, cycle in enumerate( cycfilelist ):
+                logging.debug(f'creating cycle dict for {mode}[{i}]')
+                cycdict = {}
+                for tfile in cycle:
+                    posarray = None
+                    dp, base, ext = split_path(tfile)
+                    logging.debug(f'base={base} ext={ext}')
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        pos = m.group(1)
+                        x = m.group(2)
+                        y = m.group(3)
+                        x = int(x)
+                        y = int(y)
+                        logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
+                        logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
+                        pos = str(pos).strip()
+                        try:    
+                            posarray = cycdict[pos] 
+                            logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
+                        
+                        except KeyError:
+                            logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
+                            cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
+                            logging.debug(f'type = {type( cycdict[pos]) }')
+                              
+                        fname = f'{dp}/{base}.{ext}'
+                        logging.debug(f"saving posarray[{x},{y}] = '{fname}'")                            
+                        cycdict[pos][x,y] = fname 
+                    else:
+                        logging.warning(f'File {tfile} fails regex match.')
+                pdict[mode].append(cycdict)
+                
+            logging.debug(f'fixing sparse matrices...')
+            for i, cycdict in enumerate( pdict[mode]):
+                pkeys = list(cycdict.keys())
+                pkeys.sort()
+                for p in pkeys:
+                    sarray = cycdict[p]
+                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sarray)} ")
+                    pnew = self._fix_sparse(sarray)
+                    logging.debug(f"pnew type={type(pnew)} ")
+                    cycdict[p] = pnew
         return pdict
 
-    def get_tileset(self, mode):
+
+    def _fix_sparse(self, sarray):
+        '''
+        remove empty rows and columns. convert to normal ndarray. 
+        '''
+        logging.debug(f'input type = {type(sarray)}')
+        darray = sarray.toarray()
+        nan_cols = np.all(darray == b'', axis = 0)
+        nan_rows = np.all(darray == b'', axis = 1)        
+        darray = darray[:,~nan_cols]
+        darray = darray[~nan_rows,:]
+        return darray
+        
+
+    def get_tileset(self, mode=None, chunksize=None):
         ''' 
             returns list of all tile image files across cycles for mode
         '''
+        tlist = []
+        if mode is None:
+            modes = self.modes
+        else:
+            modes = [mode]
+            
+        for m in modes:
+            for cyc in self.pdict[m]:
+                for p in list( cyc.keys()):
+                    for t in cyc[p].flatten():
+                        t = t.decode('UTF-8')
+                        tlist.append(t)
+        return tlist     
+
+
+    def get_imageset(self, mode):
+        '''
+        Get list of lists of images for a single tile across cycles for a mode. 
+        '''
+        ilist = []
         
-    
-    
-    def get_positionset(self, mode, cycle):
+        
+        
+        
+        return ilist
+        
+        
+        
+        
+    def get_positionset(self, mode=None):
         ''' 
-            returns list of all tile image files for mode and cycle
+            returns list of lists all tile image file, optionally for a mode
+            
         '''               
+        plist = []
+        if mode is None:
+            modes = self.modes
+        else:
+            modes = [mode]
+            
+        for m in modes:
+            for cyc in self.pdict[m]:
+                for p in list( cyc.keys()):
+                    tlist = []
+                    for t in cyc[p].flatten():
+                        t = t.decode('UTF-8')                       
+                        tlist.append(t)
+                    plist.append(tlist)
+        return plist
     
     
+    def validate(self):
+        '''
+            -- confirms that there corresponding tiles in all cycles of each mode. 
+            -- 
+            
+            @return True if valid, False otherwise   logs warnings as check is made. 
+        '''
+        
     
 
 
