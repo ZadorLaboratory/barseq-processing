@@ -104,7 +104,7 @@ def denoise_n2v( infiles, outdir, image_type='geneseq', cp=None):
                 pred_image.append(img)
                
         logging.debug(f'done predicting {base}.{ext} {len(pred_image)} channels. ')
-        outfile = f'{outdir}/{base}.denoised.{ext}'
+        outfile = f'{outdir}/{base}.{ext}'
         newimage = np.dstack(pred_image)
         # produces e.g. shape = ( 3200,3200,5)
         newimage = np.rollaxis(newimage, -1)

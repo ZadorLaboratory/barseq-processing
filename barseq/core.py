@@ -33,6 +33,9 @@ class BarseqExperiment():
         tdict   (tile dict)         keys = modes, values= list of lists:  cycles, tiles   
         pdict   (position dict)      
         
+        All real file paths are stored as relative paths in the object, to allow mapping from 
+        subdir to subdir by steps in the pipeline. 
+        
         Goal is to 
         1. Fully validate (for missing images) before proceeding. 
         2. Allow retrieving...
@@ -40,7 +43,6 @@ class BarseqExperiment():
             -- All tiles, grouped by position, and grouped by chunksize (for stitching).
             -- All tiles within a mode, but across cycles, for a tilename (for registration) 
         3. 
-        
         
         '''
         self.expdir = os.path.abspath( os.path.expanduser(indir))
@@ -52,6 +54,7 @@ class BarseqExperiment():
         self.modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
         # create directory dict. 
         self.ddict = self._parse_experiment_indirs(indir, cp = self.cp)
+        self.cdict = self._parse_experiment_cycles(self.ddict, cp=self.cp)
         self.tdict = self._parse_experiment_tiles(self.ddict, cp=self.cp)
         self.pdict = self._parse_experiment_images(self.tdict, cp=self.cp)
         
@@ -104,18 +107,50 @@ class BarseqExperiment():
                     k = pdict[p]
                     ddict[k].append(d)
         return ddict
+
+        
+    def _parse_experiment_cycles(self, ddict, cp=None):
+        '''
+        make dict of dicts of modes and cycle directory names to all tiles within. 
+        
+        '''
+        if cp is None:
+            cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')
+                
+        cdict = {}
+        for mode in self.modes:
+            cdict[mode] = {}
+            for d in self.ddict[mode]:
+                cyclelist = []
+                cycledir = f'{self.expdir}/{d}'
+                logging.debug(f'listing cycle dir {cycledir}')
+                flist = os.listdir(cycledir)
+                flist.sort()
+                fnlist = []
+                for f in flist:
+                    dp, base, ext = split_path(f)
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        cyclelist.append(f)
+                    else:
+                        logging.warning(f'file {f} did not pass image regex.')
+                cdict[mode][d] = cyclelist
+        return cdict
+
         
     def _parse_experiment_tiles(self, ddict, cp=None):
         if cp is None:
             cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')
         
         fdict = {}    
-        for m in self.modes:
+        for mode in self.modes:
             # list of lists of files, by cycle, hashed by mode
-            fdict[m] = []
-        for m in self.modes:
+            fdict[mode] = []
+        for mode in self.modes:
             # geneseq
-            for d in self.ddict[m]:
+            for d in self.ddict[mode]:
                 # geneseq01
                 cycledir = f'{self.expdir}/{d}'
                 logging.debug(f'listing cycle dir {cycledir}')
@@ -123,9 +158,12 @@ class BarseqExperiment():
                 flist.sort()
                 fnlist = []
                 for f in flist:
-                    fname = f'{cycledir}/{f}'
-                    fnlist.append(fname)
-                fdict[m].append(fnlist)
+                    dp, base, ext = split_path(f)
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        fname = f'{d}/{f}'
+                        fnlist.append(fname)
+                fdict[mode].append(fnlist)
         return fdict
 
 
@@ -165,10 +203,11 @@ class BarseqExperiment():
             for i, cycle in enumerate( cycfilelist ):
                 logging.debug(f'creating cycle dict for {mode}[{i}]')
                 cycdict = {}
-                for tfile in cycle:
+                for rfile in cycle:
                     posarray = None
-                    dp, base, ext = split_path(tfile)
-                    logging.debug(f'base={base} ext={ext}')
+                    afile = os.path.abspath(f'{self.expdir}/{rfile}')
+                    dp, base, ext = split_path(afile)
+                    logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
                     m = re.search(image_regex, base)
                     if m is not None:
                         pos = m.group(1)
@@ -188,11 +227,11 @@ class BarseqExperiment():
                             cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
                             logging.debug(f'type = {type( cycdict[pos]) }')
                               
-                        fname = f'{dp}/{base}.{ext}'
-                        logging.debug(f"saving posarray[{x},{y}] = '{fname}'")                            
+                        fname = f'{rfile}'
+                        logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
                         cycdict[pos][x,y] = fname 
                     else:
-                        logging.warning(f'File {tfile} fails regex match.')
+                        logging.warning(f'File {afile} fails regex match.')
                 pdict[mode].append(cycdict)
                 
             logging.debug(f'fixing sparse matrices...')
@@ -240,22 +279,42 @@ class BarseqExperiment():
         return tlist     
 
 
+    def get_cycleset(self, mode=None):
+        '''
+         get dictionary with keys as actual directory name and elements are relative paths.  
+         optionally restrict to single mode
+         
+         if modes must be handled distinctly, then caller must cycle through nodes. 
+                 
+        '''
+        tdict = {}
+        if mode is None:
+            modes = self.modes
+        else:
+            modes = [mode]
+            
+        for mode in modes:
+            for d in self.cdict[mode].keys():
+                    tdict[d] = []
+                    for t in self.cdict[mode][d]:
+                        tdict[d].append(f'{d}/{t}')
+        return tdict 
+
+
+
     def get_imageset(self, mode):
         '''
         Get list of lists of images for a single tile across cycles for a mode. 
         '''
         ilist = []
         
-        
-        
-        
         return ilist
         
         
         
         
-    def get_positionset(self, mode=None):
-        ''' 
+    def get_positionset(self, mode=None, cycle=None):
+        '''  
             returns list of lists all tile image file, optionally for a mode
             
         '''               
@@ -283,6 +342,20 @@ class BarseqExperiment():
             
             @return True if valid, False otherwise   logs warnings as check is made. 
         '''
+        return True
+    
+    def validate_target(self, target_dir ):
+        '''
+            --  Confirms that target directory contains files parallel to all those in
+                Experiment directory. To be used between pipeline stages to confirm all 
+                outputs were successfully created. 
+                
+            @ arg target    Top-level directory of tree to confirm.
+        
+            @return True if valid, False otherwise 
+        
+        '''
+        return True
         
     
 
@@ -300,6 +373,8 @@ def get_script_dir():
     script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
     logging.debug(f'script_dir = {script_dir}')
     return script_dir
+
+
 
 
 def process_barseq_all(indir, outdir=None, expid=None, cp=None):
@@ -326,21 +401,22 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         cp = get_default_config()
     logging.info(f'Processing experiment directory={indir} to {outdir}')
     
-    ddict = parse_exp_indir(indir, cp)
-    logging.debug(f'got ordered cycle data dictionary: {ddict}')
+    bse = BarseqExperiment(indir, cp)
+    logging.debug(f'got BarseqExperiment metadata: {bse}')
     
     # In sequence, perform all pipeline processing steps
     # placing output in sub-directories by stage. 
     try:
         # denoise indir, outdir, ddict, cp=None
         sub_outdir = f'{outdir}/denoised'
-        process_denoise(indir, sub_outdir, ddict, cp=cp)
-        
+        logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
+        process_denoise(bse.expdir, sub_outdir, bse, cp=cp)
+        logging.info(f'done denoising.')
         #process_registration()
         
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/stitched'
-        #process_stitching(new_indir, sub_outdir, ddict, cp=cp)
+        #process_stitching(new_indir, sub_outdir, bse, cp=cp)
         
         #process_basecalls()
         
@@ -351,13 +427,16 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         logging.error(traceback.format_exc(None))
 
 
-def process_denoise(indir, outdir, ddict, cp=None):
+def process_denoise(indir, outdir, bse, cp=None):
     '''
-    indir is top-level in directory
-    outdir is top-level out directory
-    ddict is dictionary of probes/cycles
-    
+    @arg indir  is top-level input directory (with cycle dirs below)
+    @arg outdir outdir is top-level out directory (with cycle dirs below)
+    @arg bse  bse is BarseqExperiment metadata object with relative file/mode layout
+
+    @return None
+
     handle de-noising of all modalities, all cycles, all images.
+    work is bundled by cycle directory.
     
     general approach to sub-conda environments...
     process = subprocess.Popen(
@@ -365,12 +444,12 @@ def process_denoise(indir, outdir, ddict, cp=None):
     )
     output, error = process.communicate()
 
+
     '''
-    logging.debug(f'handling cycle types={list( ddict.keys())}')
-    
     if cp is None:
         cp = get_default_config()
-
+    logging.debug(f'handling cycle types={bse.modes} indir={indir} outdir={outdir}')
+    
     # general parameters
     tool = cp.get('denoise','tool')
     conda_env = cp.get('denoise','conda_env')
@@ -384,13 +463,11 @@ def process_denoise(indir, outdir, ddict, cp=None):
     script_path = f'{script_dir}/{script_name}'
     log_level = logging.getLogger().getEffectiveLevel()
     outdir = os.path.expanduser( os.path.abspath(outdir) )
-    indir = os.path.expanduser( os.path.abspath(indir) )
-
-    mpp = re.compile( cp.get('maxproj','maxproj_regex'))
 
     logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
     logging.debug(f'script_name={script_name} script_dir={script_dir}')
-    logging.debug(f'ddict = {ddict}')
+
+    tdict = bse.get_cycleset()  # all modes, all tiles
 
     # order matters.
     log_arg = ''
@@ -399,39 +476,24 @@ def process_denoise(indir, outdir, ddict, cp=None):
     if log_level <= logging.DEBUG : 
         log_arg = '-d'
 
-    
     command_list = []
     
-    for mtype in ddict.keys():
-        logging.info(f'handling modality type {mtype}')
-        for idir in ddict[mtype]:
-            sub_idir = f'{indir}/{idir}'
-            sub_outdir = f'{outdir}/{idir}'
-            logging.info(f'handling {sub_idir}->{sub_outdir} with image type {mtype}')
-            infiles = os.listdir(sub_idir)         
-            
-            cmd = ['conda','run',
-                   '-n', conda_env , 
-                   'python', script_path,
-                   log_arg,  
-                   '--outdir', sub_outdir,                      
-                   ]           
-            # only process files that match expected pattern.             
-            for fname in infiles:
-                if mpp.search(fname) is not None:
-                    infile = f'{sub_idir}/{fname}'
-                    cmd.append(infile)
-
-            #try:
-            #    run_command_shell(cmd)
-            #except NonZeroReturnException as nzre:
-            #    logging.error(f'problem with input files.')
-            #    logging.error(traceback.format_exc(None))
-            #    raise    
-            command_list.append(cmd)
-            logging.info(f'handled {sub_idir}')
-        logging.debug(f'handled probe type {mtype}')
-
+    cdirs = list(tdict.keys())
+    logging.debug(f'handling all tiles in {cdirs}')
+    for cdir in cdirs:
+        sub_outdir = f'{outdir}/{cdir}'
+        cmd = ['conda','run',
+               '-n', conda_env , 
+               'python', script_path,
+               log_arg,  
+               '--outdir', sub_outdir,                      
+               ]        
+        for rname in tdict[cdir]:
+            infile = f'{indir}/{rname}'
+            cmd.append(infile)
+        command_list.append(cmd)
+        logging.info(f'handled {indir}/{cdir}')
+    
     logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
     jstack = JobStack()
     jstack.setlist(command_list)
@@ -440,6 +502,7 @@ def process_denoise(indir, outdir, ddict, cp=None):
     jset.runjobs()
     
     logging.info(f'done with denoising...')
+
 
 
 def process_registration( cp=None):

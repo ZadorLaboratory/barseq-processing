@@ -138,7 +138,7 @@ class JobSet(object):
         logging.debug(f'joining threads...')    
         for th in self.threadlist:
             th.join()
-
+            
         logging.debug(f'all threads joined. returning...')
 
 
