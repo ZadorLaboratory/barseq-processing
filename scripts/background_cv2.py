@@ -26,7 +26,7 @@ def uint16m(x):
     y=np.uint16(np.clip(np.round(x),0,65535))
     return y
 
-def background_cv2( infiles, outdir, image_type='geneseq', cp=None):
+def background_cv2( infiles, outdir, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -72,19 +72,21 @@ def background_cv2( infiles, outdir, image_type='geneseq', cp=None):
         logging.debug(f'made outdir={outdir}')
 
     image_types = cp.get('barseq','image_types').split(',')
-    image_channels = cp.get(image_type, 'channels').split(',')
+    #image_channels = cp.get(, 'channels').split(',')
     radius = int(cp.get('cv2','radius'))
+    output_dtype = cp.get('background','output_dtype')
     #num_channels = len(image_channels)
     num_channels = 4
 
-    logging.debug(f'image_types={image_types} channels={image_channels}')
+    #logging.debug(f'image_types={image_types} channels={image_channels}')
     logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_channels}')
 
     for infile in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
         
-        I=tf.imread(infile,key=range(0,4,1))
+        #I=tf.imread(infile,key=range(0,4,1))
+        I=tf.imread(infile)
         I=I.copy()
         I_filtered=np.zeros_like(I)
         I_rem=I[num_channels:,:,:]
@@ -97,9 +99,9 @@ def background_cv2( infiles, outdir, image_type='geneseq', cp=None):
         I_filtered[num_channels:,:,:]=I_rem    
         I_filtered=uint16m(I_filtered)
 
-        logging.debug(f'done predicting {base}.{ext} {len(pred_image)} channels. ')
+        logging.debug(f'done processing {base}.{ext} ')
         outfile = f'{outdir}/{base}.{ext}'
-        tfl.imwrite(outfile, I_filtered, photometric='minisblack')
+        tf.imwrite(outfile, I_filtered, photometric='minisblack')
         logging.debug(f'done writing {outfile}')
     
 
@@ -163,7 +165,7 @@ if __name__ == '__main__':
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     background_cv2( infiles=args.infiles, 
-                 outdir=outdir, 
-                 cp=cp )
+                    outdir=outdir, 
+                    cp=cp )
     
     logging.info(f'done processing output to {outdir}')

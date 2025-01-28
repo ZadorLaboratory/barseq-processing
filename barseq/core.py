@@ -463,8 +463,7 @@ def process_denoise(indir, outdir, bse, cp=None):
     
     logging.info(f'done with denoising...')
 
-
-def process_stage_all_images(indir, outdir, bse, stage='background', cp=None):
+def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, force=False):
     '''
     process any stage that acts on all images singly, batched by cycle directory. 
     
@@ -522,6 +521,7 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None):
         
         for i, dirname in enumerate(dirlist):
             logging.debug(f'handling mode={mode} dirname={dirname}')
+            num_files = 0
             flist = cyclist[i]
             sub_outdir = f'{outdir}/{dirname}'
             cmd = ['conda','run',
@@ -532,20 +532,30 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None):
                    ]        
             for rname in flist:
                 infile = f'{indir}/{rname}'
-                cmd.append(infile)
-            command_list.append(cmd)
-            n_cmds += 1
+                outfile = f'{outdir}/{rname}'
+                if not os.path.exists(outfile):
+                    cmd.append(infile)
+                    num_files += 1
+                else:
+                    logging.debug(f'outfile {outfile} exists. omitting file.')
+            if num_files > 0:
+                command_list.append(cmd)
+                n_cmds += 1
+            else:
+                logging.debug(f'all outfiles exist. omitting command.')
+            
             logging.info(f'handled {indir}/{dirname}')
         logging.info(f'created {n_cmds} commands for mode={mode}')
-    logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
-    jstack = JobStack()
-    jstack.setlist(command_list)
-    jset = JobSet( max_processes = n_jobs, jobstack = jstack)
-    logging.debug(f'running jobs...')
-    jset.runjobs()
-    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+    else:
+        logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
-
 
 
 def process_registration( cp=None):
