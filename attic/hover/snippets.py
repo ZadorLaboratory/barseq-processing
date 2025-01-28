@@ -20,3 +20,31 @@ elif image_type == 'hyb':
         
 else:
     logging.error(f'image_type={image_type} not recognized.')
+    
+
+    def _parse_experiment_tiles(self, ddict, cp=None):
+        if cp is None:
+            cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')
+        
+        fdict = {}    
+        for mode in self.modes:
+            # list of lists of files, by cycle, hashed by mode
+            fdict[mode] = []
+        for mode in self.modes:
+            # geneseq
+            for d in self.ddict[mode]:
+                # geneseq01
+                cycledir = f'{self.expdir}/{d}'
+                logging.debug(f'listing cycle dir {cycledir}')
+                flist = os.listdir(cycledir)
+                flist.sort()
+                fnlist = []
+                for f in flist:
+                    dp, base, ext = split_path(f)
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        fname = f'{d}/{f}'
+                        fnlist.append(fname)
+                fdict[mode].append(fnlist)
+        return fdict

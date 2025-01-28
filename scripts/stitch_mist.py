@@ -75,6 +75,11 @@ def stitch_mist_test( infiles, outdir, image_type='geneseq', cp=None):
     logging.info(f'initializing fiji at {fiji_path}...')
     ij=imagej.init(fiji_path)
     logging.debug(f'fiji version = {ij.getVersion()}')
+    
+    
+    
+    
+    
 
 def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
     '''
@@ -83,7 +88,6 @@ def stitch_mist( infiles, outdir, image_type='geneseq', cp=None):
     output:    MAX_Pos1_stitched.denoised.tif 
     
     image_type = [ geneseq | bcseq | hyb ]
-    
 
     '''
     if cp is None:
