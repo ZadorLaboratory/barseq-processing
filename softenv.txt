@@ -30,7 +30,7 @@ Install:
 	conda config --add channels conda-forge
 	conda config --add channels bioconda
 	
-	conda install -y python numpy tifffile scipy  ipython pandas seaborn jupyter imageio  
+	conda install -y python numpy tifffile scipy scikit-image ipython pandas seaborn jupyter imageio  
 	
 	
 	

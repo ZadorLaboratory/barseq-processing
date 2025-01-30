@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+#
+#
+
 import argparse
 import logging
 import os
@@ -6,7 +9,6 @@ import sys
 
 import datetime as dt
 
-import cv2
 import numpy as np
 import tifffile as tf
 
@@ -19,7 +21,7 @@ from barseq.core import *
 from barseq.utils import *
 
 
-def background_cv2( infiles, outdir, cp=None):
+def bleedthrough_np( infiles, outdir, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -37,24 +39,23 @@ def background_cv2( infiles, outdir, cp=None):
     radius=31
     local=1
 
-    def back_sub_opencv_open(I,radius,pth,name,num_c,writefile):
-        I=I.copy()
-        I_filtered=np.zeros_like(I)
-        I_rem=I[num_c:,:,:]
-        I=I[0:num_c,:,:]
-        k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
-        for i in range(len(I)):
-            bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel= k)
-            I_filtered[i,:,:]=I[i,:,:]-np.expand_dims(bck,0)
-        
-        I_filtered[num_c:,:,:]=I_rem    
-        I_filtered=uint16m(I_filtered)
+    def bleedthrough_linear(Is,num_c,config_pth,fname,pth,name,writefile):
+        Is=Is.copy()
+        Icorrected=np.zeros_like(Is)
+        chprofile=scipy.io.loadmat(os.path.join(config_pth,fname))['chprofile20x']
+        Ishifted2=np.float64(Is[0:num_c,:,:])
+        I_rem=Is[num_c:,:,:]
+        Icorrected=(np.reshape((np.linalg.solve(np.transpose(chprofile),((np.reshape(Ishifted2,(num_c,-1),order='F'))))),(num_c,Ishifted2.shape[1],Ishifted2.shape[2]),order='F'))
+        Icorrected=uint16m(Icorrected)
+        Icorrected=np.append(Icorrected,I_rem,axis=0)
         if writefile:
-            tfl.imwrite(os.path.join(pth,name),I_filtered,photometric='minisblack')
-        return I_filtered
+            tfl.imwrite(os.path.join(pth,name),Icorrected,photometric='minisblack')
+        return Icorrected
         
-    I=tfl.imread(os.path.join(pth,'n2vgeneseq02.tif'),key=range(0,4,1))
-    Ifilt=back_sub_opencv_open(I,31,pth,'bcksb.tif',4,0)
+        Ibcksub_shifted=channel_alignment(Ibcksub,chshift_filename,config_pth,pth,'bck_sub'+filename,num_c,is_affine,0) # last argument is to not to write intermediate file-ng CHANNEL ALIGN-NG
+        Ibcksub_shifted_btcorr=bleedthrough_linear(Ibcksub_shifted,num_c,config_pth,chprofile_filename,pth,fixed_filename[i],1) # BLEEDTHROUGH CORRECTION-NG
+        _,gtforms_ind=geneseq_cycle_alignment_block_correlation(fixed_filename[i],templatename,subsample_rate,do_coarse,resize_factor,block_size,num_c,num_cr,pth,'aligned','aligned'+filename)
+        gtforms.append(gtforms_ind)
 
     '''
     if cp is None:
@@ -65,8 +66,10 @@ def background_cv2( infiles, outdir, cp=None):
         logging.debug(f'made outdir={outdir}')
 
     image_types = cp.get('barseq','image_types').split(',')
+    #image_channels = cp.get(, 'channels').split(',')
     radius = int(cp.get('cv2','radius'))
     output_dtype = cp.get('background','output_dtype')
+    #num_channels = len(image_channels)
     num_channels = 4
 
     #logging.debug(f'image_types={image_types} channels={image_channels}')
@@ -75,6 +78,8 @@ def background_cv2( infiles, outdir, cp=None):
     for infile in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
+        
+        #I=tf.imread(infile,key=range(0,4,1))
         I=tf.imread(infile)
         I=I.copy()
         I_filtered=np.zeros_like(I)

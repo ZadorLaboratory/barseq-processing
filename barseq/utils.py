@@ -7,6 +7,7 @@ import threading
 import datetime as dt
 
 import pandas as pd
+import numpy as np
 
 
 def format_config(cp):
@@ -188,5 +189,11 @@ class JobRunner(threading.Thread):
                 logging.info(f'[{self.label}] Command list empty. Ending...')
                 break
                 
+def uint16m(x):
+    y=np.uint16(np.clip(np.round(x),0,65535))
+    return y
+
+
+
 
     
