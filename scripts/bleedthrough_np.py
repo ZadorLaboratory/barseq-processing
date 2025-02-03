@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
 #
-
 import argparse
 import logging
 import os
@@ -19,7 +18,6 @@ sys.path.append(gitpath)
 
 from barseq.core import *
 from barseq.utils import *
-
 
 def bleedthrough_np( infiles, outdir, cp=None):
     '''
@@ -66,39 +64,38 @@ def bleedthrough_np( infiles, outdir, cp=None):
         logging.debug(f'made outdir={outdir}')
 
     image_types = cp.get('barseq','image_types').split(',')
-    #image_channels = cp.get(, 'channels').split(',')
-    radius = int(cp.get('cv2','radius'))
-    output_dtype = cp.get('background','output_dtype')
-    #num_channels = len(image_channels)
-    num_channels = 4
-
-    #logging.debug(f'image_types={image_types} channels={image_channels}')
-    logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_channels}')
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    chprofile_file = cp.get('experiment','channel_profile')
+    chprofile_path = os.path.join(resource_dir, chprofile_file)
+    chprofile = load_df(chprofile_path, as_array=True)
+    num_channels = len(chprofile)
+    logging.debug(f'chprofile_file={chprofile_file} num_channels={num_channels}')
 
     for infile in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
-        
-        #I=tf.imread(infile,key=range(0,4,1))
+
         I=tf.imread(infile)
         I=I.copy()
-        I_filtered=np.zeros_like(I)
+        Icorrected=np.zeros_like(I)
+        Ishifted2 = np.float64( I[0:num_channels,:,:] )
         I_rem=I[num_channels:,:,:]
-        I=I[0:num_channels,:,:]
-        k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
-        for i in range(len(I)):
-            bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel = k)
-            I_filtered[i,:,:]=I[i,:,:]-np.expand_dims(bck,0)
+        A = np.transpose(chprofile)
+        B = np.reshape( Ishifted2 , (num_channels, -1), order='F')
+        I_solved = np.linalg.solve( A, B ) 
+        Icorrected=np.reshape( I_solved , 
+                                ( num_channels, Ishifted2.shape[1], Ishifted2.shape[2]),
+                                order='F')
         
-        I_filtered[num_channels:,:,:]=I_rem    
-        I_filtered=uint16m(I_filtered)
+        #Icorrected=(np.reshape((np.linalg.solve(np.transpose(chprofile),((np.reshape(Ishifted2,(num_channels,-1),order='F'))))),(num_channels,Ishifted2.shape[1],Ishifted2.shape[2]),order='F'))
+        
+        Icorrected=uint16m(Icorrected)
+        Icorrected=np.append(Icorrected, I_rem, axis=0)
 
         logging.debug(f'done processing {base}.{ext} ')
         outfile = f'{outdir}/{base}.{ext}'
-        tf.imwrite(outfile, I_filtered, photometric='minisblack')
+        tf.imwrite(outfile, Icorrected, photometric='minisblack')
         logging.debug(f'done writing {outfile}')
-    
-
 
 
 if __name__ == '__main__':
@@ -158,7 +155,7 @@ if __name__ == '__main__':
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    background_cv2( infiles=args.infiles, 
+    bleedthrough_np( infiles=args.infiles, 
                     outdir=outdir, 
                     cp=cp )
     

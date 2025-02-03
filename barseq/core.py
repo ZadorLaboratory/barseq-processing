@@ -347,7 +347,13 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
     
     input/output dirs for each step of pipeline.  
         denoised
-        registered
+        background
+        regchannels
+        regcycle (geneseq)
+        
+        
+        regcycle (bcseq)
+                
         stitched
         basecalled
         segmented
@@ -380,6 +386,15 @@ def process_barseq_all(indir, outdir=None, expid=None, cp=None):
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/regchannels'        
         process_stage_all_images(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
+
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/bleedthrough'        
+        process_stage_all_images(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
+
+        # keep this new_indir for all registration steps. 
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/regcycle'        
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle', cp=cp) 
         
         #process_stitching(new_indir, sub_outdir, bse, cp=cp)
         
@@ -444,14 +459,14 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
         log_arg = '-d'
 
     command_list = []
-    
-    
+        
     for mode in modes:
         logging.info(f'handling mode {mode}')
         n_cmds = 0
         dirlist = bse.ddict[mode]
         cyclist = bse.get_cycleset(mode)
-        
+
+        # handle batches of cycle directories...
         for i, dirname in enumerate(dirlist):
             sub_outdir = f'{outdir}/{dirname}'
             logging.debug(f'handling mode={mode} dirname={dirname} sub_outdir={sub_outdir}')
@@ -500,10 +515,11 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
 
 def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=False):
     '''
-    process any stage that handles a list of tiles, writing each to parallel output subdirs.
+    process any stage that handles a list of tiles, writing each to parallel (cycle) output 
+    subdirs.
     
     @arg indir    is top-level input directory (with cycle dirs below)
-    @arg outdir   outdir is top-level out directory (with cycle dirs below)
+    @arg outdir   outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
     @arg stage    which pipeline stage type should be executed. 
     @arg bse      bse is BarseqExperiment metadata object with relative file/mode layout
 
@@ -531,6 +547,8 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     log_level = logging.getLogger().getEffectiveLevel()
     outdir = os.path.expanduser( os.path.abspath(outdir) )
 
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
     logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
     logging.debug(f'script_name={script_name} script_dir={script_dir}')
 
@@ -552,19 +570,24 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
         logging.info(f'handling mode {mode}')
         n_cmds = 0
         dirlist = bse.ddict[mode]
-        cyclist = bse.get_cycleset(mode)
+        tilelist = bse.get_imageset(mode)
         
-        for i, dirname in enumerate(dirlist):
-            logging.debug(f'handling mode={mode} dirname={dirname}')
+        # Handle batches by tile index...
+        for i, flist in enumerate( tilelist):
+            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)}')
             num_files = 0
-            flist = cyclist[i]
-            sub_outdir = f'{outdir}/{dirname}'
-            cmd = ['conda','run',
-                   '-n', conda_env , 
-                   'python', script_path,
-                   log_arg,  
-                   '--outdir', sub_outdir,                      
-                   ]        
+            if conda_env == current_env :
+                logging.debug(f'same envs needed, run direct...')
+                cmd = ['python', script_path,
+                           log_arg ]
+            else:
+                logging.debug(f'different envs. user conda run...')
+                cmd = ['conda','run',
+                           '-n', conda_env , 
+                           'python', script_path,
+                           log_arg]            
+            cmd.append( '--outdir ' )
+            cmd.append( f'{outdir}')                                  
             for rname in flist:
                 infile = f'{indir}/{rname}'
                 outfile = f'{outdir}/{rname}'
@@ -577,10 +600,10 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
                 command_list.append(cmd)
                 n_cmds += 1
             else:
-                logging.debug(f'all outfiles exist. omitting command.')
-            
-            logging.info(f'handled {indir}/{dirname}')
+                logging.debug(f'all outfiles exist. omitting command.')            
+            logging.info(f'handled tileset {i}')
         logging.info(f'created {n_cmds} commands for mode={mode}')
+    
     if n_cmds > 0:
         logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
         jstack = JobStack()
@@ -591,6 +614,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
+
 
 
 def parse_exp_indir(indir, cp=None):
