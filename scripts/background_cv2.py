@@ -19,7 +19,7 @@ from barseq.core import *
 from barseq.utils import *
 
 
-def background_cv2( infiles, outdir, cp=None):
+def background_cv2( infiles, outdir, stage=None, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -59,14 +59,16 @@ def background_cv2( infiles, outdir, cp=None):
     '''
     if cp is None:
         cp = get_default_config()
-    
+    if stage is None:
+        stage = 'background'
+            
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
 
     image_types = cp.get('barseq','image_types').split(',')
     radius = int(cp.get('cv2','radius'))
-    output_dtype = cp.get('background','output_dtype')
+    output_dtype = cp.get( stage,'output_dtype')
     num_channels = 4
 
     #logging.debug(f'image_types={image_types} channels={image_channels}')
@@ -125,6 +127,12 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
+
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',

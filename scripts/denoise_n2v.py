@@ -39,9 +39,8 @@ import imageio.v2 as imageio
 import tifffile as tf
 
 
-def denoise_n2v( infiles, outdir, image_type='geneseq', cp=None):
+def denoise_n2v( infiles, outdir, stage=None, cp=None):
     '''
-    image_type = [ geneseq | bcseq | hyb ]
     
     def predict(self, img, axes, 
                     resizer=PadAndCropResizer(), 
@@ -51,34 +50,35 @@ def denoise_n2v( infiles, outdir, image_type='geneseq', cp=None):
     '''
     if cp is None:
         cp = get_default_config()
-    
+    if stage is None:
+        stage = 'denoise'
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
     
+    logging.debug(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     basedir = os.path.join(resource_dir, 'n2vmodels')
-    image_types = cp.get('barseq','image_types').split(',')
+    image_type = cp.get(stage,'image_type')
+    logging.debug(f'this mode is image_type={image_type}')
     image_channels = cp.get(image_type, 'channels').split(',')
     stem_key = f'{image_type}_model_stem'
     channel_key = f'{image_type}_model_channels'
-    output_dtype = cp.get('denoise','output_dtype')
-    model_channels = cp.get('n2v', channel_key ).split(',')   
-    model_stem = cp.get('n2v',stem_key)
+    output_dtype = cp.get(stage,'output_dtype')
+    model_channels = cp.get('n2v', channel_key).split(',')   
+    model_stem = cp.get('n2v', stem_key)
     do_min_subtraction = get_boolean( cp.get('n2v', 'do_min_subtraction') )
  
-    logging.debug(f'image_types={image_types} channels={image_channels}')
+    logging.debug(f'image_type={image_type} channels={image_channels}')
     logging.debug(f'output_dtype={output_dtype} do_min_subtraction = {do_min_subtraction}')
     logging.debug(f'model basedir={basedir} model_stem={model_stem} model_channels={model_channels}')
     
     
     models = []
-    if image_type in image_types:
-        logging.debug(f'handling image_type={image_type}')
-        for probe in model_channels:
-            name = model_stem+probe
-            logging.debug(f'loading model {name} from {basedir}')
-            models.append( N2V(config=None, name=model_stem+probe, basedir=basedir) )
+    for probe in model_channels:
+        name = model_stem+probe
+        logging.debug(f'loading model {name} from {basedir}')
+        models.append( N2V(config=None, name=model_stem+probe, basedir=basedir) )
         
     logging.debug(f'got {len(models)} N2V models for {model_channels}')    
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]}')
@@ -143,6 +143,12 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
+
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',
@@ -172,7 +178,8 @@ if __name__ == '__main__':
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     denoise_n2v( infiles=args.infiles, 
-                 outdir=outdir, 
+                 outdir=outdir,
+                 stage=args.stage,  
                  cp=cp )
     
     logging.info(f'done processing output to {outdir}')

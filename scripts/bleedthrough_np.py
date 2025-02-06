@@ -19,7 +19,7 @@ sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 
-def bleedthrough_np( infiles, outdir, cp=None):
+def bleedthrough_np( infiles, outdir, stage=None, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -58,14 +58,19 @@ def bleedthrough_np( infiles, outdir, cp=None):
     '''
     if cp is None:
         cp = get_default_config()
+        
+    if stage is None:
+        stage = 'bleedthrough'
     
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
 
+
     image_types = cp.get('barseq','image_types').split(',')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
-    chprofile_file = cp.get('experiment','channel_profile')
+    microscope_profile = cp.get('experiment','microscope_profile')
+    chprofile_file = cp.get(microscope_profile,'channel_profile')
     chprofile_path = os.path.join(resource_dir, chprofile_file)
     chprofile = load_df(chprofile_path, as_array=True)
     num_channels = len(chprofile)
@@ -127,6 +132,12 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
+
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',

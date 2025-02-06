@@ -335,79 +335,6 @@ def get_script_dir():
 
 
 
-def process_barseq_all(indir, outdir=None, expid=None, cp=None):
-    '''
-    Top level function to call into sub-steps...
-    indir is top-level indir 
-    outdir is top-level out directory. 
-    expid is label/tag/run_id, may be used to access run/experiment-specific config. 
-    cp is combined ConfigParser object. 
-    
-    overall "business logic", even idiosyncratic, is capture here. 
-    
-    input/output dirs for each step of pipeline.  
-        denoised
-        background
-        regchannels
-        regcycle (geneseq)
-        
-        
-        regcycle (bcseq)
-                
-        stitched
-        basecalled
-        segmented
-        ...
-        
-    
-    '''
-    if cp is None:
-        cp = get_default_config()
-    logging.info(f'Processing experiment directory={indir} to {outdir}')
-    
-    bse = BarseqExperiment(indir, cp)
-    logging.debug(f'got BarseqExperiment metadata: {bse}')
-    
-    # In sequence, perform all pipeline processing steps
-    # placing output in sub-directories by stage. 
-    try:
-        # denoise indir, outdir, ddict, cp=None
-        sub_outdir = f'{outdir}/denoised'
-        logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
-        #process_denoise(bse.expdir, sub_outdir, bse=bse, cp=cp)
-        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise', cp=cp)
-        logging.info(f'done denoising.')
-        #process_registration()
-        
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/background'
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='background', cp=cp)
-        
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regchannels'        
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
-
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/bleedthrough'        
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
-
-        # keep this new_indir for all registration steps. 
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regcycle'        
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle', cp=cp) 
-        
-        #process_stitching(new_indir, sub_outdir, bse, cp=cp)
-        
-        #process_basecalls()
-        
-        #process_segmentation()
-  
-    except Exception as ex:
-        logging.error(f'got exception {ex}')
-        logging.error(traceback.format_exc(None))
-
-
-
 def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, force=False):
     '''
     process any stage that acts on all images singly, batched by cycle directory. 
@@ -418,24 +345,24 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
     @arg bse      bse is BarseqExperiment metadata object with relative file/mode layout
 
     @return None
-
     handle all images in all modes in parallel to outdir. 
     
     '''
     if cp is None:
         cp = get_default_config()
-    logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
+    logging.info(f'handling stage={stage} indir={indir} outdir={outdir}')
     
     # general parameters
+    script_base = cp.get(stage, 'script_base')
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
     modes = cp.get(stage, 'modes').split(',')
-    
+
     # tool-specific parameters 
     n_jobs = int( cp.get(tool, 'n_jobs') )
     n_threads = int( cp.get(tool, 'n_threads') )
     
-    script_name = f'{stage}_{tool}.py'
+    script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
     script_path = f'{script_dir}/{script_name}'
     log_level = logging.getLogger().getEffectiveLevel()
@@ -482,7 +409,10 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
                 cmd = ['conda','run',
                            '-n', conda_env , 
                            'python', script_path,
-                           log_arg]
+                           log_arg
+                           ]
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
             cmd.append( '--outdir ' )
             cmd.append( f'{sub_outdir}')                
             for rname in flist:
@@ -518,11 +448,13 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     process any stage that handles a list of tiles, writing each to parallel (cycle) output 
     subdirs.
     
-    @arg indir    is top-level input directory (with cycle dirs below)
-    @arg outdir   outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
-    @arg stage    which pipeline stage type should be executed. 
-    @arg bse      bse is BarseqExperiment metadata object with relative file/mode layout
-
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.    
+ 
     @return None
 
     handle all images in a related list, with output to parallel folders.   
@@ -533,15 +465,16 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
     
     # general parameters
+    script_base = cp.get(stage, 'script_base')
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
     modes = cp.get(stage, 'modes').split(',')
-    
-    # tool-specific parameters 
-    n_jobs = int( cp.get(tool, 'n_jobs') )
-    n_threads = int( cp.get(tool, 'n_threads') )
-    
-    script_name = f'{stage}_{tool}.py'
+    template_mode = cp.get(stage, 'template_mode')
+    if template_mode == 'None':
+        template_mode = None
+    template_source = cp.get(stage, 'template_source')
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+    script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
     script_path = f'{script_dir}/{script_name}'
     log_level = logging.getLogger().getEffectiveLevel()
@@ -549,8 +482,12 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
 
     current_env = os.environ['CONDA_DEFAULT_ENV']
 
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+
     logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
-    logging.debug(f'script_name={script_name} script_dir={script_dir}')
+    logging.debug(f'script_name={script_name} script_dir={script_dir} template_mode={template_mode} template_source={template_source}  ')
 
     # cycle, directory mappings
     ddict = bse.ddict
@@ -572,9 +509,28 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
         dirlist = bse.ddict[mode]
         tilelist = bse.get_imageset(mode)
         
-        # Handle batches by tile index...
+        # Use first cycle as template. 
+        if template_mode is not None:    
+            template_list = bse.get_cycleset(template_mode)[0]
+        else:
+            template_list = bse.get_cycleset(mode)[0]
+        
+        # default template source to input directory. 
+        template_path = indir
+        if template_source == 'input':
+            logging.debug(f'template_source={template_source}')
+            template_path = indir
+        elif template_source == 'output':
+            logging.debug(f'template_source={template_source}')
+            template_path = outdir
+        else:
+            logging.warning(f'template_source not specified. defaulting to indir. ')
+        
+        # Handle batches by tile index. Define template...
         for i, flist in enumerate( tilelist):
-            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)}')
+            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
+
+            template_rpath = template_list[i]
             num_files = 0
             if conda_env == current_env :
                 logging.debug(f'same envs needed, run direct...')
@@ -586,22 +542,32 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
                            '-n', conda_env , 
                            'python', script_path,
                            log_arg]            
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
             cmd.append( '--outdir ' )
-            cmd.append( f'{outdir}')                                  
-            for rname in flist:
-                infile = f'{indir}/{rname}'
-                outfile = f'{outdir}/{rname}'
-                if not os.path.exists(outfile):
-                    cmd.append(infile)
-                    num_files += 1
+            cmd.append( f'{outdir}' )            
+            cmd.append( f'--template')
+            cmd.append( f'{template_path}/{template_rpath}')            
+            
+            for j, rname in enumerate(flist):
+                if j < num_cycles:
+                    infile = f'{indir}/{rname}'
+                    outfile = f'{outdir}/{rname}'
+                    if not os.path.exists(outfile):
+                        cmd.append(infile)
+                        num_files += 1
+                    else:
+                        logging.debug(f'outfile {outfile} exists. omitting file.')
                 else:
-                    logging.debug(f'outfile {outfile} exists. omitting file.')
+                    logging.debug(f'{j} !< {num_cycles} omitting file.')
             if num_files > 0:
                 command_list.append(cmd)
                 n_cmds += 1
             else:
                 logging.debug(f'all outfiles exist. omitting command.')            
             logging.info(f'handled tileset {i}')
+
+                
         logging.info(f'created {n_cmds} commands for mode={mode}')
     
     if n_cmds > 0:
@@ -662,42 +628,83 @@ def parse_exp_indir(indir, cp=None):
     return ddict
 
 
-def load_df(filepath, as_array=False, dtype='float64'):
-    """
-    Convenience method to load DF consistently across modules.
+def process_barseq_all(indir, outdir=None, expid=None, cp=None):
+    '''
+    Top level function to call into sub-steps...
+    indir is top-level indir 
+    outdir is top-level out directory. 
+    expid is label/tag/run_id, may be used to access run/experiment-specific config. 
+    cp is combined ConfigParser object. 
     
-    @arg as_array  return hte contents as a standard numpy ndarray 
-    @arg dtype     specify dtype
-    """
-    logging.debug(f'loading {filepath}')
-    filepath = os.path.abspath( os.path.expanduser(filepath) )
-    df = pd.read_csv(filepath, sep='\t', index_col=0, keep_default_na=False, dtype="string[pyarrow]", comment="#")
-    logging.debug(f'initial load done. converting types...')
-    df = df.convert_dtypes(convert_integer=False)
-    for col in df.columns:
-        logging.debug(f'trying column {col}')
-        try:
-            df[col] = df[col].astype('uint32')
-        except ValueError:
-            logging.debug(f'column {col} not int')
-    logging.debug(f'{df.dtypes}')
-    if as_array:
-        return df.to_numpy(dtype=dtype)
-    return df
-
-
-
-
-
-             
-
+    overall "business logic", even idiosyncratic, is capture here. 
     
+    input/output dirs for each step of pipeline.  
+        denoised
+        background
+        regchannels
+        regcycle (geneseq)
         
         
+        regcycle (bcseq)
                 
-    
+        stitched
+        basecalled
+        segmented
+        ...
         
     
+    '''
+    if cp is None:
+        cp = get_default_config()
+    logging.info(f'Processing experiment directory={indir} to {outdir}')
+    
+    bse = BarseqExperiment(indir, cp)
+    logging.debug(f'got BarseqExperiment metadata: {bse}')
+    
+    # In sequence, perform all pipeline processing steps
+    # placing output in sub-directories by stage. 
+    try:
+        # denoise indir, outdir, ddict, cp=None
+        sub_outdir = f'{outdir}/denoised'
+        logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
+        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
+        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
+        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
+        logging.info(f'done denoising.')
+
+
+      
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/background'
+        process_stage_all_images(new_indir, sub_outdir, bse, stage='background', cp=cp)
         
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/regchannels'        
+        process_stage_all_images(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
 
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/bleedthrough'        
+        process_stage_all_images(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
 
+  
+        # keep this new_indir for all registration steps. 
+        new_indir = sub_outdir        
+        sub_outdir = f'{outdir}/regcycle'        
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
+
+        # keep this new_indir and outdir for all registration steps.                 
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-hyb', cp=cp)
+
+        # keep this new_indir and outdir for all registration steps.      
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
+
+        # keep this new_indir and outdir for all registration steps.         
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
+      
+        '''
+        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
+        '''        
+  
+    except Exception as ex:
+        logging.error(f'got exception {ex}')
+        logging.error(traceback.format_exc(None))

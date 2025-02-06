@@ -21,7 +21,7 @@ sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 
-def regchannels_ski( infiles, outdir, cp=None):
+def regchannels_ski( infiles, outdir, stage=None, cp=None):
     '''
     
     def channel_alignment(I_filtered,fname,config_pth,pth,name,num_c,is_affine,writefile):
@@ -53,18 +53,23 @@ def regchannels_ski( infiles, outdir, cp=None):
     
     if cp is None:
         cp = get_default_config()
+
+    if stage is None:
+        stage = 'regchannels'
     
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
+
+    logging.info(f'outdir={outdir} stage={stage}')
         
+    microscope_profile = cp.get('experiment','microscope_profile')
+    chshift_file = cp.get(microscope_profile,'channel_shift')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
-    chshift_file = cp.get('experiment','channel_shift')
     chshift_path = os.path.join(resource_dir, chshift_file)
-    is_affine = cp.getboolean('regchannels','is_affine')
+    is_affine = cp.getboolean(stage,'is_affine')
     
     logging.debug(f'chshift_path = {chshift_path} is_affine={is_affine}')
-
 
     chshift = load_df(chshift_path, as_array=True)
     n_channels = len(chshift)
@@ -128,6 +133,12 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
+
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',

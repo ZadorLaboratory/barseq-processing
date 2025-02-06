@@ -41,6 +41,29 @@ def split_path(filepath):
     ext = ext[1:] # remove dot
     return (dirpath, base, ext)
 
+def load_df(filepath, as_array=False, dtype='float64'):
+    """
+    Convenience method to load DF consistently across modules.
+    
+    @arg as_array  return hte contents as a standard numpy ndarray 
+    @arg dtype     specify dtype
+    """
+    logging.debug(f'loading {filepath}')
+    filepath = os.path.abspath( os.path.expanduser(filepath) )
+    df = pd.read_csv(filepath, sep='\t', index_col=0, keep_default_na=False, dtype="string[pyarrow]", comment="#")
+    logging.debug(f'initial load done. converting types...')
+    df = df.convert_dtypes(convert_integer=False)
+    for col in df.columns:
+        logging.debug(f'trying column {col}')
+        try:
+            df[col] = df[col].astype('uint32')
+        except ValueError:
+            logging.debug(f'column {col} not int')
+    logging.debug(f'{df.dtypes}')
+    if as_array:
+        return df.to_numpy(dtype=dtype)
+    return df
+
 
 def merge_dfs(dflist):
     newdf = None
