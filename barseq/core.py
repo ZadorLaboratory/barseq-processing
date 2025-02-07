@@ -439,7 +439,7 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
         logging.debug(f'running jobs...')
         jset.runjobs()
     else:
-        logging.info(f'All output exits. Skipping.')
+        logging.info(f'All output exists. Skipping.')
     logging.info(f'done with stage={stage}...')
 
 
@@ -628,83 +628,3 @@ def parse_exp_indir(indir, cp=None):
     return ddict
 
 
-def process_barseq_all(indir, outdir=None, expid=None, cp=None):
-    '''
-    Top level function to call into sub-steps...
-    indir is top-level indir 
-    outdir is top-level out directory. 
-    expid is label/tag/run_id, may be used to access run/experiment-specific config. 
-    cp is combined ConfigParser object. 
-    
-    overall "business logic", even idiosyncratic, is capture here. 
-    
-    input/output dirs for each step of pipeline.  
-        denoised
-        background
-        regchannels
-        regcycle (geneseq)
-        
-        
-        regcycle (bcseq)
-                
-        stitched
-        basecalled
-        segmented
-        ...
-        
-    
-    '''
-    if cp is None:
-        cp = get_default_config()
-    logging.info(f'Processing experiment directory={indir} to {outdir}')
-    
-    bse = BarseqExperiment(indir, cp)
-    logging.debug(f'got BarseqExperiment metadata: {bse}')
-    
-    # In sequence, perform all pipeline processing steps
-    # placing output in sub-directories by stage. 
-    try:
-        # denoise indir, outdir, ddict, cp=None
-        sub_outdir = f'{outdir}/denoised'
-        logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
-        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
-        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
-        process_stage_all_images(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
-        logging.info(f'done denoising.')
-
-
-      
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/background'
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='background', cp=cp)
-        
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regchannels'        
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
-
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/bleedthrough'        
-        process_stage_all_images(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
-
-  
-        # keep this new_indir for all registration steps. 
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regcycle'        
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
-
-        # keep this new_indir and outdir for all registration steps.                 
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-hyb', cp=cp)
-
-        # keep this new_indir and outdir for all registration steps.      
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
-
-        # keep this new_indir and outdir for all registration steps.         
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
-      
-        '''
-        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
-        '''        
-  
-    except Exception as ex:
-        logging.error(f'got exception {ex}')
-        logging.error(traceback.format_exc(None))
