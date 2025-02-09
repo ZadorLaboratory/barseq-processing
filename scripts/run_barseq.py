@@ -32,7 +32,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     '''
     if cp is None:
         cp = get_default_config()
-    
+        
     if expid is None:
         expid = 'CSHL'
     

@@ -2,6 +2,7 @@ import logging
 import os
 import pprint
 import subprocess
+import tempfile
 import threading
 
 import datetime as dt
@@ -216,7 +217,33 @@ def uint16m(x):
     y=np.uint16(np.clip(np.round(x),0,65535))
     return y
 
+def write_config(config, filename, timestamp=True, datestring=None):
+    '''
+    writes config file to relevant name,
+    if timestamp=True, puts date/time code dot-separated before extension. e.g.
+    filename = /path/to/some.file.string.txt  ->  /path/to/some.file.string.202303081433.txt
+    date is YEAR/MO/DY/HR/MI
+    if datestring is not None, uses that timestamp
+    
+    '''
+    filepath = os.path.abspath(filename)    
+    dirname = os.path.dirname(filepath)
+    basefilename = os.path.basename(filepath)
+    (base, ext) = os.path.splitext(basefilename) 
+    
+    if timestamp:
+        if datestring is None:
+            datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+        else:
+            datestr = datestring
+        filename = f'{dirname}/{base}.{datestr}{ext}'
 
-
+    os.makedirs(dirname, exist_ok=True)
+        
+    with open(filename, 'w') as configfile:
+        config.write(configfile)
+    logging.debug(f'wrote current config to {filename}')
+    
+    return os.path.abspath(filename)
 
     

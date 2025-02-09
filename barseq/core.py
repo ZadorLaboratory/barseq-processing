@@ -368,6 +368,9 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
     log_level = logging.getLogger().getEffectiveLevel()
     outdir = os.path.expanduser( os.path.abspath(outdir) )
 
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+
     current_env = os.environ['CONDA_DEFAULT_ENV']
 
     logging.info(f'current_env = {current_env} tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
@@ -403,13 +406,16 @@ def process_stage_all_images(indir, outdir, bse, stage='background', cp=None, fo
             if conda_env == current_env :
                 logging.debug(f'same envs needed, run direct...')
                 cmd = ['python', script_path,
-                           log_arg ]
+                           log_arg,
+                           '--config' , runconfig ,                            
+                            ]
             else:
                 logging.debug(f'different envs. user conda run...')
                 cmd = ['conda','run',
                            '-n', conda_env , 
                            'python', script_path,
-                           log_arg
+                           log_arg, 
+                           '--config' , runconfig , 
                            ]
             cmd.append('--stage')
             cmd.append(f'{stage}')
@@ -463,6 +469,9 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     if cp is None:
         cp = get_default_config()
     logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
+
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
     
     # general parameters
     script_base = cp.get(stage, 'script_base')
@@ -535,13 +544,17 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             if conda_env == current_env :
                 logging.debug(f'same envs needed, run direct...')
                 cmd = ['python', script_path,
-                           log_arg ]
+                           log_arg,
+                           '--config' , runconfig, 
+                            ]
             else:
                 logging.debug(f'different envs. user conda run...')
                 cmd = ['conda','run',
                            '-n', conda_env , 
                            'python', script_path,
-                           log_arg]            
+                           log_arg, 
+                           '--config' , runconfig ,                            
+                           ]            
             cmd.append('--stage')
             cmd.append(f'{stage}')
             cmd.append( '--outdir ' )
