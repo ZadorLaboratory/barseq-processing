@@ -11,11 +11,12 @@
 #  Undocumented command line hack...
 #  ashlar 'fileseries|/path/to/images|pattern=img_{series:3}.tif|width=5|height=3|pixel_size=0.3|overlap=0.1'
 #
-# 
+#  writing metadata:  https://forum.image.sc/t/python-tifffile-ome-full-metadata-support/56526/10 
 #
 import argparse
 import logging
 import os
+import re
 import sys
 
 import datetime as dt
@@ -25,7 +26,7 @@ from configparser import ConfigParser
 import numpy as np
 
 import ashlar
-from ashlar import filepattern, reg
+from ashlar import filepattern, reg, thumbnail
 from tifffile import imread, imwrite, TiffFile, TiffWriter
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
@@ -43,6 +44,48 @@ def process_axis_flip(reader, flip_x, flip_y):
     sy = -1 if flip_y else 1
     metadata._positions *= [sy, sx]
 
+def make_ashlar_pattern(image_pattern, basename, extension):
+    '''
+    XXX: This is currently brittle and ad-hoc. Need to abstract later...
+    
+    image_pattern = MAX_Pos{pos}_{col:03}_{row:03}$
+    basename = MAX_Pos1_002_003
+
+    prefix = MAX_Pos1
+    ashlar_pattern = MAX_Pos1_{col:03}_{row:03}.tif
+
+    return prefix, ashlar_pattern
+    
+    '''
+    logging.debug(f'inbound image_pattern={image_pattern} basename={basename} ext={extension}')
+    pi = image_pattern.find('{pos}') + 5
+    # extract needed suffix, and remove end-of-string symbol
+    suffix = image_pattern[pi:-1]
+    # build new specific ashlare_pattern by finding initial match to full first number 
+    # which could be multiple digits...
+    
+    pattern = image_pattern.replace('.', '\.')
+    pattern = pattern.replace('(', '\(')
+    pattern = pattern.replace(')', '\)')
+    regex = re.sub(r'{([^:}]+)(?:[^}]*)}', r'(?P<\1>.*?)', pattern)
+    logging.debug(f'filtered regex={regex}')
+    m = re.match(regex, basename)
+    if m:
+        gd = m.groupdict()
+        logging.debug(f'groupdict={gd}')
+        row = int(gd['row'])
+        col = int(gd['col'])
+        pos = int(gd['pos'])
+        logging.debug(f'pos={pos} row={row} col={col}')        
+        (b,e) = m.span('pos')
+        prefix = basename[:e]
+        logging.debug(f'prefix={prefix}')
+        ashlar_pattern = f'{prefix}{suffix}.{extension}'
+        logging.debug(f'made ashlar_pattern = {ashlar_pattern} prefix={prefix}')
+    else:
+        logging.error('unable to parse basename to pattern...')
+    return ashlar_pattern, prefix 
+
 
 class SingleTiffWriter:
     '''
@@ -52,7 +95,7 @@ class SingleTiffWriter:
 
     def __init__(self, mosaic, outfile, verbose=False):
         self.mosaic = mosaic
-        self.outpath = outfile
+        self.outfile = outfile
         self.verbose = verbose
 
     def run(self):
@@ -60,20 +103,37 @@ class SingleTiffWriter:
         resolution_cm = 10000 / pixel_size
         v = ashlar._version.get_versions()['version']
         software = f"Ashlar v{v}"
-        #for ci, channel in enumerate(self.mosaic.channels):
-        channel = 0
-        if self.verbose:
-            logging.info(f"Assembling channel {channel}:")
-        img = self.mosaic.assemble_channel(channel)
-        img = uint16m(img)
-        with TiffWriter(self.outpath, bigtiff=True) as tiff:
+        images = []
+        for ci, channel in enumerate(self.mosaic.channels):
+            #channel = 0
+            if self.verbose:
+                logging.info(f"Assembling channel {channel}:")
+            img = self.mosaic.assemble_channel(channel)
+            img = uint16m(img)
+            images.append(img)
+            img = None
+            #(dirpath, base, ext) = split_path(self.outpath)
+            #outfile = os.path.join(dirpath, f'{base}.{channel}.{ext}')
+            logging.debug(f'Added channel {channel} to image list.')
+
+        fullimage = np.dstack(images)
+        logging.debug(f'dstack() -> {fullimage.shape}')
+        # produces e.g. shape = ( 3200,3200,5)
+        fullimage = np.rollaxis(fullimage, -1)
+        logging.debug(f'rollaxis() -> {fullimage.shape}')
+        # produces e.g. shape = ( 5, 3200, 3200)  
+
+        with TiffWriter(self.outfile, bigtiff=True) as tiff:
             tiff.write(
-                data=img,
+                data=fullimage,
                 software=software.encode("utf-8"),
-                resolution=(resolution_cm, resolution_cm, "centimeter"),
+                resolutionunit='centimeter',
+                resolution=(resolution_cm, resolution_cm),
                 photometric="minisblack",
             )
-        img = None
+        logging.debug(f'done.')
+
+
 
 def stitch_ashlar( infiles, outdir, cp=None ):
     
@@ -82,31 +142,34 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     
     microscope_profile = cp.get('experiment','microscope_profile')
     pixel_size = float( cp.get(microscope_profile, 'pixel_size') )
-    
-    #horizontal_overlap=23
-    #vertical_overlap=23
+    (dirpath, base, ext) = split_path( infiles[0] )
     overlap = float( cp.get('tile','horizontal_overlap') )
     flip_y = cp.getboolean('ashlar','flip_y')
     flip_x = cp.getboolean('ashlar', 'flip_x')
-    pattern= cp.get('ashlar','pattern')
-        
     logging.debug(f'microscope_profile={microscope_profile} flip_x={flip_x} flip_y={flip_y}')
-    
+    image_pattern=cp.get('barseq','image_pattern')
+    image_ext = cp.get('barseq','image_ext')
+    #pattern= cp.get('ashlar','pattern')        
+    logging.debug(f'image_pattern={image_pattern} base={base} image_ext={image_ext}')
+    (pattern, prefix ) = make_ashlar_pattern( image_pattern, base, ext )
+    logging.debug(f'generated ashlar pattern={pattern} prefix={prefix}')
+
+    logging.info(f'stitch indir = {dirpath} pattern={pattern} to {outdir} ...')
     fpr = filepattern.FilePatternReader(
-                '/Users/hover/project/barseq/run_barseq/BC726126.5.out/regcycle/bcseq01/',
+                dirpath,
                 pattern=pattern,
                 overlap=overlap,
                 pixel_size=pixel_size
                )
     logging.debug(f'reader: path={fpr.path} pattern={fpr.pattern} overlap={fpr.overlap} pixel_size={fpr.metadata.pixel_size}')
-
     logging.debug(f'doing axis flip flip_x={flip_x} flip_y={flip_y} ')
     process_axis_flip(fpr, flip_x, flip_y)
-
     logging.debug(f'making edge_aligner...')
-      
-    edge_aligner = reg.EdgeAligner(fpr, do_make_thumbnail=False, verbose=True )
-    
+    edge_aligner = reg.EdgeAligner(fpr, do_make_thumbnail=True, verbose=True )
+    edge_aligner.make_thumbnail()     
+    outthumb = f'{outdir}/{prefix}_thumb.tif'
+    #logging.debug(f'writing thumbnail {outthumb}...')
+    #imwrite( outthumb, edge_aligner.reader.thumbnail )   
     logging.debug(f'running edge_aligner...')
     edge_aligner.run()
     logging.debug(f'ran edge_aligner...')
@@ -116,53 +179,11 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
 
-    outfile = f'{outdir}/MAX_Pos1-flipped.ome.tif'
+    outfile = f'{outdir}/{prefix}.ome.tif'
 
-    #writer = reg.TiffListWriter([mosaic] )
-    #    mosaics, output_path_format, verbose=not quiet, **writer_args
     writer = SingleTiffWriter( mosaic, outfile , verbose=True)
     writer.run()
-    logging.debug(f'wrote {outfile}? ...')
-
-
-    #mosaics = []
-    #for j in range(1, 2):
-    #    aligners.append(
-    #        reg.LayerAligner(readers[j], aligners[0], channel=j, filter_sigma=15, verbose=True)
-    #    )
-    #    aligners[j].run()
-    #    print("aligners[0].mosaic_shape", aligners[0].mosaic_shape, aligners[0])
-    #    mosaic = reg.Mosaic(
-    #        aligners[j], aligners[0].mosaic_shape, None, **mosaic_args
-    #    )
-    #    mosaics.append(mosaic)
-    
-    
-    #aligner0 = reg.EdgeAligner(readers[0], channel=0, filter_sigma=15, verbose=True)
-    #aligner0.run()
-    
-    #mosaic_args = {}
-    #mosaic_args['verbose'] = True
-    #mosaic_args['flip_mosaic_y'] = True
-    #aligners = []
-    #aligners.append(aligner0)
-    
-    #mosaics = []
-    #for j in range(1, 2):
-    #    aligners.append(
-    #        reg.LayerAligner(readers[j], aligners[0], channel=j, filter_sigma=15, verbose=True)
-    #    )
-    #    aligners[j].run()
-    #    print("aligners[0].mosaic_shape", aligners[0].mosaic_shape, aligners[0])
-    #    mosaic = reg.Mosaic(
-    #        aligners[j], aligners[0].mosaic_shape, None, **mosaic_args
-    #    )
-    #    mosaics.append(mosaic)
-    #print(type(mosaic))
-    #writer = reg.PyramidWriter(mosaics, r"/home/kuldeep/Downloads/Inferencing_with_Button/16*16.ome.tif",
-    #                           verbose=True)
-    #writer.run()
-
+    logging.debug(f'wrote {outfile}(s) ...')
 
 
 
