@@ -89,13 +89,11 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
         logging.info(f'done registering images.')
       
-        '''
+        
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/stitched'
         process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
         
-        
-        '''        
   
     except Exception as ex:
         logging.error(f'got exception {ex}')

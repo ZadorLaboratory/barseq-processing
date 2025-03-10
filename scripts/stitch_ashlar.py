@@ -216,6 +216,12 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='outdir. output base dir if not given.')
+
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',
