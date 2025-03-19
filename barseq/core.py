@@ -523,6 +523,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             template_list = bse.get_cycleset(template_mode)[0]
         else:
             template_list = bse.get_cycleset(mode)[0]
+            logging.debug(f'template_list = {template_list}')
         
         # default template source to input directory. 
         template_path = indir

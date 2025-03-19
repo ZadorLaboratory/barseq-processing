@@ -8,7 +8,7 @@ import datetime as dt
 
 import cv2
 import numpy as np
-import tifffile as tf
+#import tifffile as tf
 
 from configparser import ConfigParser
 
@@ -17,6 +17,7 @@ sys.path.append(gitpath)
 
 from barseq.core import *
 from barseq.utils import *
+from barseq.imageutils import *
 
 
 def background_cv2( infiles, outdir, stage=None, cp=None):
@@ -77,7 +78,9 @@ def background_cv2( infiles, outdir, stage=None, cp=None):
     for infile in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
-        I=tf.imread(infile)
+        #I=tf.imread(infile)
+        I = read_image( infile)
+        
         I=I.copy()
         I_filtered=np.zeros_like(I)
         I_rem=I[num_channels:,:,:]
@@ -92,7 +95,8 @@ def background_cv2( infiles, outdir, stage=None, cp=None):
 
         logging.debug(f'done processing {base}.{ext} ')
         outfile = f'{outdir}/{base}.{ext}'
-        tf.imwrite(outfile, I_filtered, photometric='minisblack')
+        #tf.imwrite(outfile, I_filtered, photometric='minisblack')
+        write_image( outfile, I_filtered )
         logging.debug(f'done writing {outfile}')
     
 

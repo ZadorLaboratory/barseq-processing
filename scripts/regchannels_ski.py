@@ -10,7 +10,7 @@ import sys
 import datetime as dt
 
 import numpy as np
-import tifffile as tf
+#import tifffile as tf
 import skimage as ski
 
 from configparser import ConfigParser
@@ -20,6 +20,7 @@ sys.path.append(gitpath)
 
 from barseq.core import *
 from barseq.utils import *
+from barseq.imageutils import *
 
 def regchannels_ski( infiles, outdir, stage=None, cp=None):
     '''
@@ -78,7 +79,8 @@ def regchannels_ski( infiles, outdir, stage=None, cp=None):
     for infile in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
-        I=tf.imread(infile)
+        #I=tf.imread(infile)
+        I = read_image(infile)
         I=I.copy()
         Ishifted=np.zeros_like(I)
         I_rem=I[n_channels:,:,:]
@@ -100,7 +102,8 @@ def regchannels_ski( infiles, outdir, stage=None, cp=None):
         
         logging.debug(f'done processing {base}.{ext} ')
         outfile = f'{outdir}/{base}.{ext}'
-        tf.imwrite(outfile, Ishifted, photometric='minisblack')
+        #tf.imwrite(outfile, Ishifted, photometric='minisblack')
+        write_image(outfile, Ishifted)
         logging.debug(f'done writing {outfile}')
     
     

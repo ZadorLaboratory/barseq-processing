@@ -16,8 +16,15 @@
 #
 # Seems to work:
 #
+#
+#  np.object = object
+#  np.bool = bool
+#  np.int = int
+#  conda install -c conda-forge h5py=3.9
+
+
 conda create -n bardensr pip tensorflow pip 
 conda activate bardensr 
-conda install pandas
+conda install pandas ipython pyarrow
 pip install --no-build-isolation git+https://github.com/jacksonloper/bardensr.git
 

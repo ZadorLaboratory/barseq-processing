@@ -42,11 +42,12 @@ def split_path(filepath):
     ext = ext[1:] # remove dot
     return (dirpath, base, ext)
 
+
 def load_df(filepath, as_array=False, dtype='float64'):
     """
     Convenience method to load DF consistently across modules.
     
-    @arg as_array  return hte contents as a standard numpy ndarray 
+    @arg as_array  return the contents as a standard numpy ndarray 
     @arg dtype     specify dtype
     """
     logging.debug(f'loading {filepath}')
@@ -55,12 +56,13 @@ def load_df(filepath, as_array=False, dtype='float64'):
     logging.debug(f'initial load done. converting types...')
     df = df.convert_dtypes(convert_integer=False)
     for col in df.columns:
-        logging.debug(f'trying column {col}')
+        #logging.debug(f'trying column {col}')
         try:
             df[col] = df[col].astype('uint32')
         except ValueError:
-            logging.debug(f'column {col} not int')
-    logging.debug(f'{df.dtypes}')
+            pass
+            #logging.debug(f'column {col} not int')
+    logging.debug(f'dtypes = \n{df.dtypes}')
     if as_array:
         return df.to_numpy(dtype=dtype)
     return df

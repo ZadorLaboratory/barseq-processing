@@ -18,6 +18,7 @@ sys.path.append(gitpath)
 
 from barseq.core import *
 from barseq.utils import *
+from barseq.imageutils import *
 
 def bleedthrough_np( infiles, outdir, stage=None, cp=None):
     '''
@@ -80,7 +81,8 @@ def bleedthrough_np( infiles, outdir, stage=None, cp=None):
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
         logging.debug(f'handling {infile}')
 
-        I=tf.imread(infile)
+        # I=tf.imread(infile)
+        I = read_image(infile)
         I=I.copy()
         Icorrected=np.zeros_like(I)
         Ishifted2 = np.float64( I[0:num_channels,:,:] )
@@ -99,7 +101,8 @@ def bleedthrough_np( infiles, outdir, stage=None, cp=None):
 
         logging.debug(f'done processing {base}.{ext} ')
         outfile = f'{outdir}/{base}.{ext}'
-        tf.imwrite(outfile, Icorrected, photometric='minisblack')
+        #tf.imwrite(outfile, Icorrected, photometric='minisblack')
+        write_image(outfile, Icorrected )
         logging.debug(f'done writing {outfile}')
 
 

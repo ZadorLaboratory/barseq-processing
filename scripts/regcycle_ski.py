@@ -8,20 +8,22 @@ import os
 import sys
 
 import datetime as dt
+from configparser import ConfigParser
 
 import numpy as np
-import tifffile as tf
+#import tifffile as tf
 import skimage as ski
 from skimage.util import view_as_blocks
 from scipy.signal import convolve2d , correlate2d, fftconvolve
 
-from configparser import ConfigParser
+#import imageio.v3 as iio
+
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
-
 from barseq.core import *
 from barseq.utils import *
+from barseq.imageutils import *
 
 def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     '''
@@ -31,6 +33,8 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     @arg template   optional file to use as template against infiles.
     @arg cp         ConfigParser object
     @arg stage      stage label in cp
+
+
         
     '''
   
@@ -48,9 +52,9 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     resize_factor = int(cp.get(stage,'resize_factor'))
     block_size = int(cp.get(stage,'block_size')) 
     do_coarse = get_boolean( cp.get(stage, 'do_coarse') )
-    num_initial_channels=5
-    num_later_channels=4
-    num_channels = 4
+    #num_initial_channels=int(cp.get(stage,'num_initial_channels'))
+    #num_later_channels=int(cp.get(stage,'num_later_channels'))
+    num_channels = int(cp.get(stage,'num_channels'))
     
     logging.info(f'outdir={outdir} stage={stage} template={template}')
     logging.debug(f'num_channels={num_channels} do_coarse={do_coarse} block_size={block_size}')
@@ -80,7 +84,11 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         
         logging.debug(f'handling {infile} to relative path {subdir}/{base}.{ext}')
         
-        moving=tf.imread(infile, key=range(0, num_channels, 1))
+        #moving=tf.imread(infile, key=range(0, num_channels, 1))
+        #moving = iio.imread( infile)
+        moving = read_image( infile)
+        total_channels = len(moving)
+        logging.debug(f'loaded image w/ {total_channels} channels. processing {num_channels} channels.')
         moving_sum=np.double(np.sum(moving, axis=0))
         moving_sum=np.divide(moving_sum, np.max(moving_sum, axis=None))
 
@@ -93,6 +101,7 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
             moving_sum=moving_sum[:,0:b_y*block_size-1]
             
         moving_rescaled=np.uint8(ski.transform.rescale(moving_sum, resize_factor)*255) 
+        
         # check if this uint8 needs to be changed as per matlab standard-ng
         fixed_rescaled=np.uint8(ski.transform.rescale(fixed_sum, resize_factor)*255)
         moving_split=view_as_blocks(moving_rescaled, block_shape=( block_size*resize_factor, 
@@ -110,12 +119,13 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         for i in range( np.int32(np.round(fixed_split_lin.shape[0]/subsample_rate))): # check for int32-ng
             if np.max( fixed_split_lin[idx[i]], axis=None)>0:
                 c=c+xcorr2( np.double(fixed_split_lin[idx[i]]), np.double(moving_split_lin[idx[i]]))
+                
         shift_yx=np.unravel_index(np.argmax(c),c.shape)
         yoffset=-np.array([(shift_yx[0]+1-fixed_split_lin.shape[1])/resize_factor])
         xoffset=-np.array([(shift_yx[1]+1-fixed_split_lin.shape[2])/resize_factor])
         idx_minxy=np.argmin(np.abs(xoffset) + np.abs(yoffset))
         tform=ski.transform.SimilarityTransform( translation=[xoffset[idx_minxy], yoffset[idx_minxy]])
-
+    
         logging.debug(f'transform calculated for {infile} to {fixed_file} Applying...')
         moving_aligned=np.zeros_like(moving)
         for i in range(moving.shape[0]):
@@ -126,11 +136,12 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         #,output_shape=(moving.shape[1],moving.shape[2])),0)# check if output size specification is necessary -ng
         moving_aligned=uint16m(moving_aligned)
         moving_aligned_full=moving_aligned.copy()
-      
-        logging.debug(f'done processing {base}.{ext} ')
-        tf.imwrite(outfile, moving_aligned_full, photometric='minisblack')
-        logging.debug(f'done writing {outfile}')
 
+        logging.debug(f'done processing {base}.{ext} ')
+        #tf.imwrite(outfile, moving_aligned_full, photometric='minisblack')
+        #iio.imwrite( outfile, moving_aligned_full, photometric='minisblack')
+        write_image( outfile, moving_aligned_full)
+        logging.debug(f'done writing {outfile}')
    
     
 if __name__ == '__main__':

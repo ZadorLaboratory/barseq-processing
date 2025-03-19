@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 #
-# Script to use noise2void to do denoising on TIF images based on trained models. 
-# Script takes TIF file list as input and places output to outdir
+# Do basecalling on batches of images.
 #
-# 
-# General filename scheme:  <filebase>.<pipelinestage>.tif
-# Filenames altered as:
-#       MAX_Pos1_000_000.tif  -> MAX_Pos1_000_000.denoised.tif  
 #
-# https://github.com/juglab/n2v
-# https://csbdeep.bioimagecomputing.com/
-# 
-# https://imageio.readthedocs.io/en/v2.9.0/userapi.html
-#    2.36.1 
 #
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+
 import argparse
 import logging
 import os
@@ -26,18 +27,55 @@ from configparser import ConfigParser
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
 
+import matplotlib.pylab as plt
+import numpy as np
+
+import bardensr
+import bardensr.plotting
+
 from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-#from tensorflow import keras
-from n2v.models import N2V
+import imageio
+import imageio.v2 as imageio
+import tifffile as tf
 
 
-import numpy as np
-#import imageio
-#import imageio.v2 as imageio
-#import tifffile as tf
+def basecall_bardensr( infiles, outdir, stage=None, cp=None):
+    '''
+    take all infiles, create imagestack, load codebook, run bardensr
+    
+    
+    '''
+    if cp is None:
+        cp = get_default_config()
+    if stage is None:
+        stage = 'basecall-geneseq'
+    if not os.path.exists(outdir):
+        os.makedirs(outdir, exist_ok=True)
+        logging.debug(f'made outdir={outdir}')
+    
+    logging.debug(f'handling stage={stage} to outdir={outdir}')
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))    
+    image_type = cp.get(stage, 'image_type')
+    logging.debug(f'this mode is image_type={image_type}')
+    image_channels = cp.get(image_type, 'channels').split(',')
+    logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} image_channels={image_channels}')
+    codebook_filename = cp.get(stage, 'codebook')
+    cfile = os.path.join(resource_dir, codebook_filename)
+    logging.debug(f'loading codebook file: {cfile}')
+    codebook = load_df(cfile)
+    logging.debug(f'loaded codebook:\n{codebook}')
+    
+    
+    for i, filename in enumerate(infiles):
+        (dirpath, base, ext) = split_path(os.path.abspath(filename))
+        logging.debug(f'handling {filename}')
+        imgarray = imageio.imread(filename)
+        logging.debug(f'image.shape = {imgarray.shape}') 
+
+
 
 
 def denoise_n2v( infiles, outdir, stage=None, cp=None):
@@ -87,8 +125,7 @@ def denoise_n2v( infiles, outdir, stage=None, cp=None):
     for filename in infiles:
         (dirpath, base, ext) = split_path(os.path.abspath(filename))
         logging.debug(f'handling {filename}')
-        #imgarray = imageio.imread(filename)
-        imgarray = read_image(filename)
+        imgarray = imageio.imread(filename)
         
         pred_image = []
         for i, img in enumerate(imgarray):
@@ -111,8 +148,7 @@ def denoise_n2v( infiles, outdir, stage=None, cp=None):
         # produces e.g. shape = ( 3200,3200,5)
         newimage = np.rollaxis(newimage, -1)
         # produces e.g. shape = ( 5, 3200, 3200)        
-        #tf.imwrite( outfile, newimage)
-        write_image( outfile , newimage )
+        tf.imwrite( outfile, newimage)
         logging.debug(f'done writing {outfile} ')
 
 
@@ -152,6 +188,13 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',
@@ -180,10 +223,10 @@ if __name__ == '__main__':
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    denoise_n2v( infiles=args.infiles, 
-                 outdir=outdir,
-                 stage=args.stage,  
-                 cp=cp )
+    basecall_bardensr( infiles=args.infiles, 
+                       outdir=outdir,
+                       stage=args.stage,  
+                       cp=cp )
     
     logging.info(f'done processing output to {outdir}')
 
