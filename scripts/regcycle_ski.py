@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
 #
-
 import argparse
 import logging
 import os
@@ -11,13 +10,9 @@ import datetime as dt
 from configparser import ConfigParser
 
 import numpy as np
-#import tifffile as tf
 import skimage as ski
 from skimage.util import view_as_blocks
 from scipy.signal import convolve2d , correlate2d, fftconvolve
-
-#import imageio.v3 as iio
-
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
@@ -35,7 +30,6 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     @arg stage      stage label in cp
 
 
-        
     '''
   
     if cp is None:
@@ -54,6 +48,14 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     do_coarse = get_boolean( cp.get(stage, 'do_coarse') )
     #num_initial_channels=int(cp.get(stage,'num_initial_channels'))
     #num_later_channels=int(cp.get(stage,'num_later_channels'))
+    # [geneseq]
+    # channels=G,T,A,C,DIC
+    # [bcseq]
+    # channels=G,T,A,C,DIC
+    # [hyb]
+    # channels=GFP,YFP,TxRed,Cy5
+    
+    # chmap = {}
     num_channels = int(cp.get(stage,'num_channels'))
     
     logging.info(f'outdir={outdir} stage={stage} template={template}')
@@ -66,9 +68,10 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         fixed_file = template
 
     #fixed=tf.imread( fixed_file, key=range(0,num_initial_channels,1))
-    fixed=tf.imread( fixed_file )
-    fixed_sum=np.double(np.sum(fixed,axis=0))
-    fixed_sum=np.divide(fixed_sum,np.max(fixed_sum,axis=None))
+    #fixed=tf.imread( fixed_file )
+    fixed = read_image( fixed_file )
+    fixed_sum = np.double(np.sum(fixed,axis=0))
+    fixed_sum = np.divide(fixed_sum,np.max(fixed_sum, axis=None))
     sz=fixed_sum.shape
     b_x=np.floor(sz[0]/block_size)
     b_y=np.floor(sz[1]/block_size)
@@ -83,12 +86,11 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
             logging.debug(f'made subdir={filedir}')
         
         logging.debug(f'handling {infile} to relative path {subdir}/{base}.{ext}')
-        
-        #moving=tf.imread(infile, key=range(0, num_channels, 1))
-        #moving = iio.imread( infile)
-        moving = read_image( infile)
-        total_channels = len(moving)
+
+        moving = read_image( infile )
+        total_channels = len(moving )
         logging.debug(f'loaded image w/ {total_channels} channels. processing {num_channels} channels.')
+        
         moving_sum=np.double(np.sum(moving, axis=0))
         moving_sum=np.divide(moving_sum, np.max(moving_sum, axis=None))
 
@@ -114,26 +116,28 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         fixed_split_sum=np.reshape(fixed_split_sum,(fixed_split.shape[0],fixed_split.shape[1]))
         moving_split_lin=np.reshape(moving_split,(-1,moving_split.shape[2],moving_split.shape[3]))
         xcorr2=lambda a,b: fftconvolve(a, np.rot90(b,k=2))
-        c=np.zeros( (fixed_split_lin.shape[1]*2-1, fixed_split_lin.shape[2]*2-1) )
+        c = np.zeros( (fixed_split_lin.shape[1]*2-1, fixed_split_lin.shape[2]*2-1) )
         
         for i in range( np.int32(np.round(fixed_split_lin.shape[0]/subsample_rate))): # check for int32-ng
             if np.max( fixed_split_lin[idx[i]], axis=None)>0:
                 c=c+xcorr2( np.double(fixed_split_lin[idx[i]]), np.double(moving_split_lin[idx[i]]))
                 
-        shift_yx=np.unravel_index(np.argmax(c),c.shape)
-        yoffset=-np.array([(shift_yx[0]+1-fixed_split_lin.shape[1])/resize_factor])
-        xoffset=-np.array([(shift_yx[1]+1-fixed_split_lin.shape[2])/resize_factor])
-        idx_minxy=np.argmin(np.abs(xoffset) + np.abs(yoffset))
-        tform=ski.transform.SimilarityTransform( translation=[xoffset[idx_minxy], yoffset[idx_minxy]])
+        shift_yx = np.unravel_index(np.argmax(c), c.shape)
+        yoffset = -np.array([(shift_yx[0]+1-fixed_split_lin.shape[1])/resize_factor])
+        xoffset = -np.array([(shift_yx[1]+1-fixed_split_lin.shape[2])/resize_factor])
+        idx_minxy = np.argmin(np.abs(xoffset) + np.abs(yoffset))
+        tform = ski.transform.SimilarityTransform( translation=[xoffset[idx_minxy], yoffset[idx_minxy]])
     
         logging.debug(f'transform calculated for {infile} to {fixed_file} Applying...')
         moving_aligned=np.zeros_like(moving)
+        
         for i in range(moving.shape[0]):
-            moving_aligned[i,:,:]= np.expand_dims( ski.transform.warp((np.squeeze(moving[i,:,:])),
+            moving_aligned[i,:,:] = np.expand_dims( ski.transform.warp((np.squeeze(moving[i,:,:])),
                                                    tform,
                                                    preserve_range=True),
                                                    0)
         #,output_shape=(moving.shape[1],moving.shape[2])),0)# check if output size specification is necessary -ng
+      
         moving_aligned=uint16m(moving_aligned)
         moving_aligned_full=moving_aligned.copy()
 

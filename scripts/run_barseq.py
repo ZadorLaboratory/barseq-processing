@@ -95,10 +95,10 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
 
         # No new indir...       
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/basecall-geneseq'
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
-        #logging.info(f'done basecall-geneseq.')
+        new_indir = sub_outdir
+        sub_outdir = f'{outdir}/basecall-geneseq'
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
+        logging.info(f'done basecall-geneseq.')
 
         
         

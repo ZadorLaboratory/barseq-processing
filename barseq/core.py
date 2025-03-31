@@ -465,6 +465,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
 
     handle all images in a related list, with output to parallel folders.   
     
+    
     '''
     if cp is None:
         cp = get_default_config()
