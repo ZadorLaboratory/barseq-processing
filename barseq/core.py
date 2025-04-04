@@ -451,9 +451,7 @@ def process_stage_alltiles(indir, outdir, bse, stage='background', cp=None, forc
 
 def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=False):
     '''
-    process any stage that handles a list of tiles, writing each to parallel (cycle) output 
-    subdirs.
-    
+    process any stage that handles a list of tiles, writing each to parallel output subdirs.
     
     @arg indir          Top-level input directory (with cycle dirs below)
     @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
@@ -463,14 +461,13 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
  
     @return None
 
-    handle all images in a related list, with output to parallel folders.   
-    
+    handle all images in a related list, with output to parallel folders.
+    Assumes one or more input files to process.
+    Optionally allows one template to process input against.     
     
     '''
     if cp is None:
         cp = get_default_config()
-    logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
-
     cfilename = os.path.join( outdir, 'barseq.conf' )
     runconfig = write_config(cp, cfilename, timestamp=True)
     
@@ -489,15 +486,13 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     script_path = f'{script_dir}/{script_name}'
     log_level = logging.getLogger().getEffectiveLevel()
     outdir = os.path.expanduser( os.path.abspath(outdir) )
-
     current_env = os.environ['CONDA_DEFAULT_ENV']
 
     # tool-specific parameters 
     n_jobs = int( cp.get(tool, 'n_jobs') )
     n_threads = int( cp.get(tool, 'n_threads') )
-
-    logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
-    logging.debug(f'script_name={script_name} script_dir={script_dir} template_mode={template_mode} template_source={template_source}  ')
+    logging.info(f'handling stage={stage} indir={indir} outdir={outdir} template_mode={template_mode} template_source={template_source} ')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
 
     # cycle, directory mappings
     ddict = bse.ddict
@@ -567,22 +562,11 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             for j, rname in enumerate(flist):
                 if j < num_cycles:
                     infile = f'{indir}/{rname}'
-                    outfile = f'{outdir}/{rname}'
-                    if not os.path.exists(outfile):
-                        cmd.append(infile)
-                        num_files += 1
-                    else:
-                        logging.debug(f'outfile {outfile} exists. omitting file.')
-                else:
-                    logging.debug(f'{j} !< {num_cycles} omitting file.')
-            if num_files > 0:
-                command_list.append(cmd)
-                n_cmds += 1
-            else:
-                logging.debug(f'all outfiles exist. omitting command.')            
+                    outfile = f'{outdir}/{rname}' 
+                    cmd.append(infile)
+                    num_files += 1            
+                        
             logging.info(f'handled tileset {i}')
-
-                
         logging.info(f'created {n_cmds} commands for mode={mode}')
     
     if n_cmds > 0:
@@ -595,6 +579,118 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
+
+
+def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=None, force=False):
+    '''
+    process any stage that handles a list of tiles, writing each to parallel (cycle) output 
+    subdirs.
+    
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.    
+ 
+    @return None
+
+    handle all images in a related list, with output to parallel folders.   
+    
+    
+    '''
+    if cp is None:
+        cp = get_default_config()
+    logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
+
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+    
+    # general parameters
+    script_base = cp.get(stage, 'script_base')
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    modes = cp.get(stage, 'modes').split(',')
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+
+    logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
+    logging.debug(f'script_name={script_name} script_dir={script_dir} ')
+
+    # cycle, directory mappings
+    ddict = bse.ddict
+    # cycle files
+    clist = bse.get_cycleset()  # all modes, all tiles
+ 
+    # order matters.
+    log_arg = ''
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    command_list = []
+    
+    for mode in modes:
+        logging.info(f'handling mode {mode}')
+        n_cmds = 0
+        dirlist = bse.ddict[mode]
+        tilelist = bse.get_imageset(mode)
+               
+        # Handle batches by tile index. Define template...
+        for i, flist in enumerate( tilelist):
+            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
+
+            template_rpath = template_list[i]
+            num_files = 0
+            if conda_env == current_env :
+                logging.debug(f'same envs needed, run direct...')
+                cmd = ['python', script_path,
+                           log_arg,
+                           '--config' , runconfig, 
+                            ]
+            else:
+                logging.debug(f'different envs. user conda run...')
+                cmd = ['conda','run',
+                           '-n', conda_env , 
+                           'python', script_path,
+                           log_arg, 
+                           '--config' , runconfig ,                            
+                           ]            
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
+            cmd.append( '--outdir ' )
+            cmd.append( f'{outdir}' )            
+                       
+            for j, rname in enumerate(flist):
+                if j < num_cycles:
+                    infile = f'{indir}/{rname}'
+                    outfile = f'{outdir}/{rname}'
+                    cmd.append(infile)
+                    num_files += 1       
+            logging.info(f'handled tileset {i}')
+        logging.info(f'created {n_cmds} commands for mode={mode}')
+    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+    else:
+        logging.info(f'All output exits. Skipping.')
+    logging.info(f'done with stage={stage}...')
+
 
 
 def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, force=False):
