@@ -42,6 +42,22 @@ import imageio.v2 as imageio
 import tifffile as tf
 
 
+def make_onehot_array(codebook, codebook_bases):
+    '''
+    make one-hot encoding array for input to bardensr
+    
+        gene sequence
+    0   Calb1  AGTTCGG
+    1   Rasgrf2  CTTCGTT
+    2   Tafa1  CGAGTGG
+    
+    ['G', 'T', 'A', 'C']
+    
+    '''
+    gene_names = np.array( codebook['gene'])
+    
+
+
 def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     '''
     take all infiles, create imagestack, load codebook, run bardensr
@@ -62,11 +78,14 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     logging.debug(f'this mode is image_type={image_type}')
     image_channels = cp.get(image_type, 'channels').split(',')
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} image_channels={image_channels}')
-    codebook_filename = cp.get(stage, 'codebook')
+    codebook_file = cp.get(stage, 'codebook_file')
+    codebook_bases = cp.get(stage, 'codebook_bases').split(',')
     cfile = os.path.join(resource_dir, codebook_filename)
     logging.debug(f'loading codebook file: {cfile}')
     codebook = load_df(cfile)
     logging.debug(f'loaded codebook:\n{codebook}')
+    
+    
     
     
     for i, filename in enumerate(infiles):
