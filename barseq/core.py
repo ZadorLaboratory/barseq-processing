@@ -187,7 +187,9 @@ class BarseqExperiment():
                         
                         except KeyError:
                             logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
-                            cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
+                            #cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
+                            #cycdict[pos] = coo_matrix( (50,50), dtype='S128' )
+                            cycdict[pos] = defaultdict(dict)
                             logging.debug(f'type = {type( cycdict[pos]) }')
                               
                         fname = f'{rfile}'

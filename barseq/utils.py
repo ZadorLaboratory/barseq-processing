@@ -7,6 +7,8 @@ import threading
 
 import datetime as dt
 
+from collections import defaultdict
+
 import pandas as pd
 import numpy as np
 
@@ -249,4 +251,43 @@ def write_config(config, filename, timestamp=True, datestring=None):
     return os.path.abspath(filename)
 
 
+
+
+class SimpleMatrix:
+    '''
+    Create simple expandable matrix with lax data types. 
+    Accessed by  matrix[ m , n ] syntax.  m = row, n = column
+    display is list of lists, expanded to handle largest index on each axis.  
+    list of lists suitable for Pandas dataframe or Numpy ndarray creation. 
+    
+    m = SimpleMatrix()
+    m[0,2] =  'Fred'
+    m[1,1] = 'Ginger'
+    m
+    [[ '', '', 'Fred' ],
+     [ '', 'Ginger', '']
+                       ]
+    
+    Inspired by incredibly fussy Scipy and Numpy sparse matrix classes, which 
+    must support large scaling. 
+        
+    '''
+    def __init__(self, dtype=str):
+        self.matrix = defaultdict(lambda: defaultdict(dtype))
+
+    def __getitem__(self, key ):
+        print(f'get key is {key}')
+        return 'foo'
+        
+    def __setitem__(self, key, value ):
+        print(f'set key is {key}')
+        return key
+
+    def as_lol(self):
+        '''
+        Return list of lists, row-major
+        '''
+        pass
+
+#
     
