@@ -189,7 +189,7 @@ class BarseqExperiment():
                             logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
                             #cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
                             #cycdict[pos] = coo_matrix( (50,50), dtype='S128' )
-                            cycdict[pos] = defaultdict(dict)
+                            cycdict[pos] = SimpleMatrix()
                             logging.debug(f'type = {type( cycdict[pos]) }')
                               
                         fname = f'{rfile}'
@@ -206,7 +206,8 @@ class BarseqExperiment():
                 for p in pkeys:
                     sarray = cycdict[p]
                     logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sarray)} ")
-                    pnew = self._fix_sparse(sarray)
+                    #pnew = self._fix_sparse(sarray)
+                    pnew = sm.to_ndarray()
                     logging.debug(f"pnew type={type(pnew)} ")
                     cycdict[p] = pnew
         return pdict

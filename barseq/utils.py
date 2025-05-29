@@ -276,13 +276,67 @@ class SimpleMatrix:
         self.matrix = defaultdict(lambda: defaultdict(dtype))
 
     def __getitem__(self, key ):
-        print(f'get key is {key}')
-        return 'foo'
+        try:
+            (r,c) = key
+            r = int(r)
+            c = int(c)
+            val = self.matrix[r][c]
+            logging.debug(f'get key is {key} r={r} c={c} val={val}')
+            return val
+        except:
+            logging.warning(f'unable to parse key={key} e.g. [ 2,5]')
         
     def __setitem__(self, key, value ):
-        print(f'set key is {key}')
-        return key
+        try:
+            (r,c) = key
+            r = int(r)
+            c = int(c)
+            logging.debug(f'set key is {key} r={r} c={c}')
+            self.matrix[r][c] = value
+        except:
+            logging.warning(f'unable to parse key={key} e.g. [ 2,5]')
 
+    def __str__(self):
+        return str(self.matrix )
+
+
+    def __repr__(self):
+        return str(self)
+    
+    
+    def to_ndarray(self):
+        '''
+        Return ndarray of minimum dimensions to include all values in matrix. 
+        
+        '''
+        rowvals = list( self.matrix.keys() )
+        rowvals.sort()
+        if len(rowvals) > 0:
+            rmax = rowvals[-1]
+        else:
+            rmax = 0
+        gmax = 0 
+        for r in range(0,rmax):
+            colvals = list( self.matrix[r].keys())
+            colvals.sort()
+            if len(colvals) > 0:
+                cmax = colvals[-1]
+            else:
+                cmax = 0
+            gmax = max(cmax, gmax )
+        logging.debug(f'making ndarray with (row,col) = ({rmax}, {gmax})')            
+        ndout = np.empty( (rmax +1 ,gmax + 1), dtype='U128'  )
+        rkeys = list( self.matrix.keys())
+        logging.debug(f'rkeys= {rkeys}')
+        for rkey in rkeys:
+            ckeys = list( self.matrix[rkey].keys() )
+            logging.debug(f'rkey={rkey} ckeys={ckeys}')
+            for ckey in ckeys:
+                ndout[rkey,ckey] = self.matrix[rkey][ckey]
+        return ndout
+        
+        
+        
     def as_lol(self):
         '''
         Return list of lists, row-major
