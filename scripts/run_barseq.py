@@ -18,7 +18,6 @@ from barseq.utils import *
 
 def process_all(indir, outdir=None, expid=None, cp=None):
     '''
-    
     CSHL BARseq pipeline invocation
     Overall "business logic", even idiosyncratic, is capture here.
 
@@ -94,10 +93,10 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #sub_outdir = f'{outdir}/stitched'
         #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
 
-        # No new indir...       
+        # Do per-image basecalling     
         new_indir = sub_outdir
         sub_outdir = f'{outdir}/basecall-geneseq'
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
+        process_stage_alltiles(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
         
@@ -134,13 +133,6 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-e','--expid', 
-                    metavar='expid',
-                    required=False,
-                    default='EXP',
-                    type=str, 
-                    help='Explicitly provided experiment id, e.g. B043')
-
     parser.add_argument('-O','--outdir', 
                     metavar='outdir',
                     default=None, 
@@ -181,9 +173,9 @@ if __name__ == '__main__':
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     process_all( indir=indir, 
-                        outdir=outdir,
-                        expid=args.expid, 
-                        cp=cp )
+                 outdir=outdir,
+                 expid=args.expid, 
+                 cp=cp )
     
     logging.info(f'done processing output to {outdir}')
  

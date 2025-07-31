@@ -35,6 +35,9 @@ sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 
+# Disable annoying Java logging...
+logging.getLogger('kivy').setLevel(logging.WARNING)
+
 
 def process_axis_flip(reader, flip_x, flip_y):
     metadata = reader.metadata
@@ -64,9 +67,9 @@ def make_ashlar_pattern(image_pattern, basename, extension):
     # build new specific ashlare_pattern by finding initial match to full first number 
     # which could be multiple digits...
     
-    pattern = image_pattern.replace('.', '\.')
-    pattern = pattern.replace('(', '\(')
-    pattern = pattern.replace(')', '\)')
+    pattern = image_pattern.replace('.', '\\.')
+    pattern = pattern.replace('(', '\\(')
+    pattern = pattern.replace(')', '\\)')
     regex = re.sub(r'{([^:}]+)(?:[^}]*)}', r'(?P<\1>.*?)', pattern)
     logging.debug(f'filtered regex={regex}')
     m = re.match(regex, basename)
@@ -173,18 +176,14 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     logging.debug(f'running edge_aligner...')
     edge_aligner.run()
     logging.debug(f'ran edge_aligner...')
-    
     mshape = edge_aligner.mosaic_shape
     logging.debug(f'mosaic shape = {mshape}')
-    
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
 
     outfile = f'{outdir}/{prefix}.ome.tif'
-
     writer = SingleTiffWriter( mosaic, outfile , verbose=True)
     writer.run()
     logging.debug(f'wrote {outfile}(s) ...')
-
 
 
 if __name__ == '__main__':

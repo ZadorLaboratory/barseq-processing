@@ -5,15 +5,6 @@
 #
 #
 #
-#
-#
-#
-#
-#
-#
-#
-#
-#
 
 import argparse
 import logging
@@ -80,12 +71,10 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} image_channels={image_channels}')
     codebook_file = cp.get(stage, 'codebook_file')
     codebook_bases = cp.get(stage, 'codebook_bases').split(',')
-    cfile = os.path.join(resource_dir, codebook_filename)
+    cfile = os.path.join(resource_dir, codebook_file)
     logging.debug(f'loading codebook file: {cfile}')
     codebook = load_df(cfile)
     logging.debug(f'loaded codebook:\n{codebook}')
-    
-    
     
     
     for i, filename in enumerate(infiles):
@@ -93,7 +82,6 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
         logging.debug(f'handling {filename}')
         imgarray = imageio.imread(filename)
         logging.debug(f'image.shape = {imgarray.shape}') 
-
 
 
 
@@ -207,14 +195,7 @@ if __name__ == '__main__':
                     default=None, 
                     type=str, 
                     help='label for this stage config')
-
-    parser.add_argument('-t','--template', 
-                    metavar='template',
-                    default=None,
-                    required=False, 
-                    type=str, 
-                    help='label for this stage config')
-    
+   
     parser.add_argument('infiles',
                         metavar='infiles',
                         nargs ="+",

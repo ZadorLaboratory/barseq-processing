@@ -204,8 +204,8 @@ class BarseqExperiment():
                 pkeys = list(cycdict.keys())
                 pkeys.sort()
                 for p in pkeys:
-                    sarray = cycdict[p]
-                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sarray)} ")
+                    sm = cycdict[p]
+                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
                     #pnew = self._fix_sparse(sarray)
                     pnew = sm.to_ndarray()
                     logging.debug(f"pnew type={type(pnew)} ")
@@ -483,6 +483,8 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     if template_mode == 'None':
         template_mode = None
     template_source = cp.get(stage, 'template_source')
+    if template_source == 'None':
+        template_source = None
     num_cycles = int(cp.get(stage, 'num_cycles'))
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
