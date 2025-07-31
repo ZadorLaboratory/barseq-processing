@@ -3,8 +3,13 @@
 #  tifffile requires zarr v2. (not 3). 
 #
 #
-conda create -n ashlar python=3.12.8 zarr=2.18.4 
+conda create -n ashlar python=3.12.8 zarr=2.18.4 pandas 
+conda activate ashlar
+ 
 cd ~/git 
   git clone git@github.com:ZadorLaboratory/ashlar-zador.git
+  
+  # Adjust path here. 
   pip install git+file:///Users/hover/git/ashlar-zador
+
 cd - 
