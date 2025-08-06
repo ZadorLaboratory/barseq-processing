@@ -33,7 +33,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         cp = get_default_config()
         
     if expid is None:
-        expid = 'CSHL'
+        expid = cp.get('project','project_id')
     
     logging.info(f'Processing experiment {expid} directory={indir} to {outdir}')
     
@@ -68,7 +68,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
   
         # keep this new_indir for all registration steps. 
         logging.info(f'registering images within and across cycles...')
-        logging.info(f'registering geneseq')
+        logging.info(f'registering all geneseq')
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/regcycle'        
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
@@ -84,20 +84,20 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
 
         # keep this new_indir and outdir for all registration steps.         
-        logging.info(f'registering bcseq to bcseq[0]')
+        logging.info(f'registering all bcseq to bcseq[0]')
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
         logging.info(f'done registering images.')
       
-        
         #new_indir = sub_outdir        
-        #sub_outdir = f'{outdir}/stitched'
-        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
+        new_indir = sub_outdir
+        sub_outdir = f'{outdir}/stitched'
+        process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
 
         # Do per-image basecalling     
-        new_indir = sub_outdir
-        sub_outdir = f'{outdir}/basecall-geneseq'
-        process_stage_alltiles(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
-        logging.info(f'done basecall-geneseq.')
+        #new_indir = sub_outdir
+        #sub_outdir = f'{outdir}/basecall-geneseq'
+        #process_stage_alltiles(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
+        #logging.info(f'done basecall-geneseq.')
 
         
         
@@ -174,7 +174,6 @@ if __name__ == '__main__':
 
     process_all( indir=indir, 
                  outdir=outdir,
-                 expid=args.expid, 
                  cp=cp )
     
     logging.info(f'done processing output to {outdir}')

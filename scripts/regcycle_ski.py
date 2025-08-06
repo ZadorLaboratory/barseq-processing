@@ -25,13 +25,12 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     
     @arg infiles    tiles across cycles
     @arg outdir     TOP-LEVEL out directory
-    @arg template   optional file to use as template against infiles.
+    @arg template   optional file to use as template against infiles, 
+                    otherwise register to first. 
     @arg cp         ConfigParser object
     @arg stage      stage label in cp
-
-
+    
     '''
-  
     if cp is None:
         cp = get_default_config()
     
@@ -57,7 +56,6 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
     
     # chmap = {}
     num_channels = int(cp.get(stage,'num_channels'))
-    
     logging.info(f'outdir={outdir} stage={stage} template={template}')
     logging.debug(f'num_channels={num_channels} do_coarse={do_coarse} block_size={block_size}')
     logging.debug(f'resize_factor={resize_factor} subsample_rate={subsample_rate}')
@@ -66,6 +64,7 @@ def regcycle_ski(infiles, outdir, template=None, stage=None, cp=None ):
         fixed_file = infiles[0]
     else:
         fixed_file = template
+    logging.debug(f'fixed_file = {fixed_file}')
 
     #fixed=tf.imread( fixed_file, key=range(0,num_initial_channels,1))
     #fixed=tf.imread( fixed_file )
@@ -319,12 +318,12 @@ if __name__ == '__main__':
                     type=str, 
                     help='label for this stage config')
 
-#    parser.add_argument('-t','--template', 
-#                    metavar='template',
-#                    default=None,
-#                    required=False, 
-#                    type=str, 
-#                    help='label for this stage config')
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
     
     parser.add_argument('infiles',
                         metavar='infiles',

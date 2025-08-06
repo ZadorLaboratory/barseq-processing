@@ -179,6 +179,9 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     mshape = edge_aligner.mosaic_shape
     logging.debug(f'mosaic shape = {mshape}')
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
+    
+    
+    
 
     outfile = f'{outdir}/{prefix}.ome.tif'
     writer = SingleTiffWriter( mosaic, outfile , verbose=True)

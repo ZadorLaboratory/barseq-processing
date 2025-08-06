@@ -280,10 +280,10 @@ class BarseqExperiment():
         
     def get_positionset(self, mode=None, cycle=None):
         '''  
-            returns list of lists all tile image file, optionally for a mode
+        creates list of lists all tile files in sets that span cycles. 
             
         '''               
-        plist = []
+        positionlist = []
         if mode is None:
             modes = self.modes
         else:
@@ -294,10 +294,11 @@ class BarseqExperiment():
                 for p in list( cyc.keys()):
                     tlist = []
                     for t in cyc[p].flatten():
-                        t = t.decode('UTF-8')                       
+                        #t = t.decode('UTF-8')                       
+                        t = str(t)
                         tlist.append(t)
-                    plist.append(tlist)
-        return plist
+                    positionlist.append(tlist)
+        return positionlist
     
     
     def validate(self):
@@ -542,7 +543,6 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
 
             template_rpath = template_list[i]
-            num_files = 0
             if conda_env == current_env :
                 logging.debug(f'same envs needed, run direct...')
                 cmd = ['python', script_path,
@@ -564,18 +564,28 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             cmd.append( f'--template')
             cmd.append( f'{template_path}/{template_rpath}')            
             
+            num_files = 0
             for j, rname in enumerate(flist):
                 if j < num_cycles:
                     infile = f'{indir}/{rname}'
-                    outfile = f'{outdir}/{rname}' 
-                    cmd.append(infile)
-                    num_files += 1            
-                        
-            logging.info(f'handled tileset {i}')
+                    outfile = f'{outdir}/{rname}'
+                    if not os.path.exists(outfile):
+                        logging.debug(f'outfile {outfile} does not exist. including.') 
+                        cmd.append(infile)
+                        num_files += 1
+                    else:
+                        logging.debug(f'outfile {outfile} exists. omitting file.')           
+            if num_files > 0:
+                command_list.append(cmd)
+                cmdstr = ' '.join(cmd)            
+                logging.info(f'tileset {i} cmdstr={cmdstr}')
+            else:
+                logging.info(f'tileset {i} no arguments. skipping command ')    
+        n_cmds = len(command_list)
         logging.info(f'created {n_cmds} commands for mode={mode}')
     
     if n_cmds > 0:
-        logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
+        logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    
         jstack = JobStack()
         jstack.setlist(command_list)
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
@@ -584,6 +594,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
+
 
 
 def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=None, force=False):
@@ -601,7 +612,6 @@ def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=N
     @return None
 
     handle all images in a related list, with output to parallel folders.   
-    
     
     '''
     if cp is None:
@@ -700,10 +710,8 @@ def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=N
 
 def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, force=False):
     '''
-    process any stage that handles a list of tiles representing a single position, writing 
-    each to parallel (cycle) output subdirs.
-    output is assumed to be a directory (otherwise it wouldn't make sense to process a 
-    position as a set )
+    process any stage that handles a list of tiles representing a single position, 
+    
     
     @arg indir          Top-level input directory (with cycle dirs below)
     @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
@@ -741,8 +749,6 @@ def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, forc
     n_threads = int( cp.get(tool, 'n_threads') )
 
     logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
-    logging.debug(f'script_name={script_name} script_dir={script_dir}')
-
     ddict = bse.ddict
  
     log_arg = ''
