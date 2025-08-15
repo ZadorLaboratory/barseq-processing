@@ -560,9 +560,12 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
             cmd.append('--stage')
             cmd.append(f'{stage}')
             cmd.append( '--outdir ' )
-            cmd.append( f'{outdir}' )            
-            cmd.append( f'--template')
-            cmd.append( f'{template_path}/{template_rpath}')            
+            cmd.append( f'{outdir}' )
+            if template_mode is not None:            
+                cmd.append( f'--template')
+                cmd.append( f'{template_path}/{template_rpath}')            
+            else:
+                logging.debug(f'template_mode={template_mode}, omitting --template')
             
             num_files = 0
             for j, rname in enumerate(flist):
@@ -736,6 +739,7 @@ def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, forc
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
     modes = cp.get(stage, 'modes').split(',')
+    num_cycles = int(cp.get(stage, 'num_cycles'))
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
     script_path = f'{script_dir}/{script_name}'
@@ -767,34 +771,37 @@ def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, forc
 
         # handle tile sets, batched by position
         for i, poslist in enumerate(positionlists):
-            (dirname, f) = os.path.split( poslist[0])
-            sub_outdir = f'{outdir}/{dirname}'
-            logging.debug(f'handling mode={mode} dirname={dirname} sub_outdir={sub_outdir}')
-            
-            if conda_env == current_env :
-                logging.debug(f'same envs needed, run direct...')
-                cmd = ['python', script_path,
-                           log_arg,
-                           '--config' , runconfig ,                            
-                            ]
+            if i < num_cycles:
+                (dirname, f) = os.path.split( poslist[0])
+                sub_outdir = f'{outdir}/{dirname}'
+                logging.debug(f'handling mode={mode} dirname={dirname} sub_outdir={sub_outdir}')
+                
+                if conda_env == current_env :
+                    logging.debug(f'same envs needed, run direct...')
+                    cmd = ['python', script_path,
+                               log_arg,
+                               '--config' , runconfig ,                            
+                                ]
+                else:
+                    logging.debug(f'different envs. user conda run...')
+                    cmd = ['conda','run',
+                               '-n', conda_env , 
+                               'python', script_path,
+                               log_arg, 
+                               '--config' , runconfig , 
+                               ]
+                cmd.append('--stage')
+                cmd.append(f'{stage}')
+                cmd.append( '--outdir ' )
+                cmd.append( f'{sub_outdir}')               
+                for j, rname in enumerate(poslist):
+                    infile = f'{indir}/{rname}'
+                    cmd.append(infile)
+                command_list.append(cmd)
+                n_cmds += 1
+                logging.info(f'handled {indir}/{dirname}')
             else:
-                logging.debug(f'different envs. user conda run...')
-                cmd = ['conda','run',
-                           '-n', conda_env , 
-                           'python', script_path,
-                           log_arg, 
-                           '--config' , runconfig , 
-                           ]
-            cmd.append('--stage')
-            cmd.append(f'{stage}')
-            cmd.append( '--outdir ' )
-            cmd.append( f'{sub_outdir}')                
-            for rname in poslist:
-                infile = f'{indir}/{rname}'
-                cmd.append(infile)
-            command_list.append(cmd)
-            n_cmds += 1
-            logging.info(f'handled {indir}/{dirname}')
+                logging.debug(f'{i} >= {num_cycles}')
         logging.info(f'created {n_cmds} commands for mode={mode}')
 
     if n_cmds > 0:

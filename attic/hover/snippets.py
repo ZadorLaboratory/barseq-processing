@@ -125,3 +125,31 @@ def process_denoise(indir, outdir, bse, cp=None):
     jset.runjobs()
     
     logging.info(f'done with denoising...')
+    
+def make_codebook_bin(pth,
+                      num_channels=4,
+                      codebook_name='codebookM1all.htna.mat'):
+    [folders,_,_,_]=get_folders(pth)
+    genecycles=len(sorted(glob.glob(os.path.join(pth,'processed',folders[0],'original',"*geneseq*"))))    
+    codebook=scipy.io.loadmat(os.path.join(config_pth,codebook_name))['codebook']
+    genes=np.reshape(np.array([str(x[0][0]) for x in codebook]),(np.size(codebook,0),-1))
+    codebook1=np.zeros((np.size(codebook,0), genecycles), dtype=str)
+
+    for i in range(np.size(codebook,0)):
+        for j in range(genecycles):
+            codebook1[i,j]=codebook[i][1][0][j]
+
+    #
+    codebook_bin=np.ones(np.shape(codebook1),dtype=np.double)
+    codebook_bin=np.reshape(np.array([float(x.replace('G','8').replace('T','4').replace('A','2').replace('C','1')) for y in codebook1 for x in y]),np.shape(codebook1))
+
+    codebook_bin=np.matmul(np.uint8(codebook_bin),2**np.transpose(np.array((np.arange(4*genecycles-4,-1,-4)))))
+
+    codebook_bin=np.array([bin(i)[2:].zfill(genecycles*num_channels) for i in codebook_bin])
+    codebook_bin=np.reshape([np.uint8(i) for j in codebook_bin for i in j],(np.size(codebook1,0),genecycles*num_channels))
+
+    co=[[genes[i],codebook_bin[j,:]] for i in range(np.size(genes,0))]
+    co=[codebook,co]  
+    codebook_bin1=np.reshape(codebook_bin,(np.size(codebook_bin,0),-1,num_channels))
+    dump(co, os.path.join(pth,'processed','codebook.joblib'))
+    dump(codebook_bin1, os.path.join(pth,'processed','codebookforbardensr.joblib'))

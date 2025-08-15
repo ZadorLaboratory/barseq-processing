@@ -89,15 +89,15 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'done registering images.')
       
         #new_indir = sub_outdir        
-        new_indir = sub_outdir
-        sub_outdir = f'{outdir}/stitched'
-        process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
+        #new_indir = sub_outdir
+        #sub_outdir = f'{outdir}/stitched'
+        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
 
         # Do per-image basecalling     
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/basecall-geneseq'
-        #process_stage_alltiles(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
-        #logging.info(f'done basecall-geneseq.')
+        new_indir = sub_outdir
+        sub_outdir = f'{outdir}/basecall-geneseq'
+        process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
+        logging.info(f'done basecall-geneseq.')
 
         
         

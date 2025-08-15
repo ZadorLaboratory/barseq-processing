@@ -145,14 +145,17 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     
     microscope_profile = cp.get('experiment','microscope_profile')
     pixel_size = float( cp.get(microscope_profile, 'pixel_size') )
-    (dirpath, base, ext) = split_path( infiles[0] )
+    
+    channels = [ c.strip() for c in cp.get('stitch','channels').split(',') ]
+    channels = [ int(c) for c in channels ]
     overlap = float( cp.get('tile','horizontal_overlap') )
     flip_y = cp.getboolean('ashlar','flip_y')
     flip_x = cp.getboolean('ashlar', 'flip_x')
-    logging.debug(f'microscope_profile={microscope_profile} flip_x={flip_x} flip_y={flip_y}')
+    logging.debug(f'microscope_profile={microscope_profile} flip_x={flip_x} flip_y={flip_y} channels={channels}')
     image_pattern=cp.get('barseq','image_pattern')
     image_ext = cp.get('barseq','image_ext')
     #pattern= cp.get('ashlar','pattern')        
+    (dirpath, base, ext) = split_path( infiles[0] )
     logging.debug(f'image_pattern={image_pattern} base={base} image_ext={image_ext}')
     (pattern, prefix ) = make_ashlar_pattern( image_pattern, base, ext )
     logging.debug(f'generated ashlar pattern={pattern} prefix={prefix}')
@@ -180,10 +183,17 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     logging.debug(f'mosaic shape = {mshape}')
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
     
-    
-    
+    df = pd.DataFrame(edge_aligner.positions)
+    outfile = f'{outdir}/{prefix}.positions.tsv'
+    logging.info(f'writing positions to {outfile}')
+    df.to_csv(outfile, sep='\t')
 
-    outfile = f'{outdir}/{prefix}.ome.tif'
+    df = pd.DataFrame(edge_aligner.shifts)
+    outfile = f'{outdir}/{prefix}.shifts.tsv'
+    logging.info(f'writing shifts to {outfile}')
+    df.to_csv(outfile, sep='\t')
+    
+    outfile = f'{outdir}/{prefix}.stitched.tif'
     writer = SingleTiffWriter( mosaic, outfile , verbose=True)
     writer.run()
     logging.debug(f'wrote {outfile}(s) ...')

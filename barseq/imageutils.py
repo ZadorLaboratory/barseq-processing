@@ -11,9 +11,12 @@ from tifffile import imread, imwrite, TiffFile, TiffWriter
 
 import imageio.v3 as iio
 
-def read_image(infile):
+def read_image(infile, channel=None):
     np_array = iio.imread(infile)
-    logging.debug(f'read image shape={np_array.shape} from {infile}')
+    #logging.debug(f'read image shape={np_array.shape} from {infile}')
+    if channel is not None:
+        np_array = np_array[channel]
+        #logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
     return np_array
 
 
