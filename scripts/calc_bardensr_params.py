@@ -97,10 +97,8 @@ def calc_bardensr_parameters(indir,
     (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases)
     logging.debug(f'R={R} C={C} J={J}')
 
-
     # OUTPUT DICT
     param_outputs = {}
-
 
     # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
     logging.debug(f'calculating max_per_RC...')
@@ -108,8 +106,6 @@ def calc_bardensr_parameters(indir,
     
     # Expected to be 28 values. channels * cycles. 
     # first max(), then median of those max() per cycle. 
-    #
-    
     s = pprint.pformat(max_per_RC, indent=4)
     logging.debug(f'max per RC = {s}')
     median_max=np.median(max_per_RC, axis=0)
@@ -141,7 +137,7 @@ def calc_bardensr_parameters(indir,
         et=bardensr.spot_calling.estimate_density_singleshot( img_norm , codeflat, noisefloor_final)
         for thresh1 in np.linspace( thresh-0.1, thresh+0.1, 10):
             spots = bardensr.spot_calling.find_peaks(et, thresh1, use_tqdm_notebook=False)
-            suboutdir = os.path.join( foutdir, stage, subdir)
+            suboutdir = os.path.join( foutdir, 'bdparams', subdir)
             os.makedirs(suboutdir, exist_ok=True)
             logging.debug(f"found {len(spots)} spots in {file}")
             outsub = os.path.join(suboutdir, f'{base}.{thresh1}.spots.csv')
@@ -153,9 +149,8 @@ def calc_bardensr_parameters(indir,
                 err_c=err_c + (spots.j == err_idx).to_numpy().sum()
             err_c_all.append( err_c )
             total_c_all.append(len(spots) - err_c)      
-    logging.debug(f'')
 
-    # CALCULATE FALSE DISCOVERY RATE        
+    # CALCULATE FALSE DISCOVERY RATE, GIVEN N_SPOTS FOUND AT INTENSITY THRESHOLD         
     err_c_all1 = np.reshape(err_c_all, [ len(infiles), 10 ])
     total_c_all1 = np.reshape(total_c_all, [ len(infiles), 10]) + 1
     fdr = err_c_all1 / len(pos_unused_codes[0]) * (len(genes)-len(pos_unused_codes[0])) / (total_c_all1)
@@ -169,6 +164,7 @@ def calc_bardensr_parameters(indir,
     param_outputs['noisefloor_final'] = noisefloor_final
     logging.info(f"threshold {intensity_thresh_refined} with noise floor {noisefloor_final}")
     logging.info(f"param_outputs= {param_outputs} {len(infiles)} input files. ")
+    
     return param_outputs
 
    
@@ -259,6 +255,7 @@ if __name__ == '__main__':
                              args.instage,
                              args.mode,                            
                              cp=cp)
+    
     
     logging.info(f'done processing output to {args.outfile}')
  
