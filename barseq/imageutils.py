@@ -3,6 +3,11 @@
 #  May allow substitution of file formats and tiff/imageio versions.
 #  Will only work if version compatibility with the various tool environments is tolerant. 
 #
+#
+#  Our standard is CHANNEL-FIRST   ( 5, 3200, 3200 )
+#  channel, row, column    CXY
+#
+#
 import logging
 import os
 
@@ -10,6 +15,8 @@ import tifffile
 from tifffile import imread, imwrite, TiffFile, TiffWriter
 
 import imageio.v3 as iio
+import numpy as np
+
 
 def read_image(infile, channel=None):
     np_array = iio.imread(infile)
@@ -19,11 +26,14 @@ def read_image(infile, channel=None):
         #logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
     return np_array
 
-
 def write_image(outfile, np_array):
     iio.imwrite( outfile, np_array, photometric='minisblack' )
     logging.debug(f'wrote image shape={np_array.shape} to {outfile}')
-    
+ 
+ 
+#   
+# Ashlar-specific image handling.
+#
     
 def write_mosaic(mosaic, outfile):
     #for ci, channel in enumerate(self.mosaic.channels):
@@ -44,3 +54,30 @@ def write_mosaic(mosaic, outfile):
     fullimage = np.rollaxis(fullimage, -1)
     logging.debug(f'rollaxis() -> {fullimage.shape}')
     # produces e.g. shape = ( 5, 3200, 3200)  
+    
+
+#    
+#  Bardensr specific image handling.
+#
+def bd_read_image(infile, R, C, trim=None, cropf=None ):
+    '''
+    specialized image handling for bardensr with crop/trim 
+    might be useful elsewhere...
+    
+    '''
+    I = []
+    for i in range(1,R+1):
+        for j in range(C):
+            I.append( np.expand_dims( read_image( infile, channel=j), axis=0))
+    I=np.array(I)
+    if cropf is not None:
+        logging.debug(f'cropping image by: {cropf}')
+        nx = np.size(I,3)
+        ny = np.size(I,2)
+        I = I[ :, :, round(ny*cropf):round(ny*(1-cropf)), round(nx*cropf):round(nx*(1-cropf)) ]
+    elif trim is not None:
+        logging.debug(f'trimming image by: {trim}')
+        I = I[:, :, trim:-trim, trim:-trim]
+    else:
+        logging.debug(f'no mods requests. returning all channels.')
+    return I

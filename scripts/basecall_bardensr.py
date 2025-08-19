@@ -31,25 +31,6 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def bd_read_image(infile, R, C, trim=None, cropf=None ):
-    I = []
-    for i in range(1,R+1):
-        for j in range(C):
-            I.append( np.expand_dims( read_image(infile, channel=j), axis=0))
-    I=np.array(I)
-    if cropf is not None:
-        logging.debug(f'cropping image by: {cropf}')
-        nx = np.size(I,3)
-        ny = np.size(I,2)
-        I = I[:,:,round(ny*cropf):round(ny*(1-cropf)),round(nx*cropf):round(nx*(1-cropf))]
-    elif trim is not None:
-        logging.debug(f'trimming image by: {trim}')
-        I = I[:,:,trim:-trim,trim:-trim]
-    else:
-        logging.debug(f'no mods requests. returning all channels.')
-    return I
-
-
 def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     '''
     take in infiles of same tile through multiple cycles, 
@@ -75,82 +56,42 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     image_channels = cp.get(image_type, 'channels').split(',')
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
-    fdrthresh=cp.getfloat(stage, 'fdrthresh')
-    trim=cp.getint(stage, 'trim')
-    cropf=cp.getfloat(stage, 'cropf')
-    noisefloor_ini=cp.getfloat(stage, 'noisefloor_ini')
-    noisefloor_final=cp.getfloat(stage, 'noisefloor_final')
-    logging.debug(f'fdrthresh={fdrthresh} trim={trim} cropf={cropf} noisefloor_ini={noisefloor_ini}  noisefloor_final={noisefloor_final} ')
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
     (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
     
+    noisefloor_final = cp.getfloat(stage, 'noisefloor_final')
+    
 
-    # load codebook from resource_dir
+    # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
     codebook_bases = cp.get(stage, 'codebook_bases').split(',')
     cfile = os.path.join(resource_dir, codebook_file)
     logging.info(f'loading codebook file: {cfile}')
-    codebook = load_df(cfile)
-    num_channels = len(codebook_bases)
-    genes = np.reshape( np.array( codebook['gene'], dtype='<U8'), (np.size(codebook,0),-1) ) 
-    logging.debug(f'loaded codebook:\n{codebook} codebook_bases={codebook_bases}')    
+    codebook = load_codebook_file(cfile)
+    num_channels = len(codebook_bases) 
+    logging.debug(f'loaded codebook TSV:\n{codebook} codebook_bases={codebook_bases}')    
     
-    # make codebook array to match actual number of cycles
-    # it is possible that there are fewer cycles than codebook sequence lengths?
     n_cycles = len(infiles)
-    codebook_char = np.zeros((len(codebook),n_cycles),dtype=str)
-    logging.debug(f'made empty array shape={codebook_char.shape} filling... ')
+    (codeflat, R, C, J, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
     
-    codebook_seq = codebook['sequence']
-    for i in range(len(codebook)):
-        for j in range(n_cycles):
-            #bcodebook[i,j]=codebook[i][1][0][j]        
-            codebook_char[i,j] = codebook_seq.iloc[i][j]
-    logging.debug(f'made sequence array {codebook_char}. making binary array.')
-        
-    codebook_bin=np.ones(np.shape(codebook_char), dtype=np.double)    
-    bmax = math.pow(2, len(codebook_bases) - 1)
-    rmap = {}
-    for bchar in codebook_bases:
-        rmap[bchar] = bmax
-        bmax = bmax / 2
-    logging.debug(f'made binary mappings for chars: {rmap}')
+       
+    # bd_read_image(infile, R, C, cropf=cropf)
+    # need median_max
+    # need thresh_refined
+    # need noisefloor_final
+    et= bardensr.spot_calling.estimate_density_singleshot( bd_read_image(infile, R, C, trim=trim ) / median_max[:, None, None, None], codeflat, noisefloor_final)
+    spots=bardensr.spot_calling.find_peaks(et, thresh_refined, use_tqdm_notebook=False)
+    spots.loc[:,'m1']=spots.loc[:,'m1']+trim
+    spots.loc[:,'m2']=spots.loc[:,'m2']+trim
     
-    codebook_bin=np.reshape( np.array([ rmap[x] for y in codebook_char for x in y]), np.shape(codebook_char))
-    logging.debug(f'binary codebook = {codebook_bin}')
-    #codebook_bin=np.reshape( np.array([float( x.replace('G','8').replace('T','4').replace('A','2').replace('C','1')) for y in codebook_char for x in y]), np.shape(codebook_char))
-    codebook_bin=np.matmul(np.uint8(codebook_bin), 2**np.transpose(np.array((np.arange(4 * n_cycles -4, -1, -4)))))
-    codebook_bin=np.array([bin(i)[2:].zfill(n_cycles * num_channels) for i in codebook_bin])
-    codebook_bin=np.reshape([np.uint8(i) for j in codebook_bin for i in j],(np.size(codebook_char, 0), n_cycles * num_channels))
-    logging.debug(f'reshaped codebook_bin={codebook_bin}')
-
-    co=[[genes[i],codebook_bin[j,:]] for i in range(np.size(genes,0))]
-    co=[codebook,co]  
-    codebook_bin=np.reshape(codebook_bin,(np.size(codebook_bin,0),-1,num_channels))
-    logging.debug(f'final codebook_bin={codebook_bin}')
     
-    cb = np.transpose(codebook_bin, axes=(1,2,0))
-    R,C,J=cb.shape
-    codeflat=np.reshape(cb,(-1,J))
-    
-    # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
-    logging.debug(f'calculating max_per_RC...')
-    max_per_RC=[ bd_read_image(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
-    
-    s = pprint.pformat(max_per_RC, indent=4)
-    logging.debug(f'max per RC = {s}')
-    median_max=np.median(max_per_RC,axis=0)
-    s = pprint.pformat(median_max, indent=4)
-    logging.debug(f'median_max = {s}')
-    
-    # ESTABLISHING BASE THRESHOLD AT THE MEDIAN OF MAXIMUM ERROR READOUT
-   
-   
     outfile = f'{outdir}/{image_type}/{base}.spots.tsv'
-    logging.debug(f'outfile={outfile}') 
+    spots.to_csv(outfile,index=False)   
+    logging.debug(f'wrote spots to outfile={outfile}') 
     
+
 
 
 
@@ -204,7 +145,6 @@ def bardensr_call(pth,
     print(thresh)
 
     # FINDING OPTIMUM TRHESHOLD WITH LOWEST FDR ON CONTROL FOLDERS
-
     err_c_all=[]
     total_c_all=[]
     for folder in control_folders:
@@ -234,7 +174,7 @@ def bardensr_call(pth,
     # MAIN BASE-CALLING ON ALL FOLDERS-TRIMMED IMAGES WITH FINALIZED THRESHOLD
     # # spot call each fov, using the thresholds we decided on, and the normalization we decided on
     for folder in folders:
-        et=bardensr.spot_calling.estimate_density_singleshot(image_reader_trimmed(os.path.join(pth,'processed',folder,'aligned'),trim,R,C)/median_max[:,None,None,None],codeflat,noisefloor_final)
+        et=bardensr.spot_calling.estimate_density_singleshot(image_reader_trimmed(os.path.join(pth,'processed',folder,'aligned'),trim,R,C)/median_max[:,None,None,None],codeflat, noisefloor_final)
         spots=bardensr.spot_calling.find_peaks(et,thresh_refined,use_tqdm_notebook=False)
         spots.loc[:,'m1']=spots.loc[:,'m1']+trim
         spots.loc[:,'m2']=spots.loc[:,'m2']+trim

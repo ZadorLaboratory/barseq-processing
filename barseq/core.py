@@ -599,7 +599,6 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     logging.info(f'done with stage={stage}...')
 
 
-
 def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=None, force=False):
     '''
     process any stage that handles a list of tiles, writing each to parallel (cycle) output 
