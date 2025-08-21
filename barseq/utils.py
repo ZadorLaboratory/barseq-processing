@@ -361,6 +361,7 @@ def load_codebook_file(infile):
     df = pd.read_csv(infile, sep='\t', index_col=0)
     return df
 
+
 def make_codebook_object(codebook, codebook_bases, n_cycles=7):
     '''
     Create binary codebook object for Bardensr from simple codebook dataframe.  

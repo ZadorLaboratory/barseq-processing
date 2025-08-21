@@ -46,24 +46,24 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         # denoise indir, outdir, ddict, cp=None
         sub_outdir = f'{outdir}/denoised'
         logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
-        process_stage_alltiles(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
-        process_stage_alltiles(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
-        process_stage_alltiles(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
+        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
+        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
+        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
         logging.info(f'done denoising.')
         
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/background'
-        process_stage_alltiles(new_indir, sub_outdir, bse, stage='background', cp=cp)
+        process_stage_allimages(new_indir, sub_outdir, bse, stage='background', cp=cp)
         logging.info(f'done background.')
         
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/regchannels'        
-        process_stage_alltiles(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
+        process_stage_allimages(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
         logging.info(f'done registering image channels')
 
         new_indir = sub_outdir        
         sub_outdir = f'{outdir}/bleedthrough'        
-        process_stage_alltiles(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
+        process_stage_allimages(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
         logging.info(f'done applying bleedthrough profiles.')
   
         # keep this new_indir for all registration steps. 
@@ -88,16 +88,16 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
         logging.info(f'done registering images.')
       
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/stitched'
-        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
-      
         # keep this new_indir for all basecall steps. 
         new_indir = sub_outdir
         sub_outdir = f'{outdir}/basecall'
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
+
+        #new_indir = sub_outdir
+        #sub_outdir = f'{outdir}/stitched'
+        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
       
     except Exception as ex:
         logging.error(f'got exception {ex}')

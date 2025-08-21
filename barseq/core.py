@@ -41,7 +41,70 @@ class BarseqExperiment():
             -- All tiles in flat form, grouped by chunksize (for flat processing). 
             -- All tiles, grouped by position, and grouped by chunksize (for stitching).
             -- All tiles within a mode, but across cycles, for a tilename (for registration) 
-        3. 
+        3. Allow checking for existing output? 
+
+        Nomenclature/conventions:
+        
+        mode     top-level category of image subsets
+        cycle    a mode has one or more cycles, consisting of positions made up of images
+        image    a single image file
+        tile     a set of images that represent a single FOV across cycles
+        position a set of adjacent images across cycles 
+
+
+        Assumes path/naming hierarchy:
+        
+        EXP123/
+
+            M1C1/           M1C2/               M2C1/
+                P1T1.<ext>     P1T1.<ext>           P1T1.<ext>
+                P1T2.<ext>     P1T2.<ext>           P1T2.<ext>
+                P2T1.<ext>     P2T1.<ext>           P2T1.<ext>
+                P2T2.<ext>     P2T2.<ext>           P2T2.<ext>
+
+            M1/                                 M2/
+                P1.<label>.<ext>                    P1.<label>.<ext>
+                P2.<label>.<ext>                    P2.<label>.<ext>
+ 
+        Key methods/ conventions. 
+        return elements are relative PATHS under EXP123, not simply file names. 
+        This allows retention of subdirectory hierarchy on outputs. 
+         
+        get_Xlist  -> flat list
+        get_Xset   -> list of lists, structured appropriately. 
+        
+        get_imagelist()
+            Flat list of all images. 
+            Unit of work: individual file
+            [ M1C1/P1T1, M1C1/P1T2, M1C1/P2T1, M1C1/P2T2, 
+              M1C2/P1T1, M1C2/P1T2, M1C2/P2T1, M1C2/P2T2,
+              M2C1/P1T1, M2C1/P1T2, M2C1/P2T1, M2C1/P2T2
+             ]
+        
+        get_cycleset( mode=M1)  
+            Images grouped by cycle, otherwise unstructured. 
+            Unit of work: individual file. 
+        
+            [ [ M1C1/P1T1, M1C1/P1T2, M1C1/P2T1, M1C1/P2T2 ], 
+              [ M1C2/P1T1, M1C2/P1T2, M1C2/P2T1, M1C2/P2T2 ] 
+            ]        
+        
+        get_positionset( mode=M1 )
+            Images grouped by position value, otherwise unstructured. 
+            Unit of work: all files for position (e.g. for stitching). 
+            [ [ M1C1/P1T1, M1C1/P1T2], [ M1C1/P2T1, M1C1/P2T2 ], 
+              [ M1C2/P1T1, M1C2/P1T2], [ M1C2/P2T1, M1C2/P2T2 ], 
+            ]
+        
+        get_tileset( mode=M1 )
+            Images grouped by tile value, ordered by cycle.
+            Unit of work: all images for given tile, typically within mode. 
+                e.g. for registration. 
+            [  [ M1C1/P1T1, M1C2/P1T1 ], 
+               [ M1C1/P1T2, M1C2/P1T2 ],
+               [ M1C1/P2T1, M1C2/P2T1 ],
+               [ M1C1/P2T2, M1C2/P2T2 ]
+            ] 
         
         '''
         self.expdir = os.path.abspath( os.path.expanduser(indir))
@@ -101,8 +164,7 @@ class BarseqExperiment():
             re_list.append(p)
             pdict[p] = mode 
             ddict[mode] = []
-                    
-        #tif = re.compile( cp.get('barseq','tif_regex'))       
+                           
         dlist = os.listdir(indir)
         dlist.sort()
         for d in dlist:
@@ -118,7 +180,6 @@ class BarseqExperiment():
         make dict of dicts of modes and cycle directory names to all tiles within. 
         
         .cdict = { <mode> ->  list of cycles -> list of relative filepaths
-        
         
         '''
         if cp is None:
@@ -150,7 +211,6 @@ class BarseqExperiment():
     def _parse_experiment_images(self, cp=None):
         '''
         sets of files, grouped by position 
-
         '''
         if cp is None:
             cp = get_default_config()
@@ -225,9 +285,9 @@ class BarseqExperiment():
         darray = darray[~nan_rows,:]
         return darray
         
-    def get_tileset(self, mode=None, chunksize=None):
+    def get_imagelist(self, mode=None, chunksize=None):
         ''' 
-            returns list of all tile image files across cycles for mode
+        returns FLAT list of ALL image files across ALL cycles for mode(s)
         '''
         tlist = []
         if mode is None:
@@ -239,16 +299,21 @@ class BarseqExperiment():
             for cyc in self.pdict[m]:
                 for p in list( cyc.keys()):
                     for t in cyc[p].flatten():
-                        t = t.decode('UTF-8')
+                        try:
+                            t = t.decode('UTF-8')
+                        except:
+                            t = str(t)
                         tlist.append(t)
         return tlist     
 
 
     def get_cycleset(self, mode=None):
         '''
-         get ordered list of cycles where elements are lists relative paths.  
-         optionally restrict to single mode
-         if modes must be handled distinctly, then caller must cycle through nodes. 
+         get ordered list of cycles where elements are flat lists of relative 
+         paths of ALL images in that cycle  
+         optionally restrict to single mode.
+         if modes must be handled differently, then 
+         caller must cycle through modes explicitly 
                  
         '''
         clist = []
@@ -263,7 +328,7 @@ class BarseqExperiment():
         return clist 
 
 
-    def get_imageset(self, mode='bcseq'):
+    def get_tileset(self, mode='bcseq'):
         '''
         Get list of (ordered) lists of images for a single tile across cycles for a single mode. 
         '''
@@ -280,8 +345,8 @@ class BarseqExperiment():
         
     def get_positionset(self, mode=None, cycle=None):
         '''  
-        creates list of lists all tile files in sets that span cycles. 
-            
+        Creates list of lists all tile files in sets.
+        Each position consists of 1 or more tiles. 
         '''               
         positionlist = []
         if mode is None:
@@ -290,7 +355,7 @@ class BarseqExperiment():
             modes = [mode]
             
         for m in modes:
-            for cyc in self.pdict[m]:
+            for cyc in self.pdict[m]: 
                 for p in list( cyc.keys()):
                     tlist = []
                     for t in cyc[p].flatten():
@@ -301,26 +366,15 @@ class BarseqExperiment():
         return positionlist
     
     
+    
     def validate(self):
         '''
-            -- confirms that there corresponding tiles in all cycles of each mode. 
+            -- confirms that there images corresponding to all tiles in all cycles of each mode. 
             --             
             @return True if valid, False otherwise   logs warnings as check is made. 
         '''
         return True
 
-    
-    def validate_target(self, target_dir ):
-        '''
-            --  Confirms that target directory contains files parallel to all those in
-                Experiment directory. To be used between pipeline stages to confirm all 
-                outputs were successfully created. 
-                
-            @ arg target    Top-level directory of tree to confirm.
-            @return True if valid, False otherwise 
-        
-        '''
-        return True
         
     
 def get_default_config():
@@ -337,11 +391,10 @@ def get_script_dir():
     return script_dir
 
 
-
-
-def process_stage_alltiles(indir, outdir, bse, stage='background', cp=None, force=False):
+def process_stage_allimages(indir, outdir, bse, stage='background', cp=None, force=False):
     '''
-    process any stage that acts on all images singly, batched by cycle directory. 
+    process any stage that acts on all images singly, batched by cycle directory 
+    as arbitrary load balancing.  
     
     @arg indir    is top-level input directory (with cycle dirs below)
     @arg outdir   outdir is top-level out directory (with cycle dirs below)
@@ -518,7 +571,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
         logging.info(f'handling mode {mode}')
         n_cmds = 0
         dirlist = bse.ddict[mode]
-        tilelist = bse.get_imageset(mode)
+        tilelist = bse.get_tileset(mode)
         
         # Use first cycle as template. 
         if template_mode is not None:    
@@ -597,117 +650,6 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
-
-
-def process_stage_tilelist_notemplate(indir, outdir, bse, stage='register', cp=None, force=False):
-    '''
-    process any stage that handles a list of tiles, writing each to parallel (cycle) output 
-    subdirs.
-    
-    
-    @arg indir          Top-level input directory (with cycle dirs below)
-    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
-    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
-    @arg stage          Pipeline stage label in cp.
-    @arg cp             ConfigParser object to refer to.    
- 
-    @return None
-
-    handle all images in a related list, with output to parallel folders.   
-    
-    '''
-    if cp is None:
-        cp = get_default_config()
-    logging.info(f'handling stage={stage} types={bse.modes} indir={indir} outdir={outdir}')
-
-    cfilename = os.path.join( outdir, 'barseq.conf' )
-    runconfig = write_config(cp, cfilename, timestamp=True)
-    
-    # general parameters
-    script_base = cp.get(stage, 'script_base')
-    tool = cp.get( stage ,'tool')
-    conda_env = cp.get( tool ,'conda_env')
-    modes = cp.get(stage, 'modes').split(',')
-    script_name = f'{script_base}_{tool}.py'
-    script_dir = get_script_dir()
-    script_path = f'{script_dir}/{script_name}'
-    log_level = logging.getLogger().getEffectiveLevel()
-    outdir = os.path.expanduser( os.path.abspath(outdir) )
-
-    current_env = os.environ['CONDA_DEFAULT_ENV']
-
-    # tool-specific parameters 
-    n_jobs = int( cp.get(tool, 'n_jobs') )
-    n_threads = int( cp.get(tool, 'n_threads') )
-
-    logging.info(f'tool={tool} conda_env={conda_env} script_path={script_path} outdir={outdir}')
-    logging.debug(f'script_name={script_name} script_dir={script_dir} ')
-
-    # cycle, directory mappings
-    ddict = bse.ddict
-    # cycle files
-    clist = bse.get_cycleset()  # all modes, all tiles
- 
-    # order matters.
-    log_arg = ''
-    if log_level <= logging.INFO:
-        log_arg = '-v'
-    if log_level <= logging.DEBUG : 
-        log_arg = '-d'
-
-    command_list = []
-    
-    for mode in modes:
-        logging.info(f'handling mode {mode}')
-        n_cmds = 0
-        dirlist = bse.ddict[mode]
-        tilelist = bse.get_imageset(mode)
-               
-        # Handle batches by tile index. Define template...
-        for i, flist in enumerate( tilelist):
-            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
-
-            template_rpath = template_list[i]
-            num_files = 0
-            if conda_env == current_env :
-                logging.debug(f'same envs needed, run direct...')
-                cmd = ['python', script_path,
-                           log_arg,
-                           '--config' , runconfig, 
-                            ]
-            else:
-                logging.debug(f'different envs. user conda run...')
-                cmd = ['conda','run',
-                           '-n', conda_env , 
-                           'python', script_path,
-                           log_arg, 
-                           '--config' , runconfig ,                            
-                           ]            
-            cmd.append('--stage')
-            cmd.append(f'{stage}')
-            cmd.append( '--outdir ' )
-            cmd.append( f'{outdir}' )            
-                       
-            for j, rname in enumerate(flist):
-                if j < num_cycles:
-                    infile = f'{indir}/{rname}'
-                    outfile = f'{outdir}/{rname}'
-                    cmd.append(infile)
-                    num_files += 1       
-            logging.info(f'handled tileset {i}')
-        logging.info(f'created {n_cmds} commands for mode={mode}')
-    
-    if n_cmds > 0:
-        logging.info(f'Creating jobset for {len(command_list)} jobs on {n_jobs} CPUs ')    
-        jstack = JobStack()
-        jstack.setlist(command_list)
-        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
-        logging.debug(f'running jobs...')
-        jset.runjobs()
-    else:
-        logging.info(f'All output exits. Skipping.')
-    logging.info(f'done with stage={stage}...')
-
 
 
 def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, force=False):
