@@ -24,7 +24,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
 
     Top level function to call into sub-steps...
     @arg indir          Top level input directory. Cycle directories below.  
-    @arg outdir         Top-level output directory. Cycle directories created below.  
+    @arg outdir         Top-level output directory. Stage directories created below.  
     @arg expid          Label/tag/run_id, may be used to access run/experiment-specific config. 
     @arg cp             ConfigParser object defining stage and implementation behavior. 
      
@@ -94,7 +94,20 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-hyb', cp=cp) 
+        #logging.info(f'done basecall-hyb.')
 
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-bcseq', cp=cp) 
+        #logging.info(f'done basecall-hyb.')
+
+        #sub_outdir = f'{outdir}/segment'
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 
+        #logging.info(f'done basecall-hyb.')
+        
+
+
+        # Run stitching at end, as it is many-to-one
+                
         #new_indir = sub_outdir
         #sub_outdir = f'{outdir}/stitched'
         #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)

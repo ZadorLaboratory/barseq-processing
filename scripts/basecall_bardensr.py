@@ -104,6 +104,13 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
         spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
         spots.to_csv(outfile, index=False)   
         logging.debug(f'wrote spots to outfile={outfile}') 
+
+
+
+
+
+
+
     
 
 if __name__ == '__main__':

@@ -34,11 +34,12 @@ from barseq.imageutils import *
 
 def basecall_ski( infiles, outdir, stage=None, cp=None):
     '''
-        
     take in infiles of same tile through multiple cycles, 
     create imagestack, 
     load codebook, 
-      
+    run bardensr, 
+    output evidence tensor dataframe to <outdir>/<mode>/<prefix>.brdnsr.tsv   
+    
     '''
     if cp is None:
         cp = get_default_config()

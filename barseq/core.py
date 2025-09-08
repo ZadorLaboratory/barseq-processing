@@ -394,7 +394,8 @@ def get_script_dir():
 def process_stage_allimages(indir, outdir, bse, stage='background', cp=None, force=False):
     '''
     process any stage that acts on all images singly, batched by cycle directory 
-    as arbitrary load balancing.  
+    as arbitrary load balancing.
+    NOTE: assumes each input file produces a single output file.   
     
     @arg indir    is top-level input directory (with cycle dirs below)
     @arg outdir   outdir is top-level out directory (with cycle dirs below)
@@ -555,6 +556,7 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
 
     # cycle, directory mappings
     ddict = bse.ddict
+    
     # cycle files
     clist = bse.get_cycleset()  # all modes, all tiles
  
@@ -654,8 +656,9 @@ def process_stage_tilelist(indir, outdir, bse, stage='register', cp=None, force=
 
 def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, force=False):
     '''
-    process any stage that handles a list of tiles representing a single position, 
-    
+    process any stage that handles a list of tiles representing a single position 
+    TBD  
+        NOTE: optionally allows many-to-many, or many-to-one input to output mapping.     
     
     @arg indir          Top-level input directory (with cycle dirs below)
     @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
