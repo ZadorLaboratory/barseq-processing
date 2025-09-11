@@ -91,8 +91,12 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         # keep this new_indir for all basecall steps. 
         new_indir = sub_outdir
         sub_outdir = f'{outdir}/basecall'
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
-        logging.info(f'done basecall-geneseq.')
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
+        #logging.info(f'done basecall-geneseq.')
+
+        process_stage_tilelist_map(new_indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
+        #logging.info(f'done basecall-geneseq.')
+
 
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-hyb', cp=cp) 
         #logging.info(f'done basecall-hyb.')

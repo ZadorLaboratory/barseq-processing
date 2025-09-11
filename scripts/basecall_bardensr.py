@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 #
 # Do basecalling on batches of images.
-#
-#
-#
+# Intrinsically consumes multiple cycles, to output file is single for multiple
+# inputs. So --outfile is only arg. 
 #
 
 import argparse
@@ -31,7 +30,7 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def basecall_bardensr( infiles, outdir, stage=None, cp=None):
+def basecall_bardensr( infiles, outfile, stage=None, cp=None):
     '''
     take in infiles of same tile through multiple cycles, 
     create imagestack, 
@@ -109,8 +108,7 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     (prefix, subdir) = os.path.split(dirpath)
     subdir = 'geneseq'
     suboutdir = os.path.join(outdir, subdir)
-    os.makedirs(suboutdir, exist_ok=True)
-    outfile = os.path.join( outdir, subdir, f'{base}.spots.csv' )
+    #os.makedirs(suboutdir, exist_ok=True)
 
     img_norm = bd_read_images(infiles, R, C, trim=trim ) / median_max[:, None, None, None]
     et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
@@ -149,7 +147,13 @@ if __name__ == '__main__':
                     metavar='outdir',
                     default=None, 
                     type=str, 
-                    help='outdir. output base dir if not given.')
+                    help='outdir. outfile base dir if not given.')
+
+    parser.add_argument('-o','--outfile', 
+                    metavar='outfile',
+                    default=None, 
+                    type=str,  
+                    help='outfile. ')
 
     parser.add_argument('-s','--stage', 
                     metavar='stage',
@@ -180,14 +184,16 @@ if __name__ == '__main__':
     outdir = os.path.abspath('./')
     if args.outdir is not None:
         outdir = os.path.abspath(args.outdir)
+    else:
+        (outdir, base, ext ) = split_path( args.outfile )
     os.makedirs(outdir, exist_ok=True)
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     basecall_bardensr( infiles=args.infiles, 
-                       outdir=outdir,
+                       outfile=args.outfile,
                        stage=args.stage,  
                        cp=cp )
     
-    logging.info(f'done processing output to {outdir}')
+    logging.info(f'done processing output to {args.outfile}')
 

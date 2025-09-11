@@ -114,6 +114,7 @@ class BarseqExperiment():
             
         # geneseq, bcseq, hyb ,n order. 
         self.modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
+    
         # create directory dict. 
         # mapping from modality to directory names
         self.ddict = self._parse_experiment_indirs(indir, cp = self.cp)
@@ -124,8 +125,13 @@ class BarseqExperiment():
         
         # tiles grouped by position
         self.pdict = self._parse_experiment_images(cp=self.cp)
-        
+
+        # storage for stage-specific input-output maps
+        # save initial?
+        #   stagemaps <stagedir> 
+        self.stagemaps = {}
         logging.debug('BarseqExperiment metadata object intialized. ')
+
 
     def __repr__(self):
         s = f'BarseqExperiment: \n'
@@ -149,8 +155,7 @@ class BarseqExperiment():
     def _parse_experiment_indirs(self, indir, cp=None):
         '''
         determine input data structure and files. 
-        return dict of lists of dirs by cycle 
-                  
+        return dict of lists of dirs by cycle    
         '''    
         if cp is None:
             cp = get_default_config()
@@ -366,11 +371,15 @@ class BarseqExperiment():
         return positionlist
 
 
-    def get_tileset_map(self, mode='bcseq', label=None, ext=None, arity='parallel' ) :
+    def get_tileset_map(self, 
+                        mode='bcseq', 
+                        stage=None, 
+                        label=None, 
+                        ext=None, 
+                        arity='parallel' ) :
         '''
         return similar format as get_tileset() except each element is a tuple (input_rpath, output_rpath)
         if arity is 'single' output_rpath is a single item, with leading directory set to <mode>
-        
         
         By default both rpaths the same. 
         
@@ -429,11 +438,137 @@ class BarseqExperiment():
                     output_elem = os.path.join(mode , f'{base}.{ext}')
                     
             logging.debug(f'tileset output={(ts, output_elem)}')        
-            output_list.append( (ts, output_elem) )
+            output_list.append( (ts, [ output_elem ]) )
         logging.debug(f'made list of {len(output_list)} tilesets.')     
         return output_list
+
+    def parse_stage_indirs(self, indir, stage='basecall', cp=None):
+        '''
+        make a map of a stage output directory, for use
+        in generating stage-by-stage processing commands. 
+        
     
+        '''    
+        if cp is None:
+            cp = get_default_config()
+        
+        re_list = []
+        pdict = {}
+        ddict = {}
+        modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
+        for mode in modes:
+            p = re.compile( cp.get( 'barseq',f'{mode}_regex'))
+            re_list.append(p)
+            pdict[p] = mode 
+            ddict[mode] = []
+                           
+        stagedir = os.path.join(indir, stage)
+        logging.debug(f'scanning stagedir={stagedir}')
+        dlist = os.listdir(stagedir)
+        dlist.sort()
+        for d in dlist:
+            for p in pdict.keys():
+                if p.search(d) is not None:
+                    k = pdict[p]
+                    ddict[k].append(d)
+        return ddict    
     
+
+    def parse_stage_cycles(self, indir, ddict, stage='basecall', cp=None):
+        '''
+        make dict of dicts of modes and cycle directory names to all files within. 
+        
+        .cdict = { <mode> ->  list of cycles -> list of relative filepaths
+        
+        '''
+        if cp is None:
+            cp = get_default_config()
+                
+        cdict = {}
+        for mode in self.modes:
+            cdict[mode] = []  # list of lists
+            for d in ddict[mode]:
+                cyclelist = []
+                cycledir = f'{indir}/{stage}/{d}'
+                logging.debug(f'listing cycle dir {cycledir}')
+                flist = os.listdir(cycledir)
+                flist.sort()
+                fnlist = []
+                for f in flist:
+                    dp, base, ext = split_path(f)
+                    rfile = f'{d}/{base}.{ext}'
+                    cyclelist.append(rfile)
+                cdict[mode].append(cyclelist)
+        return cdict    
+
+    def parse_stage_files(self, indir, cdict, stage='basecall', cp=None):
+        '''
+        sets of files, grouped by position 
+        '''
+        if cp is None:
+            cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')        
+        logging.debug(f'image_regex={image_regex}')
+        
+        
+        pdict = {}
+        # 
+        # pdict[mode] -> cyclist[0] -> posdict['1'] ->  dok_matrix
+        #
+        for mode in self.modes:
+            pdict[mode] = []
+            cycfilelist = cdict[mode]
+            for i, cycle in enumerate( cycfilelist ):
+                logging.debug(f'creating cycle dict for {mode}[{i}]')
+                cycdict = {}
+                for rfile in cycle:
+                    posarray = None
+                    afile = os.path.abspath(f'{self.expdir}/{rfile}')
+                    dp, base, ext = split_path(afile)
+                    # Take base as string up to first dot. 
+                    base = base.split('.', 1)[0]
+                    logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        pos = m.group(1)
+                        x = m.group(2)
+                        y = m.group(3)
+                        x = int(x)
+                        y = int(y)
+                        logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
+                        logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
+                        pos = str(pos).strip()
+                        try:    
+                            posarray = cycdict[pos] 
+                            logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
+                        
+                        except KeyError:
+                            logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
+                            #cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
+                            #cycdict[pos] = coo_matrix( (50,50), dtype='S128' )
+                            cycdict[pos] = SimpleMatrix()
+                            logging.debug(f'type = {type( cycdict[pos]) }')
+                              
+                        fname = f'{rfile}'
+                        logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
+                        cycdict[pos][x,y] = fname 
+                    else:
+                        logging.warning(f'File {afile} fails a regex match.')
+                pdict[mode].append(cycdict)
+                
+            logging.debug(f'fixing sparse matrices...')
+            for i, cycdict in enumerate( pdict[mode]):
+                pkeys = list(cycdict.keys())
+                pkeys.sort()
+                for p in pkeys:
+                    sm = cycdict[p]
+                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
+                    #pnew = self._fix_sparse(sarray)
+                    pnew = sm.to_ndarray()
+                    logging.debug(f"pnew type={type(pnew)} ")
+                    cycdict[p] = pnew
+        return pdict
+
           
     
     def validate(self):
@@ -848,6 +983,7 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     Optionally allows one template to process input against.     
     
     '''
+    logging.info(f'indir={indir}, outdir={outdir} stage={stage} force={force}')
     if cp is None:
         cp = get_default_config()
     cfilename = os.path.join( outdir, 'barseq.conf' )
@@ -855,15 +991,18 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     
     # general parameters
     script_base = cp.get(stage, 'script_base')
+    stagedir = cp.get(stage, 'stagedir')
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
     modes = cp.get(stage, 'modes').split(',')
+
     template_mode = cp.get(stage, 'template_mode')
     if template_mode == 'None':
         template_mode = None
     template_source = cp.get(stage, 'template_source')
     if template_source == 'None':
         template_source = None
+    
     num_cycles = int(cp.get(stage, 'num_cycles'))
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
@@ -879,10 +1018,10 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
 
     # cycle, directory mappings
-    ddict = bse.ddict
+    #ddict = bse.ddict
     
     # cycle files
-    clist = bse.get_cycleset()  # all modes, all tiles
+    #clist = bse.get_cycleset()  # all modes, all tiles
  
     # order matters.
     log_arg = ''
@@ -896,32 +1035,43 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     for mode in modes:
         logging.info(f'handling mode {mode}')
         n_cmds = 0
-        dirlist = bse.ddict[mode]
-        tilelist = bse.get_tileset(mode)
+        #dirlist = bse.ddict[mode]
+        #tilelist = bse.get_tileset(mode)
+        
+        tilelist = bse.get_tileset_map(mode='geneseq', 
+                                       stage=stagedir, 
+                                       label='spots',
+                                       ext='csv',
+                                       arity='single'
+                                       )
+        logging.debug(f'tilelist= {tilelist}')
         
         # Use first cycle as template. 
-        if template_mode is not None:    
-            template_list = bse.get_cycleset(template_mode)[0]
-        else:
-            template_list = bse.get_cycleset(mode)[0]
-            logging.debug(f'template_list = {template_list}')
+        #if template_mode is not None:    
+        #    template_list = bse.get_cycleset(template_mode)[0]
+        #else:
+        #    template_list = bse.get_cycleset(mode)[0]
+        #    logging.debug(f'template_list = {template_list}')
         
         # default template source to input directory. 
-        template_path = indir
-        if template_source == 'input':
-            logging.debug(f'template_source={template_source}')
-            template_path = indir
-        elif template_source == 'output':
-            logging.debug(f'template_source={template_source}')
-            template_path = outdir
-        else:
-            logging.warning(f'template_source not specified. defaulting to indir. ')
+        #template_path = indir
+        #if template_source == 'input':
+        #    logging.debug(f'template_source={template_source}')
+        #    template_path = indir
+        #elif template_source == 'output':
+        #    logging.debug(f'template_source={template_source}')
+        #    template_path = outdir
+        #else:
+        #    logging.warning(f'template_source not specified. defaulting to indir. ')
         
         # Handle batches by tile index. Define template...
-        for i, flist in enumerate( tilelist):
-            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
+        for i, fmap in enumerate( tilelist):
+            (input_list, output_list) = fmap
+    
+            logging.debug(f'handling mode={mode} tile_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
+            logging.info(f'input = {input_list} output = {output_list}')
 
-            template_rpath = template_list[i]
+            #template_rpath = template_list[i]
             if conda_env == current_env :
                 logging.debug(f'same envs needed, run direct...')
                 cmd = ['python', script_path,
@@ -938,31 +1088,35 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
                            ]            
             cmd.append('--stage')
             cmd.append(f'{stage}')
-            cmd.append( '--outdir ' )
-            cmd.append( f'{outdir}' )
+            if len(output_list) > 1:
+                cmd.append( '--outdir ' )
+                cmd.append( f'{outdir}' )
+            elif len(output_list) == 1:
+                cmd.append( '--outfile ')
+                outfile = os.path.join(outdir, stagedir, output_list[0]   )
+                cmd.append( outfile )
+            
             if template_mode is not None:            
                 cmd.append( f'--template')
                 cmd.append( f'{template_path}/{template_rpath}')            
             else:
                 logging.debug(f'template_mode={template_mode}, omitting --template')
-            
-            num_files = 0
-            for j, rname in enumerate(flist):
-                if j < num_cycles:
-                    infile = f'{indir}/{rname}'
-                    outfile = f'{outdir}/{rname}'
-                    if not os.path.exists(outfile):
-                        logging.debug(f'outfile {outfile} does not exist. including.') 
-                        cmd.append(infile)
-                        num_files += 1
-                    else:
-                        logging.debug(f'outfile {outfile} exists. omitting file.')           
-            if num_files > 0:
+
+            for rpath in input_list:
+                infile = os.path.join( indir , rpath )
+                cmd.append( f' {infile} ')
+
+            # Check for ALL output. Any missing re-runs. 
+            output_complete = True 
+            for rpath in output_list:
+                outfile = os.path.join(outdir, stagedir, rpath )
+                output_complete = os.path.exists(outfile) and output_complete
+            if not output_complete:
                 command_list.append(cmd)
                 cmdstr = ' '.join(cmd)            
                 logging.info(f'tileset {i} cmdstr={cmdstr}')
             else:
-                logging.info(f'tileset {i} no arguments. skipping command ')    
+                logging.info(f'tileset {i} output complete. skipping command ')    
         n_cmds = len(command_list)
         logging.info(f'created {n_cmds} commands for mode={mode}')
     
@@ -976,10 +1130,6 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
-
-
-
-
 
 
 def parse_rpath(rpath):
