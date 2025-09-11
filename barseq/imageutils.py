@@ -59,14 +59,41 @@ def write_mosaic(mosaic, outfile):
 #    
 #  Bardensr specific image handling.
 #
-def bd_read_image(infile, R, C, trim=None, cropf=None ):
+def bd_read_images(infiles, R, C, trim=None, cropf=None ):
     '''
     specialized image handling for bardensr with crop/trim 
     might be useful elsewhere...
     
     '''
     I = []
-    for i in range(1,R+1):
+    for infile in infiles:
+        for j in range(C):
+            I.append( np.expand_dims( read_image( infile, channel=j), axis=0))
+    I=np.array(I)
+    if cropf is not None:
+        logging.debug(f'cropping image by: {cropf}')
+        nx = np.size(I,3)
+        ny = np.size(I,2)
+        I = I[ :, :, round(ny*cropf):round(ny*(1-cropf)), round(nx*cropf):round(nx*(1-cropf)) ]
+    elif trim is not None:
+        logging.debug(f'trimming image by: {trim}')
+        I = I[:, :, trim:-trim, trim:-trim]
+    else:
+        logging.debug(f'no mods requests. returning all channels.')
+    logging.debug(f'created image stack dimensions={I.shape}')
+    return I
+
+
+
+
+def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
+    '''
+    specialized image handling for bardensr with crop/trim 
+    might be useful elsewhere...
+    
+    '''
+    I = []
+    for i in range(1, R+1):
         for j in range(C):
             I.append( np.expand_dims( read_image( infile, channel=j), axis=0))
     I=np.array(I)

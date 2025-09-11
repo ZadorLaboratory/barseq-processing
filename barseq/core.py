@@ -364,8 +364,77 @@ class BarseqExperiment():
                         tlist.append(t)
                     positionlist.append(tlist)
         return positionlist
+
+
+    def get_tileset_map(self, mode='bcseq', label=None, ext=None, arity='parallel' ) :
+        '''
+        return similar format as get_tileset() except each element is a tuple (input_rpath, output_rpath)
+        if arity is 'single' output_rpath is a single item, with leading directory set to <mode>
+        
+        
+        By default both rpaths the same. 
+        
+        label=None, ext=None, arity='parallel'
+       [
+          ( ['geneseq01/MAX_Pos1_003_004.tif', 'geneseq02/MAX_Pos1_003_004.tif'],
+            ['geneseq01/MAX_Pos1_003_004.tif', 'geneseq02/MAX_Pos1_003_004.tif']
+           ),
+          ( ['geneseq01/MAX_Pos1_000_001.tif', 'geneseq02/MAX_Pos1_000_001.tif'],
+            ['geneseq01/MAX_Pos1_000_001.tif', 'geneseq02/MAX_Pos1_000_001.tif'] 
+          )
+        ]
+
+        label='spots, ext='csv, arity='single'
+       [
+          ( ['geneseq01/MAX_Pos1_003_004.tif', 'geneseq02/MAX_Pos1_003_004.tif'],
+             'geneseq/MAX_Pos1_003_004.spots.csv'
+           ),
+          ( ['geneseq01/MAX_Pos1_000_001.tif', 'geneseq02/MAX_Pos1_000_001.tif'],
+            'geneseq/MAX_Pos1_000_001.spots.csv' 
+          )
+        ]        
+
+        '''
+        tileset_list = self.get_tileset(mode=mode)
+        
+        output_list = []
+        output_elem = None 
+        
+        for ts in tileset_list:
+            if arity == 'parallel':
+                output_elem = []
+                if (ext is not None) or (label is not None):
+                    for rpath in ts:
+                        (subdir, base, current_ext) =  parse_rpath(rpath)
+                        if ext is None:
+                            ext = current_ext
+                        if label is not None:
+                            out_rpath = os.path.join(subdir, f'{base}.{label}.{ext}')
+                        else:
+                            out_rpath = os.path.join(subdir, f'{base}.{ext}')
+                        output_elem.append(out_rpath) 
+                else:
+                    output_elem = ts.copy()
+                    
+            elif arity == 'single':
+                (subdir, base, current_ext) = parse_rpath( ts[0] )
+                if (ext is not None) or (label is not None):
+                    if ext is None:
+                        ext = current_ext
+                    if label is not None:
+                        output_elem = os.path.join(mode, f'{base}.{label}.{ext}')
+                    else:
+                        output_elem = os.path.join(mode, f'{base}.{ext}')
+                else:
+                    output_elem = os.path.join(mode , f'{base}.{ext}')
+                    
+            logging.debug(f'tileset output={(ts, output_elem)}')        
+            output_list.append( (ts, output_elem) )
+        logging.debug(f'made list of {len(output_list)} tilesets.')     
+        return output_list
     
     
+          
     
     def validate(self):
         '''
@@ -758,6 +827,170 @@ def process_stage_positionlist(indir, outdir, bse, stage='stitch', cp=None, forc
     else:
         logging.info(f'All output exists. Skipping.')
     logging.info(f'done with stage={stage}...')
+
+
+
+def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, force=False):
+    '''
+    process any stage that handles a list of tiles, following input-output map. 
+    
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.    
+ 
+    @return None
+
+    handle all images in a related list, with output to parallel folders.
+    Assumes one or more input files to process.
+    Optionally allows one template to process input against.     
+    
+    '''
+    if cp is None:
+        cp = get_default_config()
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+    
+    # general parameters
+    script_base = cp.get(stage, 'script_base')
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    modes = cp.get(stage, 'modes').split(',')
+    template_mode = cp.get(stage, 'template_mode')
+    if template_mode == 'None':
+        template_mode = None
+    template_source = cp.get(stage, 'template_source')
+    if template_source == 'None':
+        template_source = None
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+    logging.info(f'handling stage={stage} indir={indir} outdir={outdir} template_mode={template_mode} template_source={template_source} ')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
+
+    # cycle, directory mappings
+    ddict = bse.ddict
+    
+    # cycle files
+    clist = bse.get_cycleset()  # all modes, all tiles
+ 
+    # order matters.
+    log_arg = ''
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    command_list = []
+    
+    for mode in modes:
+        logging.info(f'handling mode {mode}')
+        n_cmds = 0
+        dirlist = bse.ddict[mode]
+        tilelist = bse.get_tileset(mode)
+        
+        # Use first cycle as template. 
+        if template_mode is not None:    
+            template_list = bse.get_cycleset(template_mode)[0]
+        else:
+            template_list = bse.get_cycleset(mode)[0]
+            logging.debug(f'template_list = {template_list}')
+        
+        # default template source to input directory. 
+        template_path = indir
+        if template_source == 'input':
+            logging.debug(f'template_source={template_source}')
+            template_path = indir
+        elif template_source == 'output':
+            logging.debug(f'template_source={template_source}')
+            template_path = outdir
+        else:
+            logging.warning(f'template_source not specified. defaulting to indir. ')
+        
+        # Handle batches by tile index. Define template...
+        for i, flist in enumerate( tilelist):
+            logging.debug(f'handling mode={mode} tile_index={i} n_images={len(flist)} num_cycles={num_cycles}')
+
+            template_rpath = template_list[i]
+            if conda_env == current_env :
+                logging.debug(f'same envs needed, run direct...')
+                cmd = ['python', script_path,
+                           log_arg,
+                           '--config' , runconfig, 
+                            ]
+            else:
+                logging.debug(f'different envs. user conda run...')
+                cmd = ['conda','run',
+                           '-n', conda_env , 
+                           'python', script_path,
+                           log_arg, 
+                           '--config' , runconfig ,                            
+                           ]            
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
+            cmd.append( '--outdir ' )
+            cmd.append( f'{outdir}' )
+            if template_mode is not None:            
+                cmd.append( f'--template')
+                cmd.append( f'{template_path}/{template_rpath}')            
+            else:
+                logging.debug(f'template_mode={template_mode}, omitting --template')
+            
+            num_files = 0
+            for j, rname in enumerate(flist):
+                if j < num_cycles:
+                    infile = f'{indir}/{rname}'
+                    outfile = f'{outdir}/{rname}'
+                    if not os.path.exists(outfile):
+                        logging.debug(f'outfile {outfile} does not exist. including.') 
+                        cmd.append(infile)
+                        num_files += 1
+                    else:
+                        logging.debug(f'outfile {outfile} exists. omitting file.')           
+            if num_files > 0:
+                command_list.append(cmd)
+                cmdstr = ' '.join(cmd)            
+                logging.info(f'tileset {i} cmdstr={cmdstr}')
+            else:
+                logging.info(f'tileset {i} no arguments. skipping command ')    
+        n_cmds = len(command_list)
+        logging.info(f'created {n_cmds} commands for mode={mode}')
+    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+    else:
+        logging.info(f'All output exits. Skipping.')
+    logging.info(f'done with stage={stage}...')
+
+
+
+
+
+
+def parse_rpath(rpath):
+    '''
+    Assumes relative path with single subdir
+       'geneseq03/MAX_Pos1_003_002.tif'
+       
+    '''
+    (subdir, filename) = rpath.split('/')
+    (base, ext) =  filename.rsplit('.', 1)
+    return (subdir, base, ext)
     
 
 def parse_exp_indir(indir, cp=None):

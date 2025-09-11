@@ -80,8 +80,8 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
 
     # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
     logging.debug(f'calculating max_per_RC...')
-    max_per_RC=[ bd_read_image(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
-    
+    max_per_RC=[ bd_read_image_single(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
+    #max_per_RC=bd_read_images(infiles, R, C, cropf=cropf).max(axis=(1,2,3)) 
     # Expected to be 28 values. channels * cycles. 
     # first max(), then median of those max() per cycle. 
     #
@@ -90,27 +90,35 @@ def basecall_bardensr( infiles, outdir, stage=None, cp=None):
     median_max=np.median(max_per_RC, axis=0)
     #s = pprint.pformat(median_max, indent=4)
     #logging.debug(f'median_max = {s}')
-    for infile in infiles:
-        (dirpath, base, ext) = split_path(os.path.abspath(infile))
-        (prefix, subdir) = os.path.split(dirpath)
-        suboutdir = os.path.join(outdir, subdir)
-        os.makedirs(suboutdir, exist_ok=True)
-        outfile = os.path.join( outdir, subdir, f'{base}.spots.csv' )
+    #for infile in infiles:
+    #    (dirpath, base, ext) = split_path(os.path.abspath(infile))
+    #    (prefix, subdir) = os.path.split(dirpath)
+    #    suboutdir = os.path.join(outdir, subdir)
+    #    os.makedirs(suboutdir, exist_ok=True)
+    #    outfile = os.path.join( outdir, subdir, f'{base}.spots.csv' )
 
-        img_norm = bd_read_image(infile, R, C, trim=trim ) / median_max[:, None, None, None]
-        et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
-        spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
-        spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
-        spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
-        spots.to_csv(outfile, index=False)   
-        logging.debug(f'wrote spots to outfile={outfile}') 
+    #    img_norm = bd_read_image(infile, R, C, trim=trim ) / median_max[:, None, None, None]
+    #    et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
+    #    spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
+    #    spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
+    #    spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
+    #    spots.to_csv(outfile, index=False)   
+    #    logging.debug(f'wrote spots to outfile={outfile}') 
 
+    (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
+    (prefix, subdir) = os.path.split(dirpath)
+    subdir = 'geneseq'
+    suboutdir = os.path.join(outdir, subdir)
+    os.makedirs(suboutdir, exist_ok=True)
+    outfile = os.path.join( outdir, subdir, f'{base}.spots.csv' )
 
-
-
-
-
-
+    img_norm = bd_read_images(infiles, R, C, trim=trim ) / median_max[:, None, None, None]
+    et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
+    spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
+    spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
+    spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
+    spots.to_csv(outfile, index=False)   
+    logging.debug(f'wrote spots to outfile={outfile}')
     
 
 if __name__ == '__main__':
