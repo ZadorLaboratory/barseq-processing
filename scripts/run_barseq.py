@@ -44,11 +44,17 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     # placing output in sub-directories by stage. 
     try:
         # denoise indir, outdir, ddict, cp=None
-        sub_outdir = f'{outdir}/denoised'
+        #sub_outdir = f'{outdir}/denoised'
         logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
-        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
-        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
-        process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
+        
+        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
+        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-hyb', cp=cp)
+        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-bcseq', cp=cp)
+        
+        
+        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
+        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
+        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
         logging.info(f'done denoising.')
         
         new_indir = sub_outdir        
