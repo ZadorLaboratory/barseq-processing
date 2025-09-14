@@ -303,4 +303,25 @@
                     logging.debug(f"pnew type={type(pnew)} ")
                     cycdict[p] = pnew
         return pdict
-    
+
+
+    def get_imagelist(self, mode=None, chunksize=None):
+        ''' 
+        returns FLAT list of ALL image files across ALL cycles for mode(s)
+        '''
+        tlist = []
+        if mode is None:
+            modes = self.modes
+        else:
+            modes = [mode]
+            
+        for m in modes:
+            for cyc in self.pdict[m]:
+                for p in list( cyc.keys()):
+                    for t in cyc[p].flatten():
+                        try:
+                            t = t.decode('UTF-8')
+                        except:
+                            t = str(t)
+                        tlist.append(t)
+        return tlist     

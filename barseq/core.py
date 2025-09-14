@@ -239,32 +239,30 @@ class BarseqExperiment():
         if stage is not None:
             logging.debug(f'caching stage info for {stage}')
             self.stageinfo[stage] = (ddict, cdict, pdict)
+        
         return (ddict, cdict, pdict)    
             
-    def _fix_sparse(self, sarray):
-        '''
-        remove empty rows and columns. convert to normal ndarray. 
-        '''
-        logging.debug(f'input type = {type(sarray)}')
-        darray = sarray.toarray()
-        nan_cols = np.all(darray == b'', axis = 0)
-        nan_rows = np.all(darray == b'', axis = 1)        
-        darray = darray[:,~nan_cols]
-        darray = darray[~nan_rows,:]
-        return darray
-        
-    def get_imagelist(self, mode=None, chunksize=None):
+
+    def get_filelist(self, mode=None, stage=None, chunksize=None):
         ''' 
-        returns FLAT list of ALL image files across ALL cycles for mode(s)
+        returns FLAT list of ALL files across ALL cycles for mode(s)
         '''
         tlist = []
         if mode is None:
             modes = self.modes
         else:
             modes = [mode]
-            
+        
+        if stage is None:
+            pdict = self.pdict
+        else:
+            try:
+                (ddict, cdict, pdict) = self.stageinfo[stage]
+            except KeyError:
+                (ddict, cdict, pdict) = self.parse_stage_dir( stage)
+        
         for m in modes:
-            for cyc in self.pdict[m]:
+            for cyc in pdict[m]:
                 for p in list( cyc.keys()):
                     for t in cyc[p].flatten():
                         try:
@@ -275,7 +273,8 @@ class BarseqExperiment():
         return tlist     
 
 
-    def get_cycleset(self, mode=None):
+
+    def get_cycleset(self, mode=None, stage=None):
         '''
          get ordered list of cycles where elements are flat lists of relative 
          paths of ALL images in that cycle  
@@ -289,23 +288,40 @@ class BarseqExperiment():
             modes = self.modes
         else:
             modes = [mode]
-            
+
+        if stage is None:
+            cdict = self.cdict
+        else:
+            try:
+                (ddict, cdict, pdict) = self.stageinfo[stage]
+            except KeyError:
+                (ddict, cdict, pdict) = self.parse_stage_dir( stage )
+
         for mode in modes:
             for c in self.cdict[mode]:
                     clist.append(c)
         return clist 
 
 
-    def get_tileset(self, mode='bcseq'):
+    def get_tileset(self, mode='bcseq', stage=None):
         '''
         Get list of (ordered) lists of images for a single tile across cycles for a single mode. 
         '''
         ilist = [ ]
+        
+        if stage is None:
+            cdict = self.cdict
+        else:
+            try:
+                (ddict, cdict, pdict) = self.stageinfo[stage]
+            except KeyError:
+                (ddict, cdict, pdict) = self.parse_stage_dir( stage )
+        
         # use first cycle as template
-        for i in range(0,len(self.cdict[mode][0])):
+        for i in range(0,len(cdict[mode][0])):
             #logging.debug(f'{i}')
             flist = []     
-            for cyc in self.cdict[mode]:
+            for cyc in cdict[mode]:
                 flist.append(cyc[i])
             ilist.append(flist)
         return ilist
@@ -333,6 +349,70 @@ class BarseqExperiment():
                     positionlist.append(tlist)
         return positionlist
 
+
+
+    def get_filelist_map(self,                         
+                         mode='geneseq', 
+                         stage=None, 
+                         label=None, 
+                         ext=None, 
+                         arity='parallel',
+                         instage=None):
+        '''
+        
+        @arg mode       Get map for modality, None means all. 
+        @arg stage      Output stage name. 
+        @arg label      Output extra label before extension. 
+        @arg ext        Output file extension. 
+        @arg arity      Arity from input to output. Parallel one-to-one, Single = many-to-one
+        @arg instage    Use existing cached stage filemap as input. Initial input default. 
+        
+
+       
+                 
+        '''
+        file_list = self.get_filelist(mode=mode, stage=instage)
+        #
+        # list for input-output tuples
+        output_list = []
+        stagedir = self.cp.get(stage, 'stagedir')
+        
+        if arity == 'parallel':
+            for rpath in file_list:
+                if (ext is not None) or (label is not None):
+                    (subdir, base, current_ext) =  parse_rpath(rpath)
+                    if ext is None:
+                        ext = current_ext
+                    if label is not None:
+                        out_rpath = os.path.join(stagedir, f'{base}.{label}.{ext}')
+                    else:
+                        out_rpath = os.path.join(stagedir, f'{base}.{ext}')
+                    output_list.append( ( rpath, out_rpath)  )
+                else:
+                    output_list.append( ( rpath, rpath ) )
+                    
+        elif arity == 'single':
+            # Use first input rpath as model for output_rpath
+            # Assume mode output dir (not numbered cycle dir)
+            
+            (subdir, base, current_ext) = parse_rpath( file_list[0] )
+            if (ext is not None) or (label is not None):
+                if ext is None:
+                    ext = current_ext
+                if label is not None:
+                    output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
+                else:
+                    output_elem = os.path.join( mode, f'{base}.{ext}')
+            else:
+                output_elem = os.path.join( mode, f'{base}.{ext}')
+            
+            output_list = [ file_list, [ output_elem] ]        
+            
+            logging.debug(f'filelist output={(ts, output_elem)}')        
+            output_list.append( (ts, [ output_elem ])  )
+        logging.debug(f'made list of {len(output_list)} filemaps')     
+        return output_list        
+        
 
     def get_cycleset_map(self,                         
                          mode='bcseq', 
@@ -405,7 +485,7 @@ class BarseqExperiment():
         ]        
 
         '''
-        tileset_list = self.get_tileset(mode=mode)
+        tileset_list = self.get_tileset(mode=mode, stage=instage)
         
         output_list = []
         output_elem = None 
@@ -587,6 +667,18 @@ class BarseqExperiment():
                     (x,y) = cycle[p].shape
                     s += f'     pos={p} tiles={x*y} [{x}x{y}]\n'
         return s
+
+    def _fix_sparse(self, sarray):
+        '''
+        remove empty rows and columns. convert to normal ndarray. 
+        '''
+        logging.debug(f'input type = {type(sarray)}')
+        darray = sarray.toarray()
+        nan_cols = np.all(darray == b'', axis = 0)
+        nan_rows = np.all(darray == b'', axis = 1)        
+        darray = darray[:,~nan_cols]
+        darray = darray[~nan_rows,:]
+        return darray
           
     
     def validate(self):
@@ -1095,6 +1187,174 @@ def process_stage_allfiles(indir, outdir, bse, stage='background', cp=None, forc
     logging.info(f'done with stage={stage}...')
 
 
+def process_stage_allfiles_map(indir, outdir, bse, stage='denoise-geneseq', cp=None, force=False, instage=None):
+    '''
+    process any stage that handles a list of tiles, following input-output map. 
+    
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.
+    @arg force          Execute even if all outputs exist. 
+    @arg instage        Stage to pull input from. Default None means experiment raw data (indir). 
+ 
+    @return None
+
+    handle all images in a related list, with output to parallel folders.
+    Assumes one or more input files to process.
+    Optionally allows one template to process input against.     
+    
+    '''
+    logging.info(f'indir={indir}, outdir={outdir} stage={stage} force={force}')
+    if cp is None:
+        cp = get_default_config()
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+    
+    # general parameters
+    script_base = cp.get(stage, 'script_base')
+    stagedir = cp.get(stage, 'stagedir')
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    modes = cp.get(stage, 'modes').split(',')
+    arity = cp.get(stage, 'arity')
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+    
+    # Potential None params
+    label = cp.get(stage, 'label')
+    if label == 'None':
+        label = None
+    ext = cp.get( stage, 'ext')
+    if ext == 'None':
+        ext = None
+    template_mode = cp.get(stage, 'template_mode')
+    if template_mode == 'None':
+        template_mode = None
+    template_source = cp.get(stage, 'template_source')
+    if template_source == 'None':
+        template_source = None
+    
+
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+    logging.info(f'handling stage={stage} indir={indir} outdir={outdir} template_mode={template_mode} template_source={template_source} ')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
+
+    # order matters.
+    log_arg = ''
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    command_list = []
+    
+    for mode in modes:
+        logging.info(f'handling mode {mode}')
+        n_cmds = 0
+        
+        filelist = bse.get_filelist_map(mode=mode, 
+                                       stage=stage, 
+                                       label=label,
+                                       ext=ext,
+                                       arity=arity
+                                       )
+        logging.debug(f'tilelist= {tilelist}')
+        
+        # Use first cycle as template. 
+        #if template_mode is not None:    
+        #    template_list = bse.get_cycleset(template_mode)[0]
+        #else:
+        #    template_list = bse.get_cycleset(mode)[0]
+        #    logging.debug(f'template_list = {template_list}')
+        
+        # default template source to input directory. 
+        #template_path = indir
+        #if template_source == 'input':
+        #    logging.debug(f'template_source={template_source}')
+        #    template_path = indir
+        #elif template_source == 'output':
+        #    logging.debug(f'template_source={template_source}')
+        #    template_path = outdir
+        #else:
+        #    logging.warning(f'template_source not specified. defaulting to indir. ')
+        
+        # Handle batches by tile index. Define template...
+        for i, fmap in enumerate( tilelist):
+            (input_list, output_list) = fmap
+    
+            logging.debug(f'handling mode={mode} tile_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
+            logging.info(f'input = {input_list} output = {output_list}')
+
+            #template_rpath = template_list[i]
+            if conda_env == current_env :
+                logging.debug(f'same envs needed, run direct...')
+                cmd = ['python', script_path,
+                           log_arg,
+                           '--config' , runconfig, 
+                            ]
+            else:
+                logging.debug(f'different envs. user conda run...')
+                cmd = ['conda','run',
+                           '-n', conda_env , 
+                           'python', script_path,
+                           log_arg, 
+                           '--config' , runconfig ,                            
+                           ]            
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
+            if len(output_list) > 1:
+                cmd.append( '--outdir ' )
+                cmd.append( f'{outdir}' )
+            elif len(output_list) == 1:
+                cmd.append( '--outfile ')
+                outfile = os.path.join(outdir, stagedir, output_list[0]   )
+                cmd.append( outfile )
+            
+            if template_mode is not None:            
+                cmd.append( f'--template')
+                cmd.append( f'{template_path}/{template_rpath}')            
+            else:
+                logging.debug(f'template_mode={template_mode}, omitting --template')
+
+            for rpath in input_list:
+                infile = os.path.join( indir , rpath )
+                cmd.append( f' {infile} ')
+
+            # Check for ALL output. Any missing re-runs. 
+            output_complete = True 
+            for rpath in output_list:
+                outfile = os.path.join(outdir, stagedir, rpath )
+                output_complete = os.path.exists(outfile) and output_complete
+            if not output_complete:
+                command_list.append(cmd)
+                cmdstr = ' '.join(cmd)            
+                logging.info(f'tileset {i} cmdstr={cmdstr}')
+            else:
+                logging.info(f'tileset {i} output complete. skipping command ')    
+        n_cmds = len(command_list)
+        logging.info(f'created {n_cmds} commands for mode={mode}')
+    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+    else:
+        logging.info(f'All output exits. Skipping.')
+    logging.info(f'done with stage={stage}...')
 
 
 def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, force=False):

@@ -37,7 +37,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     
     logging.info(f'Processing experiment {expid} directory={indir} to {outdir}')
     
-    bse = BarseqExperiment(indir, cp)
+    bse = BarseqExperiment(indir, outdir, cp)
     logging.debug(f'got BarseqExperiment metadata: {bse}')
     
     # In sequence, perform all pipeline processing steps
@@ -45,11 +45,11 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     try:
         # denoise indir, outdir, ddict, cp=None
         #sub_outdir = f'{outdir}/denoised'
-        logging.info(f'denoising. indir={bse.expdir} outdir ={sub_outdir}')
+        logging.info(f'denoising. indir={bse.inputdir} outdir ={outdir}')
         
-        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
-        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-hyb', cp=cp)
-        process_stage_allfiles_map(new_indir, outdir, bse, stage='denoise-bcseq', cp=cp)
+        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
+        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
+        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)
         
         
         #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
@@ -57,50 +57,50 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
         logging.info(f'done denoising.')
         
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/background'
-        process_stage_allimages(new_indir, sub_outdir, bse, stage='background', cp=cp)
-        logging.info(f'done background.')
+        #new_indir = sub_outdir        
+        #sub_outdir = f'{outdir}/background'
+        #process_stage_allimages(new_indir, sub_outdir, bse, stage='background', cp=cp)
+        #logging.info(f'done background.')
         
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regchannels'        
-        process_stage_allimages(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
-        logging.info(f'done registering image channels')
+        #new_indir = sub_outdir        
+        #sub_outdir = f'{outdir}/regchannels'        
+        #process_stage_allimages(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
+        #logging.info(f'done registering image channels')
 
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/bleedthrough'        
-        process_stage_allimages(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
-        logging.info(f'done applying bleedthrough profiles.')
+        #new_indir = sub_outdir        
+        #sub_outdir = f'{outdir}/bleedthrough'        
+        #process_stage_allimages(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
+        #logging.info(f'done applying bleedthrough profiles.')
   
         # keep this new_indir for all registration steps. 
-        logging.info(f'registering images within and across cycles...')
-        logging.info(f'registering all geneseq')
-        new_indir = sub_outdir        
-        sub_outdir = f'{outdir}/regcycle'        
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
-        logging.info(f'done regcycle-geneseq.')
+        #logging.info(f'registering images within and across cycles...')
+        #logging.info(f'registering all geneseq')
+        #new_indir = sub_outdir        
+        #sub_outdir = f'{outdir}/regcycle'        
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
+        #logging.info(f'done regcycle-geneseq.')
 
         # keep this new_indir and outdir for all registration steps.                 
-        logging.info(f'registering hyb to geneseq[0]')
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-hyb', cp=cp)
-        logging.info(f'done regcycle-hyb')
+        #logging.info(f'registering hyb to geneseq[0]')
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-hyb', cp=cp)
+        #logging.info(f'done regcycle-hyb')
 
         # keep this new_indir and outdir for all registration steps.      
-        logging.info(f'registering bcseq[0] to geneseq[0]')
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
+        #logging.info(f'registering bcseq[0] to geneseq[0]')
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
 
         # keep this new_indir and outdir for all registration steps.         
-        logging.info(f'registering all bcseq to bcseq[0]')
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
-        logging.info(f'done registering images.')
+        #logging.info(f'registering all bcseq to bcseq[0]')
+        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
+        #logging.info(f'done registering images.')
       
         # keep this new_indir for all basecall steps. 
-        new_indir = sub_outdir
-        sub_outdir = f'{outdir}/basecall'
+        #new_indir = sub_outdir
+        #sub_outdir = f'{outdir}/basecall'
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
         #logging.info(f'done basecall-geneseq.')
 
-        process_stage_tilelist_map(new_indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
+        #process_stage_tilelist_map(new_indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         #logging.info(f'done basecall-geneseq.')
 
 
@@ -186,9 +186,9 @@ if __name__ == '__main__':
     
     outdir = os.path.abspath('./')
     if args.outdir is not None:
-        outdir = os.path.expanduser( os.path.abspath(args.outdir) )
+        outdir = os.path.expanduser( os.path.abspath( args.outdir ) )
     os.makedirs(outdir, exist_ok=True)
-    logging.debug(f'outdir={indir}')
+    logging.debug(f'outdir={outdir}')
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
