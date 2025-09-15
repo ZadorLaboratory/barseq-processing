@@ -47,20 +47,20 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #sub_outdir = f'{outdir}/denoised'
         logging.info(f'denoising. indir={bse.inputdir} outdir ={outdir}')
         
-        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
-        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
-        process_stage_allfiles_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)
-        
-        
-        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-geneseq', cp=cp)
-        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-hyb', cp=cp)
-        #process_stage_allimages(bse.expdir, sub_outdir, bse, stage='denoise-bcseq', cp=cp)        
+        #process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
+        #process_stage_file_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
+        #process_stage_file_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)       
+        logging.info(f"denoising. stage='denoise-geneseq'") 
+        process_stage_cycle_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
+        logging.info(f"denoising. stage='denoise-hyb'")
+        process_stage_cycle_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
+        logging.info(f"denoising. stage='denoise-bcseq'")
+        process_stage_cycle_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)        
         logging.info(f'done denoising.')
         
-        #new_indir = sub_outdir        
-        #sub_outdir = f'{outdir}/background'
-        #process_stage_allimages(new_indir, sub_outdir, bse, stage='background', cp=cp)
-        #logging.info(f'done background.')
+        logging.info(f"background. stage='background'")       
+        process_stage_cycle_map(indir, outdir, bse, stage='background', cp=cp )
+        logging.info(f'done background.')
         
         #new_indir = sub_outdir        
         #sub_outdir = f'{outdir}/regchannels'        

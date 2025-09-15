@@ -32,15 +32,9 @@ from barseq.imageutils import *
 
 #from tensorflow import keras
 from n2v.models import N2V
-
-
 import numpy as np
-#import imageio
-#import imageio.v2 as imageio
-#import tifffile as tf
 
-
-def denoise_n2v( infiles, outdir, stage=None, cp=None):
+def denoise_n2v( infiles, outfiles, stage=None, cp=None):
     '''
     
     def predict(self, img, axes, 
@@ -53,11 +47,8 @@ def denoise_n2v( infiles, outdir, stage=None, cp=None):
         cp = get_default_config()
     if stage is None:
         stage = 'denoise'
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
-        logging.debug(f'made outdir={outdir}')
-    
-    logging.debug(f'handling stage={stage} to outdir={outdir}')
+            
+    logging.info(f'handling stage={stage} n_infiles={len(infiles)} n_outfiles={len(outfiles)}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     basedir = os.path.join(resource_dir, 'n2vmodels')
     image_type = cp.get(stage,'image_type')
@@ -74,7 +65,6 @@ def denoise_n2v( infiles, outdir, stage=None, cp=None):
     logging.debug(f'output_dtype={output_dtype} do_min_subtraction = {do_min_subtraction}')
     logging.debug(f'model basedir={basedir} model_stem={model_stem} model_channels={model_channels}')
     
-    
     models = []
     for probe in model_channels:
         name = model_stem+probe
@@ -84,37 +74,41 @@ def denoise_n2v( infiles, outdir, stage=None, cp=None):
     logging.debug(f'got {len(models)} N2V models for {model_channels}')    
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]}')
 
-    for filename in infiles:
+    for i, filename in enumerate( infiles ):
         (dirpath, base, ext) = split_path(os.path.abspath(filename))
         logging.debug(f'handling {filename}')
         #imgarray = imageio.imread(filename)
-        imgarray = read_image(filename)
-        
+        imgarray = read_image(filename)        
         pred_image = []
-        for i, img in enumerate(imgarray):
+        for j, img in enumerate(imgarray):
             try:
                 logging.debug(f'{base}.{ext}[{i}] shape={img.shape} dtype={img.dtype}')
-                pimg = models[i].predict(img, axes='YX')
-                logging.debug(f'got model output: {base}.{ext}[{i}] shape={pimg.shape} dtype={pimg.dtype}')
+                pimg = models[j].predict(img, axes='YX')
+                logging.debug(f'got model output: {base}.{ext}[{j}] shape={pimg.shape} dtype={pimg.dtype}')
                 pimg = pimg.astype(output_dtype)
                 if do_min_subtraction:
                     pimg = pimg - pimg.min()  
                 logging.debug(f'new dtype={pimg.dtype}')
                 pred_image.append(pimg)
             except:
-                logging.warning(f'ran out of models, appending channel [{i}] unchanged.')
+                logging.warning(f'ran out of models, appending channel [{j}] unchanged.')
                 pred_image.append(img)
                
         logging.debug(f'done predicting {base}.{ext} {len(pred_image)} channels. ')
-        outfile = f'{outdir}/{base}.{ext}'
         newimage = np.dstack(pred_image)
         # produces e.g. shape = ( 3200,3200,5)
         newimage = np.rollaxis(newimage, -1)
         # produces e.g. shape = ( 5, 3200, 3200)        
         #tf.imwrite( outfile, newimage)
+        outfile = outfiles[i]
+        (outdir, file) = os.path.split(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+            logging.debug(f'made outdir={outdir}')
+        
+        logging.info(f'writing to {outfile}')
         write_image( outfile , newimage )
         logging.debug(f'done writing {outfile} ')
-
 
 
 if __name__ == '__main__':
@@ -141,23 +135,24 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
     
-    parser.add_argument('infiles',
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     
@@ -173,15 +168,18 @@ if __name__ == '__main__':
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
       
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
-    os.makedirs(outdir, exist_ok=True)
+    #outdir = os.path.abspath('./')
+    #if args.outdir is not None:
+    #    outdir = os.path.abspath(args.outdir)
     
+    (outdir, file) = os.path.split(args.outfiles[0])
+    logging.debug(f'ensuring outdir {outdir}')
+    os.makedirs(outdir, exist_ok=True)
+        
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     denoise_n2v( infiles=args.infiles, 
-                 outdir=outdir,
+                 outfiles=args.outfiles,
                  stage=args.stage,  
                  cp=cp )
     

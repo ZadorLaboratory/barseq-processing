@@ -8,7 +8,6 @@ import datetime as dt
 
 import cv2
 import numpy as np
-#import tifffile as tf
 
 from configparser import ConfigParser
 
@@ -20,7 +19,7 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def background_cv2( infiles, outdir, stage=None, cp=None):
+def background_cv2( infiles, outfiles, stage=None, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -63,10 +62,6 @@ def background_cv2( infiles, outdir, stage=None, cp=None):
     if stage is None:
         stage = 'background'
             
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
-        logging.debug(f'made outdir={outdir}')
-
     image_types = cp.get('barseq','image_types').split(',')
     radius = int(cp.get('cv2','radius'))
     output_dtype = cp.get( stage,'output_dtype')
@@ -75,12 +70,17 @@ def background_cv2( infiles, outdir, stage=None, cp=None):
     #logging.debug(f'image_types={image_types} channels={image_channels}')
     logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_channels}')
 
-    for infile in infiles:
-        (dirpath, base, ext) = split_path(os.path.abspath(infile))
-        logging.debug(f'handling {infile}')
-        #I=tf.imread(infile)
-        I = read_image( infile)
+    for i, infile in enumerate(infiles):
+        outfile = outfiles[i]
+        (outdir, file) = os.path.split(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+            logging.debug(f'made outdir={outdir}')
+        logging.info(f'Handling {infile} -> {outfile}')        
         
+        (dirpath, base, ext) = split_path(os.path.abspath(infile))
+
+        I = read_image( infile)        
         I=I.copy()
         I_filtered=np.zeros_like(I)
         I_rem=I[num_channels:,:,:]
@@ -94,14 +94,12 @@ def background_cv2( infiles, outdir, stage=None, cp=None):
         I_filtered=uint16m(I_filtered)
 
         logging.debug(f'done processing {base}.{ext} ')
-        outfile = f'{outdir}/{base}.{ext}'
-        #tf.imwrite(outfile, I_filtered, photometric='minisblack')
+        logging.info(f'writing to {outfile}')
         write_image( outfile, I_filtered )
         logging.debug(f'done writing {outfile}')
+
+
     
-
-
-
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -126,23 +124,24 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
     
-    parser.add_argument('infiles',
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     
@@ -157,16 +156,16 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
+         
+    (outdir, file) = os.path.split(args.outfiles[0])
+    logging.debug(f'ensuring outdir {outdir}')
     os.makedirs(outdir, exist_ok=True)
-    
+        
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     background_cv2( infiles=args.infiles, 
-                    outdir=outdir, 
+                    outfiles=args.outfiles,
+                    stage=args.stage,  
                     cp=cp )
     
-    logging.info(f'done processing output to {outdir}')
+    logging.info(f'done processing output to {outdir}') 
