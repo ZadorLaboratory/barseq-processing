@@ -61,6 +61,10 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f"background. stage='background'")       
         process_stage_cycle_map(indir, outdir, bse, stage='background', cp=cp )
         logging.info(f'done background.')
+
+        logging.info(f"background. stage='background'")       
+        process_stage_cycle_map(indir, outdir, bse, stage='regchannels', cp=cp )
+        logging.info(f'done background.')
         
         #new_indir = sub_outdir        
         #sub_outdir = f'{outdir}/regchannels'        

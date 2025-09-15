@@ -542,41 +542,47 @@ class BarseqExperiment():
 
         output_list = []
         output_elem = None 
-        
+        stagedir = self.cp.get(stage, 'stagedir')
+
         for cs in cycle_list:
             if arity == 'parallel':
-                output_elem = []
-                if (ext is not None) or (label is not None):
-                    for rpath in cs:
+                infile_list = []
+                outfile_list = []
+                for rpath in cs:
+                    infile_list.append(rpath)
+                    if (ext is not None) or (label is not None):
                         (subdir, base, current_ext) =  parse_rpath(rpath)
                         if ext is None:
                             ext = current_ext
                         if label is not None:
-                            out_rpath = os.path.join(subdir, f'{base}.{label}.{ext}')
+                            out_rpath = os.path.join( subdir, f'{base}.{label}.{ext}')
                         else:
-                            out_rpath = os.path.join(subdir, f'{base}.{ext}')
-                        output_elem.append(out_rpath) 
-                else:
-                    output_elem = cs.copy()
+                            out_rpath = os.path.join( subdir, f'{base}.{ext}')
+                        outfile_list.append( out_rpath )
+                    else:
+                        outfile_list.append( rpath )
+                output_list.append( ( infile_list, outfile_list) )        
                     
             elif arity == 'single':
-                (subdir, base, current_ext) = parse_rpath( cs[0] )
+                # Use first input rpath as model for output_rpath
+                # Assume mode output dir (not numbered cycle dir)
+                (subdir, base, current_ext) = parse_rpath( cycle_list[0] )
                 if (ext is not None) or (label is not None):
                     if ext is None:
                         ext = current_ext
                     if label is not None:
-                        output_elem = os.path.join(mode, f'{base}.{label}.{ext}')
+                        output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                     else:
-                        output_elem = os.path.join(mode, f'{base}.{ext}')
+                        output_elem = os.path.join( mode, f'{base}.{ext}')
                 else:
-                    output_elem = os.path.join(mode , f'{base}.{ext}')
-                    
-            logging.debug(f'cycleset output={(cs, output_elem)}')        
-            output_list.append( (cs, [ output_elem ]) )
-        logging.debug(f'made list of {len(output_list)} cycle sets.')     
-        return output_list
-
-
+                    output_elem = os.path.join( mode, f'{base}.{ext}')
+                        
+                logging.debug(f'filelist output={( cs, output_elem)}')        
+                output_list.append( ( cs , [output_elem] )  )
+        logging.debug(f'made list of {len(output_list)} filemaps')     
+        return output_list        
+        
+        
     def get_tileset_map(self, 
                         mode='bcseq', 
                         stage=None, 

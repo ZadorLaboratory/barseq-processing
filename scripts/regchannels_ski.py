@@ -22,7 +22,7 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def regchannels_ski( infiles, outdir, stage=None, cp=None):
+def regchannels_ski( infiles, outfiles, stage=None, cp=None):
     '''
     
     def channel_alignment(I_filtered,fname,config_pth,pth,name,num_c,is_affine,writefile):
@@ -58,11 +58,7 @@ def regchannels_ski( infiles, outdir, stage=None, cp=None):
     if stage is None:
         stage = 'regchannels'
     
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
-        logging.debug(f'made outdir={outdir}')
-
-    logging.info(f'outdir={outdir} stage={stage}')
+    logging.info(f'stage={stage}')
         
     microscope_profile = cp.get('experiment','microscope_profile')
     chshift_file = cp.get(microscope_profile,'channel_shift')
@@ -76,10 +72,16 @@ def regchannels_ski( infiles, outdir, stage=None, cp=None):
     n_channels = len(chshift)
     logging.debug(f'loaded channel shift. len={len(chshift)} ')
 
-    for infile in infiles:
+    for i, infile in enumerate(infiles):
+        outfile = outfiles[i]
+        (outdir, file) = os.path.split(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+            logging.debug(f'made outdir={outdir}')
+        logging.info(f'Handling {infile} -> {outfile}')
+        
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
-        logging.debug(f'handling {infile}')
-        #I=tf.imread(infile)
+                
         I = read_image(infile)
         I=I.copy()
         Ishifted=np.zeros_like(I)
@@ -101,12 +103,11 @@ def regchannels_ski( infiles, outdir, stage=None, cp=None):
         Ishifted=uint16m(Ishifted)
         
         logging.debug(f'done processing {base}.{ext} ')
-        outfile = f'{outdir}/{base}.{ext}'
-        #tf.imwrite(outfile, Ishifted, photometric='minisblack')
+        logging.info(f'writing to {outfile}')
         write_image(outfile, Ishifted)
         logging.debug(f'done writing {outfile}')
-    
-    
+
+
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -131,23 +132,24 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
     
-    parser.add_argument('infiles',
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     
@@ -162,16 +164,15 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
+         
+    (outdir, file) = os.path.split(args.outfiles[0])
+    logging.debug(f'ensuring outdir {outdir}')
     os.makedirs(outdir, exist_ok=True)
-    
+        
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     regchannels_ski( infiles=args.infiles, 
-                    outdir=outdir, 
-                    cp=cp )
-    
-    logging.info(f'done processing output to {outdir}')
+                     outfiles=args.outfiles,
+                     stage=args.stage,  
+                     cp=cp )
+    logging.info(f'done processing output to {outdir}') 
