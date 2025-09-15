@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 #
-#
 import argparse
 import logging
 import os
@@ -20,7 +19,7 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def bleedthrough_np( infiles, outdir, stage=None, cp=None):
+def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
     '''
     image_type = [ geneseq | bcseq | hyb ]
 
@@ -63,11 +62,6 @@ def bleedthrough_np( infiles, outdir, stage=None, cp=None):
     if stage is None:
         stage = 'bleedthrough'
     
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
-        logging.debug(f'made outdir={outdir}')
-
-
     image_types = cp.get('barseq','image_types').split(',')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     microscope_profile = cp.get('experiment','microscope_profile')
@@ -77,11 +71,15 @@ def bleedthrough_np( infiles, outdir, stage=None, cp=None):
     num_channels = len(chprofile)
     logging.debug(f'chprofile_file={chprofile_file} num_channels={num_channels}')
 
-    for infile in infiles:
+    for i, infile in enumerate( infiles ):
+        outfile = outfiles[i]
+        (outdir, file) = os.path.split(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+            logging.debug(f'made outdir={outdir}')
+        logging.info(f'Handling {infile} -> {outfile}')
         (dirpath, base, ext) = split_path(os.path.abspath(infile))
-        logging.debug(f'handling {infile}')
 
-        # I=tf.imread(infile)
         I = read_image(infile)
         I=I.copy()
         Icorrected=np.zeros_like(I)
@@ -92,17 +90,13 @@ def bleedthrough_np( infiles, outdir, stage=None, cp=None):
         I_solved = np.linalg.solve( A, B ) 
         Icorrected=np.reshape( I_solved , 
                                 ( num_channels, Ishifted2.shape[1], Ishifted2.shape[2]),
-                                order='F')
-        
-        #Icorrected=(np.reshape((np.linalg.solve(np.transpose(chprofile),((np.reshape(Ishifted2,(num_channels,-1),order='F'))))),(num_channels,Ishifted2.shape[1],Ishifted2.shape[2]),order='F'))
-        
+                                order='F')       
         Icorrected=uint16m(Icorrected)
         Icorrected=np.append(Icorrected, I_rem, axis=0)
 
         logging.debug(f'done processing {base}.{ext} ')
-        outfile = f'{outdir}/{base}.{ext}'
-        #tf.imwrite(outfile, Icorrected, photometric='minisblack')
-        write_image(outfile, Icorrected )
+        logging.info(f'writing to {outfile}')
+        write_image(outfile, Icorrected)
         logging.debug(f'done writing {outfile}')
 
 
@@ -130,23 +124,24 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
     
-    parser.add_argument('infiles',
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     
@@ -161,16 +156,11 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
-    os.makedirs(outdir, exist_ok=True)
-    
+       
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     bleedthrough_np( infiles=args.infiles, 
-                    outdir=outdir, 
-                    cp=cp )
+                     outfiles=args.outfiles, 
+                     cp=cp )
     
     logging.info(f'done processing output to {outdir}')

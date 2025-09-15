@@ -58,31 +58,23 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_cycle_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)        
         logging.info(f'done denoising.')
         
-        logging.info(f"background. stage='background'")       
+        logging.info(f"removing background. stage='background'")       
         process_stage_cycle_map(indir, outdir, bse, stage='background', cp=cp )
         logging.info(f'done background.')
 
-        logging.info(f"background. stage='background'")       
+        logging.info(f"registering within-image channels. stage='regchannels'")       
         process_stage_cycle_map(indir, outdir, bse, stage='regchannels', cp=cp )
-        logging.info(f'done background.')
-        
-        #new_indir = sub_outdir        
-        #sub_outdir = f'{outdir}/regchannels'        
-        #process_stage_allimages(new_indir, sub_outdir, bse, stage='regchannels', cp=cp)
-        #logging.info(f'done registering image channels')
+        logging.info(f'done registering image channels.')
 
-        #new_indir = sub_outdir        
-        #sub_outdir = f'{outdir}/bleedthrough'        
-        #process_stage_allimages(new_indir, sub_outdir, bse, stage='bleedthrough', cp=cp)
-        #logging.info(f'done applying bleedthrough profiles.')
-  
-        # keep this new_indir for all registration steps. 
-        #logging.info(f'registering images within and across cycles...')
-        #logging.info(f'registering all geneseq')
-        #new_indir = sub_outdir        
-        #sub_outdir = f'{outdir}/regcycle'        
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-geneseq', cp=cp) 
-        #logging.info(f'done regcycle-geneseq.')
+        logging.info(f"correcting bleedthrough. stage='bleedthrough'")       
+        process_stage_cycle_map(indir, outdir, bse, stage='bleedthrough', cp=cp )
+        logging.info(f'done correcting bleedthrough')
+ 
+        logging.info(f'registering images within and across cycles...')
+        
+        logging.info(f'registering all geneseq')
+        process_stage_tilelist_map(indir, outdir, bse, stage='regcycle-geneseq', cp=cp) 
+        logging.info(f'done regcycle-geneseq.')
 
         # keep this new_indir and outdir for all registration steps.                 
         #logging.info(f'registering hyb to geneseq[0]')

@@ -1498,24 +1498,182 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     for mode in modes:
         logging.info(f'handling mode {mode}')
         n_cmds = 0
-        #dirlist = bse.ddict[mode]
-        #tilelist = bse.get_tileset(mode)
+
+        tileset_list = bse.get_tileset_map(mode='geneseq', 
+                                       stage=stagedir, 
+                                       label='spots',
+                                       ext='csv',
+                                       arity='single',
+                                       instage=instage                                       
+                                       )
+        logging.debug(f'tileset_list= {tileset_list}')
         
+            
+        # Define template files, if requested.
+        template_tileset_list = None
+        template_stagedir = None 
+        if template_mode is not None:
+            if template_source == 'input':  
+                template_tileset_list = bse.get_tileset(template_mode, stage=instage)
+                template_stagedir = cp.get(instage)
+            else:
+                template_tileset_list = bse.get_tileset(template_mode, stage=template_source)
+                template_stagedir = cp.get(instage)
+            logging.debug(f'template_tileset_list = {template_tileset_list}')
+                
+        # Handle batches by tile index. Define template if needed.
+        for i, fmap in enumerate( tileset_list):
+            (input_list, output_list) = fmap
+    
+            logging.debug(f'handling mode={mode} tile_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
+            logging.info(f'input = {input_list} output = {output_list}')
+
+            if conda_env == current_env :
+                logging.debug(f'same envs needed, run direct...')
+                cmd = ['python', script_path,
+                           log_arg,
+                           '--config' , runconfig, 
+                            ]
+            else:
+                logging.debug(f'different envs. user conda run...')
+                cmd = ['conda','run',
+                           '-n', conda_env , 
+                           'python', script_path,
+                           log_arg, 
+                           '--config' , runconfig ,                            
+                           ]            
+            cmd.append('--stage')
+            cmd.append(f'{stage}')
+            if len(output_list) > 1:
+                cmd.append( '--outdir ' )
+                cmd.append( f'{outdir}' )
+            elif len(output_list) == 1:
+                cmd.append( '--outfile ')
+                outfile = os.path.join(outdir, stagedir, output_list[0]   )
+                cmd.append( outfile )
+            
+            if template_mode is not None:            
+                cmd.append( f'--template')
+                cmd.append( f'{template_path}/{template_rpath}')            
+            else:
+                logging.debug(f'template_mode={template_mode}, omitting --template')
+
+            for rpath in input_list:
+                infile = os.path.join( indir , rpath )
+                cmd.append( f' {infile} ')
+
+            # Check for ALL output. Any missing re-runs. 
+            output_complete = True 
+            for rpath in output_list:
+                outfile = os.path.join(outdir, stagedir, rpath )
+                output_complete = os.path.exists(outfile) and output_complete
+            if not output_complete:
+                command_list.append(cmd)
+                cmdstr = ' '.join(cmd)            
+                logging.info(f'tileset {i} cmdstr={cmdstr}')
+            else:
+                logging.info(f'tileset {i} output complete. skipping command ')    
+        n_cmds = len(command_list)
+        logging.info(f'created {n_cmds} commands for mode={mode}')
+    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+    else:
+        logging.info(f'All output exits. Skipping.')
+    logging.info(f'done with stage={stage}...')
+
+
+
+
+
+def process_stage_tilelist_map_works_notemplate(indir, outdir, bse, stage='register', cp=None, force=False):
+    '''
+    process any stage that handles a list of tiles, following input-output map. 
+    
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.    
+ 
+    @return None
+
+    handle all images in a related list, with output to parallel folders.
+    Assumes one or more input files to process.
+    Optionally allows one template to process input against.     
+    
+    '''
+    logging.info(f'indir={indir}, outdir={outdir} stage={stage} force={force}')
+    if cp is None:
+        cp = get_default_config()
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+    
+    # general parameters
+    script_base = cp.get(stage, 'script_base')
+    stagedir = cp.get(stage, 'stagedir')
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    modes = cp.get(stage, 'modes').split(',')
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+
+    template_mode = cp.get(stage, 'template_mode')
+    if template_mode == 'None':
+        template_mode = None
+    template_source = cp.get(stage, 'template_source')
+    if template_source == 'None':
+        template_source = None
+    instage = cp.get(stage, 'instage')
+    if instage == 'None':
+        instage = None
+
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+    logging.info(f'handling stage={stage} indir={indir} outdir={outdir} template_mode={template_mode} template_source={template_source} ')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
+
+    # order matters.
+    log_arg = ''
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    command_list = []
+    
+    for mode in modes:
+        logging.info(f'handling mode {mode}')
+        n_cmds = 0
+
         tilelist = bse.get_tileset_map(mode='geneseq', 
                                        stage=stagedir, 
                                        label='spots',
                                        ext='csv',
                                        arity='single',
-                                       
+                                       instage=instage                                       
                                        )
         logging.debug(f'tilelist= {tilelist}')
         
         # Use first cycle as template. 
-        #if template_mode is not None:    
-        #    template_list = bse.get_cycleset(template_mode)[0]
-        #else:
-        #    template_list = bse.get_cycleset(mode)[0]
-        #    logging.debug(f'template_list = {template_list}')
+        if template_mode is not None:    
+            template_list = bse.get_cycleset(template_mode)[0]
+        else:
+            template_list = bse.get_cycleset(mode)[0]
+            logging.debug(f'template_list = {template_list}')
         
         # default template source to input directory. 
         #template_path = indir
@@ -1594,6 +1752,7 @@ def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, fo
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
+
 
 
 def parse_rpath(rpath):
