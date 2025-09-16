@@ -76,31 +76,24 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tilelist_map(indir, outdir, bse, stage='regcycle-geneseq', cp=cp) 
         logging.info(f'done regcycle-geneseq.')
 
-        # keep this new_indir and outdir for all registration steps.                 
-        #logging.info(f'registering hyb to geneseq[0]')
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-hyb', cp=cp)
-        #logging.info(f'done regcycle-hyb')
+        logging.info(f'registering hyb to geneseq[0]')
+        process_stage_tilelist_map(indir, outdir, bse, stage='regcycle-hyb', cp=cp) 
+        logging.info(f'done regcycle-hyb')
 
-        # keep this new_indir and outdir for all registration steps.      
-        #logging.info(f'registering bcseq[0] to geneseq[0]')
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
-
-        # keep this new_indir and outdir for all registration steps.         
-        #logging.info(f'registering all bcseq to bcseq[0]')
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='regcycle-bcseq', cp=cp)
-        #logging.info(f'done registering images.')
+        logging.info(f'registering bcseq[0] to geneseq[0]')
+        process_stage_tilelist_map(indir, outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
+        logging.info(f'done regcycle-bcseq-geneseq')
+        
+        logging.info(f'registering all bcseq to bcseq[0]')
+        process_stage_tilelist_map(indir, outdir, bse, stage='regcycle-bcseq', cp=cp)
+        logging.info(f'done registering images.')
       
-        # keep this new_indir for all basecall steps. 
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/basecall'
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-geneseq', cp=cp) 
-        #logging.info(f'done basecall-geneseq.')
+        logging.info(f'basecall on geneseq.')
+        process_stage_tilelist_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
+        logging.info(f'done basecall-geneseq.')
 
-        #process_stage_tilelist_map(new_indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
-        #logging.info(f'done basecall-geneseq.')
-
-
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-hyb', cp=cp) 
+        #logging.info(f'basecall on hyb.')
+        #process_stage_tilelist_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
         #logging.info(f'done basecall-hyb.')
 
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='basecall-bcseq', cp=cp) 

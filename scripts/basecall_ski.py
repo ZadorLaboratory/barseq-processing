@@ -194,8 +194,6 @@ def quantify_peaks(lroi_x,lroi_y,id_t,sig_t,m,hyb_2):
 
 
 
-    
-
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -220,23 +218,31 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
-   
-    parser.add_argument('infiles',
+
+    parser.add_argument('-t','--template ', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     

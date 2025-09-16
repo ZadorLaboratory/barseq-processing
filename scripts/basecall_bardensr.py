@@ -30,13 +30,16 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def basecall_bardensr( infiles, outfile, stage=None, cp=None):
+def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     '''
     take in infiles of same tile through multiple cycles, 
     create imagestack, 
     load codebook, 
     run bardensr, 
     output evidence tensor dataframe to <outdir>/<mode>/<prefix>.brdnsr.tsv   
+    
+    arity is single. 
+    
     
     '''
     if cp is None:
@@ -45,6 +48,9 @@ def basecall_bardensr( infiles, outfile, stage=None, cp=None):
     if stage is None:
         stage = 'basecall-geneseq'
 
+    # We know arity is single, so we can grab the outfile 
+    outfile = outfiles[0]
+    (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
@@ -104,11 +110,6 @@ def basecall_bardensr( infiles, outfile, stage=None, cp=None):
     #    spots.to_csv(outfile, index=False)   
     #    logging.debug(f'wrote spots to outfile={outfile}') 
 
-    (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
-    (prefix, subdir) = os.path.split(dirpath)
-    subdir = 'geneseq'
-    suboutdir = os.path.join(outdir, subdir)
-    #os.makedirs(suboutdir, exist_ok=True)
 
     img_norm = bd_read_images(infiles, R, C, trim=trim ) / median_max[:, None, None, None]
     et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
@@ -117,6 +118,7 @@ def basecall_bardensr( infiles, outfile, stage=None, cp=None):
     spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
+    
     
 
 if __name__ == '__main__':
@@ -143,29 +145,31 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. outfile base dir if not given.')
-
-    parser.add_argument('-o','--outfile', 
-                    metavar='outfile',
-                    default=None, 
-                    type=str,  
-                    help='outfile. ')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
-   
-    parser.add_argument('infiles',
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
        
     args= parser.parse_args()
     
@@ -180,20 +184,13 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
-    else:
-        (outdir, base, ext ) = split_path( args.outfile )
-    os.makedirs(outdir, exist_ok=True)
-    
+          
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     basecall_bardensr( infiles=args.infiles, 
-                       outfile=args.outfile,
+                       outfiles=args.outfiles,
                        stage=args.stage,  
                        cp=cp )
     
-    logging.info(f'done processing output to {args.outfile}')
+    logging.info(f'done processing output to {args.outfiles[0]}')
 

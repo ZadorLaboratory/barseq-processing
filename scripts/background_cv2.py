@@ -158,8 +158,6 @@ if __name__ == '__main__':
     logging.debug(f'Running with config={args.config}:\n{cdict}')
          
     (outdir, file) = os.path.split(args.outfiles[0])
-    logging.debug(f'ensuring outdir {outdir}')
-    os.makedirs(outdir, exist_ok=True)
         
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 

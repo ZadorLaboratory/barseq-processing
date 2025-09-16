@@ -25,6 +25,6 @@
 
 conda create -n bardensr pip tensorflow pip 
 conda activate bardensr 
-conda install pandas ipython pyarrow
+conda install pandas ipython pyarrow joblib
 pip install --no-build-isolation git+https://github.com/jacksonloper/bardensr.git
 
