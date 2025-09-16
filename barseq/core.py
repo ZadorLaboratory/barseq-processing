@@ -125,7 +125,8 @@ class BarseqExperiment():
         self.stageinfo = {}
         
         (ddict, cdict, pdict) = self.parse_stage_dir()
-        logging.debug(f'ddict = {ddict} cdict={cdict} pdict={pdict}')
+        #logging.debug(f'ddict = {ddict} cdict={cdict} pdict={pdict}')
+        logging.debug(f'ddict len={len(ddict)} cdict len={len(cdict)} pdict len={len(pdict)}')
         
         self.ddict = ddict
         self.cdict = cdict
@@ -198,7 +199,7 @@ class BarseqExperiment():
                     afile = os.path.abspath(f'{parse_dir}/{rfile}')
                     dp, base, ext = split_path(afile)
                     base = base.rsplit('.',1)[0]
-                    logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
+                    #logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
                     m = re.search(file_regex, base)
                     if m is not None:
                         pos = m.group(1)
@@ -206,12 +207,12 @@ class BarseqExperiment():
                         y = m.group(3)
                         x = int(x)
                         y = int(y)
-                        logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
-                        logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
+                        #logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
+                        #logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
                         pos = str(pos).strip()
                         try:    
                             posarray = cycdict[pos] 
-                            logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
+                            #logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
                         
                         except KeyError:
                             logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
@@ -219,7 +220,7 @@ class BarseqExperiment():
                             logging.debug(f'type = {type( cycdict[pos]) }')
                               
                         fname = f'{rfile}'
-                        logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
+                        #logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
                         cycdict[pos][x,y] = fname 
                     else:
                         logging.warning(f'File {afile} fails regex match.')
@@ -231,9 +232,9 @@ class BarseqExperiment():
                 pkeys.sort()
                 for p in pkeys:
                     sm = cycdict[p]
-                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
+                    #logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
                     pnew = sm.to_ndarray()
-                    logging.debug(f"pnew type={type(pnew)} ")
+                    #logging.debug(f"pnew type={type(pnew)} ")
                     cycdict[p] = pnew
         
         if stage is not None:
@@ -792,7 +793,9 @@ class BarseqExperiment():
 
     def __repr__(self):
         s = f'BarseqExperiment: \n'
-        for mode in self.modes:
+        modes = list( self.modes )
+        modes.sort()
+        for mode in modes :
             ncyc = len(self.cdict[mode])
             ntiles = 0
             for cyc in self.pdict[mode]:
@@ -807,6 +810,21 @@ class BarseqExperiment():
                 for p in skeys:
                     (x,y) = cycle[p].shape
                     s += f'     pos={p} tiles={x*y} [{x}x{y}]\n'
+        for stage in self.stageinfo.keys():
+            s += f'\n'
+            s += f'Stage Information:\n'
+            s += f'   [{stage}]\n'
+            (ddcict, cdict, pdict) = self.stageinfo[stage]
+            modes = list( cdict.keys())
+            modes.sort()
+            s += f'     modes={modes}\n'
+            for mode in modes:
+                s += f'     [{mode}]\n'
+                s += f'         n_positions = {len( pdict[mode][0])}\n'
+                s += f'         n_cycles = {len(cdict[mode])}\n'
+
+            
+            
         return s
 
     def _fix_sparse(self, sarray):

@@ -106,6 +106,9 @@ def process_all(indir, outdir=None, expid=None, cp=None):
 
 
         # Run stitching at end, as it is many-to-one
+        logging.info(f'stitch on regcycle hyb images')
+        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
+        logging.info(f'done stitching.')
                 
         #new_indir = sub_outdir
         #sub_outdir = f'{outdir}/stitched'
@@ -114,6 +117,9 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
+
+    logging.debug(f'bse=\n{bse}')
+
 
 
 

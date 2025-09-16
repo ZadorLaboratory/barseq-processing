@@ -138,15 +138,25 @@ class SingleTiffWriter:
 
 
 
-def stitch_ashlar( infiles, outdir, cp=None ):
+def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     
     if cp is None:
         cp = get_default_config()
+    if stage is None:
+        stage = 'stitch'
+
+    # We know arity is single, so we can grab the outfile 
+    outfile = outfiles[0]
+    (outdir, file) = os.path.split(outfile)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir, exist_ok=True)
+        logging.debug(f'made outdir={outdir}')
     
+    # get params
     microscope_profile = cp.get('experiment','microscope_profile')
     pixel_size = float( cp.get(microscope_profile, 'pixel_size') )
     
-    channels = [ c.strip() for c in cp.get('stitch','channels').split(',') ]
+    channels = [ c.strip() for c in cp.get(stage,'channels').split(',') ]
     channels = [ int(c) for c in channels ]
     overlap = float( cp.get('tile','horizontal_overlap') )
     flip_y = cp.getboolean('ashlar','flip_y')
@@ -167,6 +177,7 @@ def stitch_ashlar( infiles, outdir, cp=None ):
                 overlap=overlap,
                 pixel_size=pixel_size
                )
+
     logging.debug(f'reader: path={fpr.path} pattern={fpr.pattern} overlap={fpr.overlap} pixel_size={fpr.metadata.pixel_size}')
     logging.debug(f'doing axis flip flip_x={flip_x} flip_y={flip_y} ')
     process_axis_flip(fpr, flip_x, flip_y)
@@ -183,20 +194,23 @@ def stitch_ashlar( infiles, outdir, cp=None ):
     logging.debug(f'mosaic shape = {mshape}')
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
     
+    # This is primary outfile, used to determine completion.
     df = pd.DataFrame(edge_aligner.positions)
-    outfile = f'{outdir}/{prefix}.positions.tsv'
     logging.info(f'writing positions to {outfile}')
     df.to_csv(outfile, sep='\t')
 
-    df = pd.DataFrame(edge_aligner.shifts)
-    outfile = f'{outdir}/{prefix}.shifts.tsv'
-    logging.info(f'writing shifts to {outfile}')
-    df.to_csv(outfile, sep='\t')
+    #df = pd.DataFrame(edge_aligner.shifts)
+    #outfile = f'{outdir}/{prefix}.shifts.tsv'
+    #logging.info(f'writing shifts to {outfile}')
+    #df.to_csv(outfile, sep='\t')
     
-    outfile = f'{outdir}/{prefix}.stitched.tif'
-    writer = SingleTiffWriter( mosaic, outfile , verbose=True)
+    (outdir, baselabel, ext) = split_path(outfile)
+    base = baselabel.split('.',1)[0]
+    out_tiff = os.path.join(outdir, f'{base}.stitched.tif')
+    writer = SingleTiffWriter( mosaic, out_tiff , verbose=True)
     writer.run()
-    logging.debug(f'wrote {outfile}(s) ...')
+    logging.debug(f'wrote {out_tiff}(s) ...')
+
 
 
 if __name__ == '__main__':
@@ -223,23 +237,24 @@ if __name__ == '__main__':
                         type=str, 
                         help='config file.')
     
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='outdir. output base dir if not given.')
-
     parser.add_argument('-s','--stage', 
                     metavar='stage',
                     default=None, 
                     type=str, 
                     help='label for this stage config')
     
-    parser.add_argument('infiles',
+    parser.add_argument('-i','--infiles',
                         metavar='infiles',
                         nargs ="+",
                         type=str,
                         help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ') 
        
     args= parser.parse_args()
     
@@ -254,16 +269,11 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
-    os.makedirs(outdir, exist_ok=True)
-    
+         
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     stitch_ashlar( infiles=args.infiles, 
-                   outdir=outdir, 
+                   outfiles=args.outfiles, 
                    cp=cp )
-    
+    (outdir, fname) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')

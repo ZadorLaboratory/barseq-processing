@@ -32,7 +32,7 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def basecall_ski( infiles, outdir, stage=None, cp=None):
+def basecall_ski( infiles, outfiles, stage=None, cp=None):
     '''
         
     take in infiles of same tile through multiple cycles, 
@@ -46,10 +46,15 @@ def basecall_ski( infiles, outdir, stage=None, cp=None):
     if stage is None:
         stage = 'basecall-hyb'
 
+    # We know arity is single, so we can grab the outfile 
+    outfile = outfiles[0]
+    (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
 
+
+    XXXX
     logging.info(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     image_type = cp.get(stage, 'image_type')
@@ -194,6 +199,7 @@ def quantify_peaks(lroi_x,lroi_y,id_t,sig_t,m,hyb_2):
 
 
 
+
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -224,12 +230,12 @@ if __name__ == '__main__':
                     type=str, 
                     help='label for this stage config')
 
-    parser.add_argument('-t','--template ', 
-                    metavar='stage',
-                    default=None, 
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
                     type=str, 
                     help='label for this stage config')
-
     
     parser.add_argument('-i','--infiles',
                         metavar='infiles',
@@ -257,18 +263,13 @@ if __name__ == '__main__':
     cp.read(args.config)
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
-      
-    outdir = os.path.abspath('./')
-    if args.outdir is not None:
-        outdir = os.path.abspath(args.outdir)
-    os.makedirs(outdir, exist_ok=True)
-    
+          
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    basecall_bardensr( infiles=args.infiles, 
-                       outdir=outdir,
+    basecall_ski( infiles=args.infiles, 
+                       outfiles=args.outfiles,
                        stage=args.stage,  
                        cp=cp )
     
-    logging.info(f'done processing output to {outdir}')
+    logging.info(f'done processing output to {args.outfiles[0]}')
 

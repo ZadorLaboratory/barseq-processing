@@ -5,6 +5,7 @@
 # 
 import argparse
 import itertools
+import json
 import logging
 import math
 import os
@@ -28,23 +29,18 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def calc_bardensr_parameters(indir, 
-                             outdir,
-                             outfile, 
+def calc_bardensr_parameters(indir,
+                             outdir, 
+                             outfile,
                              stage='basecall-geneseq',
-                             instage='regcycle',
-                             mode='geneseq',                             
                              cp=None,
                              ):
     '''
     Calculate bardenser experiment-specific image parameters. 
 
-    @arg  indir      experiment input directory (to create BSE tile list). I.e. data dir.
-    @arg  outdir     pipeline run output root (to find stage-specific outputs). I.e. work dir.
+    @arg  indir      Barseq working directory, with stage subdirs. 
     @arg  outfile    parameter file output. [ bardensr-geneseq.params.txt ] ?
     @arg  stage      pipeline stage we are calculating for [basecall-geneseq]
-    @arg  instage    what existing stage should be base of input tree
-    @arg  inmode     what mode is input from
     @arg  cp         experiment configuration file. 
     
     @return
@@ -63,9 +59,11 @@ def calc_bardensr_parameters(indir,
         cp = get_default_config()
     
     outfile = os.path.abspath(outfile)
-    outdir = os.path.abspath(outdir)
+    outfile_dir, fname = os.path.split(outfile)
+    if not os.path.exists(outfile_dir):
+        os.makedirs(outfile_dir, exist_ok=True)
+        logging.debug(f'made outfile_dir={outfile_dir}')    
     
-        
     project_id = cp.get('project','project_id')
     fdrthresh=cp.getfloat(stage, 'fdrthresh')
     trim=cp.getint(stage, 'trim')
@@ -74,16 +72,25 @@ def calc_bardensr_parameters(indir,
     noisefloor_final=cp.getfloat(stage, 'noisefloor_final')
     logging.debug(f'fdrthresh={fdrthresh} trim={trim} cropf={cropf} noisefloor_ini={noisefloor_ini}  noisefloor_final={noisefloor_final} ')    
     
-    logging.info(f'Processing experiment {project_id} directory={indir} to {outfile}')
-    foutdir, base, ext = split_path( os.path.abspath(outfile))
+    logging.info(f'Processing experiment {project_id} indir={indir} outdir={outdir} to {outfile}')
     
-    bse = BarseqExperiment(indir, cp)
+    bse = BarseqExperiment(indir, outdir, cp)
     logging.debug(f'got BarseqExperiment metadata: {bse}')
 
-    alltiles = flatten_nested_lists( bse.get_imageset(mode=mode))
-    prefix = os.path.join(outdir, instage)
-    infiles = [ os.path.join(prefix, rpath) for rpath in alltiles ]
-    logging.debug(f'got set of {len(alltiles)} tiles, E.g. {alltiles[0]}. Choosing sample...')
+    stagedir = cp.get(stage, 'stagedir')
+    instage = cp.get(stage, 'instage')
+    logging.debug(f'instage={instage}')
+    instagedir = cp.get(instage, 'stagedir')
+    logging.debug(f'instagedir={instagedir}')
+    modes = cp.get( stage, 'modes').split(',') 
+    prefix = os.path.join(outdir, stagedir)
+    logging.debug(f'prefix={prefix}')
+    infiles = []
+    for mode in modes: 
+        file_list = bse.get_filelist(mode=mode, stage=instage)
+        for rpath in file_list:
+            infiles.append( os.path.join(outdir, instagedir, rpath)   )
+    logging.debug(f'got set of {len(infiles)} tiles, E.g. {infiles[0]}. Choosing sample...')
 
     # Load codebook to get R,C,J
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
@@ -102,7 +109,7 @@ def calc_bardensr_parameters(indir,
 
     # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
     logging.debug(f'calculating max_per_RC...')
-    max_per_RC=[ bd_read_image(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
+    max_per_RC=[ bd_read_image_single(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
     
     # Expected to be 28 values. channels * cycles. 
     # first max(), then median of those max() per cycle. 
@@ -117,7 +124,7 @@ def calc_bardensr_parameters(indir,
     evidence_tensors=[]
     for file in infiles:
         logging.debug(f'spot_calling.estimate_density_singleshot. file={file} R={R} C={C} trim={trim} noisefloor_ini = {noisefloor_ini}')
-        trimmed = bd_read_image(file, R, C, trim=trim)
+        trimmed = bd_read_image_single(file, R, C, trim=trim)
         img_norm = trimmed / median_max[:, None, None, None]
         et = bardensr.spot_calling.estimate_density_singleshot( img_norm , codeflat, noisefloor_ini )
         err_max.append( et[ :, :, :, pos_unused_codes].max(axis=(0,1,2)))
@@ -132,12 +139,12 @@ def calc_bardensr_parameters(indir,
         dirpath, base, ext = split_path( os.path.abspath(file))
         dirpath, subdir, ext = split_path( os.path.abspath(dirpath))
         logging.debug(f'handling image base={base}')
-        cropped = bd_read_image(file, R, C, cropf=cropf)
+        cropped = bd_read_image_single(file, R, C, cropf=cropf)
         img_norm = cropped / median_max[:, None, None, None]
         et=bardensr.spot_calling.estimate_density_singleshot( img_norm , codeflat, noisefloor_final)
         for thresh1 in np.linspace( thresh-0.1, thresh+0.1, 10):
             spots = bardensr.spot_calling.find_peaks(et, thresh1, use_tqdm_notebook=False)
-            suboutdir = os.path.join( foutdir, 'bdparams', subdir)
+            suboutdir = os.path.join( outfile_dir, 'bdparams', subdir)
             os.makedirs(suboutdir, exist_ok=True)
             logging.debug(f"found {len(spots)} spots in {file}")
             outsub = os.path.join(suboutdir, f'{base}.{thresh1}.spots.csv')
@@ -162,9 +169,12 @@ def calc_bardensr_parameters(indir,
     
     param_outputs['intensity_thresh_refined'] = thresh_refined
     param_outputs['noisefloor_final'] = noisefloor_final
-    logging.info(f"threshold {intensity_thresh_refined} with noise floor {noisefloor_final}")
+    logging.info(f"threshold {thresh_refined} with noise floor {noisefloor_final}")
     logging.info(f"param_outputs= {param_outputs} {len(infiles)} input files. ")
     
+    with open(outfile, 'w' ) as f:
+        json.dump(param_outputs, f)
+    logging.info(f'wrote params to {outfile}')
     return param_outputs
 
    
@@ -198,38 +208,27 @@ if __name__ == '__main__':
                     metavar='stage',
                     default='basecall-geneseq', 
                     type=str, 
-                    help='stage we care calculating for.')
+                    help='stage we care calculating for. input learn')
 
-    parser.add_argument('-i','--instage', 
-                    metavar='instage',
-                    default='regcycle', 
-                    type=str, 
-                    help='stage to use as input.')
-    
-    parser.add_argument('-m','--mode', 
-                    metavar='mode',
-                    default='geneseq', 
-                    type=str, 
-                    help='mode to use as input.')
-    
-    parser.add_argument('-O','--outdir', 
-                    metavar='outdir',
-                    default=None, 
-                    type=str, 
-                    help='processing run output base.')
-
-    parser.add_argument('-o','--outfile', 
-                    metavar='outfile',
-                    default=None, 
-                    type=str, 
-                    help='file to store calculation results')
-    
-    parser.add_argument('indir', 
+    parser.add_argument('-I','--indir', 
                     metavar='indir',
                     default=None, 
                     type=str, 
-                    help='overall data input base, containing [bc|gene]seq, hyb dirs.') 
-       
+                    help='Overall data input dir (with cycle subdirs) ')
+
+    parser.add_argument('-O','--outdir', 
+                    metavar='outdir',
+                    required = True,
+                    default=None, 
+                    type=str, 
+                    help='BARseq working directory (with stage subdirs)')   
+    
+    parser.add_argument('-o','--outfile', 
+                    metavar='outfile',
+                    default='./bardensr_params.txt', 
+                    type=str, 
+                    help='file to store calculation results')
+
     args= parser.parse_args()
     
     if args.debug:
@@ -244,18 +243,19 @@ if __name__ == '__main__':
     cdict = format_config(cp)
     logging.debug(f'Running with config={args.config}:\n{cdict}')
 
-    logging.debug(f'indir={args.indir} outdir={args.outdir} outfile={args.outfile}')
-    
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    param_outputs = calc_bardensr_parameters(args.indir, 
-                             args.outdir,
-                             args.outfile, 
-                             args.stage,
-                             args.instage,
-                             args.mode,                            
-                             cp=cp)
+    indir = os.path.abspath( os.path.expanduser( args.indir))
+    outdir = os.path.abspath( os.path.expanduser( args.outdir))
+    outfile = os.path.abspath( os.path.expanduser( args.outfile))
     
+    logging.info(f'indir={indir}\noutdir={outdir}\noutfile={outfile}\nstage={args.stage}')
+    param_outputs = calc_bardensr_parameters(indir=indir,
+                                             outdir=outdir,  
+                                             outfile=outfile,
+                                             stage=args.stage,  
+                                             cp=cp)
+    print(param_outputs)
     
     logging.info(f'done processing output to {args.outfile}')
  
