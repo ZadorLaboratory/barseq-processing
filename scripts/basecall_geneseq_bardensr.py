@@ -111,7 +111,10 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     #    logging.debug(f'wrote spots to outfile={outfile}') 
 
 
-    img_norm = bd_read_images(infiles, R, C, trim=trim ) / median_max[:, None, None, None]
+    img_norm = bd_read_images(infiles, 
+                              R, 
+                              C, 
+                              trim=trim ) / median_max[:, None, None, None]
     et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
     spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
     spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim

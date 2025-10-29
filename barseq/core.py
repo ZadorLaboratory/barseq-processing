@@ -192,7 +192,7 @@ class BarseqExperiment():
             pdict[mode] = []
             cycfilelist = cdict[mode]
             for i, cycle in enumerate( cycfilelist ):
-                logging.debug(f'creating cycle dict for {mode}[{i}]')
+                #logging.debug(f'creating cycle dict for {mode}[{i}]')
                 cycdict = {}
                 for rfile in cycle:
                     posarray = None
@@ -215,9 +215,9 @@ class BarseqExperiment():
                             #logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
                         
                         except KeyError:
-                            logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
+                            #logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
                             cycdict[pos] = SimpleMatrix()
-                            logging.debug(f'type = {type( cycdict[pos]) }')
+                            #logging.debug(f'type = {type( cycdict[pos]) }')
                               
                         fname = f'{rfile}'
                         #logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
@@ -226,7 +226,7 @@ class BarseqExperiment():
                         logging.warning(f'File {afile} fails regex match.')
                 pdict[mode].append(cycdict)
                 
-            logging.debug(f'fixing sparse matrices...')
+            #logging.debug(f'fixing sparse matrices...')
             for i, cycdict in enumerate( pdict[mode]):
                 pkeys = list(cycdict.keys())
                 pkeys.sort()
@@ -1432,7 +1432,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
 
 
 
-def process_stage_tilelist_map(indir, outdir, bse, stage='register', cp=None, force=False):
+def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, force=False):
     '''
     process any stage that handles a list of tiles, following input-output map. 
     

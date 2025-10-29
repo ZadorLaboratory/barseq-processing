@@ -52,11 +52,10 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_file_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)       
         logging.info(f"denoising. stage='denoise-geneseq'") 
         process_stage_cycle_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
+        
         logging.info(f"denoising. stage='denoise-hyb'")
         process_stage_cycle_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
         logging.info(f"denoising. stage='denoise-bcseq'")
-        process_stage_cycle_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)        
-        logging.info(f'done denoising.')
         
         logging.info(f"removing background. stage='background'")       
         process_stage_cycle_map(indir, outdir, bse, stage='background', cp=cp )
@@ -80,26 +79,13 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tileset_map(indir, outdir, bse, stage='regcycle-hyb', cp=cp) 
         logging.info(f'done regcycle-hyb')
 
-        logging.info(f'registering bcseq[0] to geneseq[0]')
-        process_stage_tileset_map(indir, outdir, bse, stage='regcycle-bcseq-geneseq', cp=cp)
-        logging.info(f'done regcycle-bcseq-geneseq')
-        
-        logging.info(f'registering all bcseq to bcseq[0]')
-        process_stage_tileset_map(indir, outdir, bse, stage='regcycle-bcseq', cp=cp)
-        logging.info(f'done registering images.')
-      
         logging.info(f'basecall on geneseq.')
         process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
-        logging.info(f'basecall on hyb.')
-        process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
-        logging.info(f'done basecall-hyb.')
-
-        #logging.info(f'basecall on bcseq.')
-        #process_stage_tileset_map(indir, outdir, bse, stage='basecall-bcseq', cp=cp) 
-        #logging.info(f'done basecall-bcseq.')
-
+        #logging.info(f'basecall on hyb.')
+        #process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
+        #logging.info(f'done basecall-hyb.')
 
         #sub_outdir = f'{outdir}/segment'
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 
@@ -108,9 +94,9 @@ def process_all(indir, outdir=None, expid=None, cp=None):
 
 
         # Run stitching at end, as it is many-to-one
-        logging.info(f'stitch on regcycle hyb images')
-        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
-        logging.info(f'done stitching.')
+        #logging.info(f'stitch on regcycle hyb images')
+        #process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
+        #logging.info(f'done stitching.')
                 
         #new_indir = sub_outdir
         #sub_outdir = f'{outdir}/stitched'
