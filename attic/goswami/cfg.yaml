@@ -1,0 +1,12 @@
+tasks:
+  cellpose_segmentation:
+    env: "conda:cellpose_v3"
+    argv:
+      - /home/nrg/cellpose_v3_runner.py
+      - "{pth}"
+  denoising_n2v:
+    env: "conda:n2v_tf24_gpu"
+    argv:
+      - /home/nrg/n2v_runner.py
+      - "{pth}"
+      - "{fname}"
