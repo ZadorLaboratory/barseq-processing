@@ -72,7 +72,6 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     num_c = cp.getint( stage, 'num_c')
     trim = cp.getint(stage, 'trim')
     cropf = cp.getfloat(stage, 'cropf')
-
     
     # Parameters that need evaluation
     prominence_str = cp.get( stage,'prominence')
@@ -82,6 +81,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'all_genes_ch={all_genes_ch} thresh={thresh} prominence={prominence}')
        
     # load codebook TSV from resource_dir
+    codebook_file = cp.get(stage, 'codebook_file')
     codebook_channels = cp.get(stage, 'codebook_channels').split(',')
     cfile = os.path.join(resource_dir, codebook_file)
     logging.info(f'loading codebook file: {cfile}')
