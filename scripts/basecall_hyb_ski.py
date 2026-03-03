@@ -35,9 +35,7 @@ from barseq.imageutils import *
 def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     '''
     take in arbitrary list of files, parallel output to outfiles. 
-    
-    
-      
+          
     '''
     if cp is None:
         cp = get_default_config()
@@ -93,7 +91,10 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
             raw = read_image(infile)
             if no_deconv:
                 raw_2 = raw
+                # zero-ing all-genes channel (3)
                 raw_2[all_genes_ch,:,:] = 0
+                # for calling spots. x, y coordinates, channel id (1,2,4), signal intensity
+                # all genes channel 3 ignore
                 [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind]=basecall_ski_single(infile, 
                                                                                num_c=num_c, 
                                                                                all_genes_ch=all_genes_ch, 

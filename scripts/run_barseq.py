@@ -100,7 +100,6 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_tileset_map(indir, outdir, bse, stage='basecall-bcseq', cp=cp) 
         #logging.info(f'done basecall-bcseq.')
 
-
         #sub_outdir = f'{outdir}/segment'
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 
         #logging.info(f'done basecall-hyb.')
