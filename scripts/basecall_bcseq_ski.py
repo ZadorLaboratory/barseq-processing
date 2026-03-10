@@ -131,14 +131,6 @@ def basecall_ski( infiles, outfiles, stage=None, cp=None):
           "signal":sig_t_ind},
           outfile)
 
-#    dump({"lroi_x":lroi_x_all,
-#          "lroi_y":lroi_y_all,
-#          "gene_id":id_t_all,
-#          "signal":sig_t_all},
-#          outfile)
-    
-
-
 
 def basecall_ski_single(infile, 
                         num_c,

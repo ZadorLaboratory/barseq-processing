@@ -83,9 +83,9 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
-        #logging.info(f'basecall on hyb.')
-        #process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
-        #logging.info(f'done basecall-hyb.')
+        logging.info(f'basecall on hyb.')
+        process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
+        logging.info(f'done basecall-hyb.')
 
         #sub_outdir = f'{outdir}/segment'
         #process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 

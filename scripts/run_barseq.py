@@ -100,16 +100,17 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_tileset_map(indir, outdir, bse, stage='basecall-bcseq', cp=cp) 
         #logging.info(f'done basecall-bcseq.')
 
-        #sub_outdir = f'{outdir}/segment'
-        #process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 
-        #logging.info(f'done basecall-hyb.')
+        logging.info(f'segment on hyb, and using geneseq')
+        sub_outdir = f'{outdir}/segment'
+        process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
+        logging.info(f'done segment-cellpose.')
         
 
 
         # Run stitching at end, as it is many-to-one
-        logging.info(f'stitch on regcycle hyb images')
-        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
-        logging.info(f'done stitching.')
+        #logging.info(f'stitch on regcycle hyb images')
+        #process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
+        #logging.info(f'done stitching.')
                 
         #new_indir = sub_outdir
         #sub_outdir = f'{outdir}/stitched'

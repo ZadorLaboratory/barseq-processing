@@ -306,10 +306,10 @@ class BarseqExperiment():
 
     def get_tileset(self, mode='bcseq', stage=None):
         '''
-        Get list of (ordered) lists of images for a single tile across cycles for a single mode. 
-        '''
-        ilist = [ ]
-        
+        Get list of (ordered) lists of images for a single tile across cycles for a single mode.
+        If multiple modes are called, the sets span modes. 
+
+        '''       
         if stage is None:
             cdict = self.cdict
         else:
@@ -319,13 +319,24 @@ class BarseqExperiment():
                 (ddict, cdict, pdict) = self.parse_stage_dir( stage )
         
         # use first cycle as template
-        for i in range(0,len(cdict[mode][0])):
-            #logging.debug(f'{i}')
-            flist = []     
-            for cyc in cdict[mode]:
-                flist.append(cyc[i])
-            ilist.append(flist)
-        return ilist
+        # handle multiple modes, or None -> all modes 
+        if mode is None:
+            mode_list = list(cdict.keys())
+        elif type(mode) == list:
+            mode_list = mode
+        else:
+            mode_list = [ mode ]
+
+        logging.debug(f'gathering file list for mode_list={mode_list}')
+        tile_list = [ ]
+        for file_index in range(0, len(cdict[mode_list[0]][0])):
+            file_list = []
+            for mode in mode_list:    
+                for cyc in cdict[mode]:
+                    file_list.append(cyc[file_index])
+                tile_list.append(file_list)
+        return tile_list
+
 
     def get_positionset_map(self, 
                         mode='geneseq', 
@@ -593,12 +604,11 @@ class BarseqExperiment():
                         instage=None
                         ) :
         '''
-        
         @arg mode       Get map for modality, None means all. 
         @arg stage      Output stage name. 
         @arg label      Output extra label before extension. 
         @arg ext        Output file extension. 
-        @arg arity      Arity from input to output. Parallel one-to-one, Single = many-to-one
+        @arg arity      Arity from input to output. parallel one-to-one, single = many-to-one
         @arg instage    Use existing cached stage filemap as input. 
         
         return similar format as get_tileset() except each element is a tuple (input_rpath, output_rpath)
@@ -625,8 +635,11 @@ class BarseqExperiment():
             'geneseq/MAX_Pos1_000_001.spots.csv' 
           )
         ]        
-
         '''
+        if mode is None:
+            mode_list = list(self.cdict.keys())
+            mode_list.sort()
+            mode = mode_list
         tileset_list = self.get_tileset(mode=mode, stage=instage)
         
         output_list = []
@@ -649,19 +662,28 @@ class BarseqExperiment():
                     output_elem = ts.copy()
                     
             elif arity == 'single':
+                # with multi-mode input, raises question of what mode outputs should be. 
+                # use whatever the first input mode is. 
                 (subdir, base, current_ext) = parse_rpath( ts[0] )
+
+                if type(mode) == list:
+                    out_mode = mode[0]
+                else:
+                    out_mode = mode
+                
                 if (ext is not None) or (label is not None):
                     if ext is None:
                         ext = current_ext
                     if label is not None:
-                        output_elem = os.path.join(mode, f'{base}.{label}.{ext}')
+                        output_elem = os.path.join(out_mode, f'{base}.{label}.{ext}')
                     else:
-                        output_elem = os.path.join(mode, f'{base}.{ext}')
+                        output_elem = os.path.join(out_mode, f'{base}.{ext}')
                 else:
-                    output_elem = os.path.join(mode , f'{base}.{ext}')
+                    output_elem = os.path.join(out_mode , f'{base}.{ext}')
                 output_elem = [output_elem]
             logging.debug(f'tileset output={(ts, output_elem)}')        
             output_list.append( (ts, output_elem) )
+
         logging.debug(f'made list of {len(output_list)} tilesets.')     
         return output_list
 
@@ -1462,6 +1484,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
     modes = cp.get(stage, 'modes').split(',')
+    modes = [ x.strip() for x in modes]
     num_cycles = int(cp.get(stage, 'num_cycles'))
     arity = cp.get(stage, 'arity')
 
@@ -1507,115 +1530,117 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
 
     command_list = []
     
-    for mode in modes:
-        logging.info(f'handling mode {mode}')
-        n_cmds = 0
-        tileset_list = bse.get_tileset_map(mode=mode, 
-                                       stage=stage, 
-                                       label=label,
-                                       ext=ext,
-                                       arity=arity, 
-                                       instage=instage
-                                       )
-        
-        logging.debug(f'tileset_list= {tileset_list}')
-        
-        # Define template files, if requested.
-        template_tileset_list = None
-        template_stagedir = None 
-        if template_mode is not None:
-            if template_source == 'input':  
-                template_tileset_list = bse.get_tileset(template_mode, stage=instage)
-                template_stagedir = cp.get(instage, 'stagedir')
-            else:
-                template_tileset_list = bse.get_tileset(template_mode, stage=template_source)
-                template_stagedir = cp.get(template_source, 'stagedir')
-            logging.debug(f'template_stagedir={template_stagedir} template_tileset_list = {template_tileset_list}')
-                
-        # Handle batches by tile index. Define template if needed.
-        for i, fmap in enumerate( tileset_list):
-            (input_list, output_list) = fmap    
-            logging.debug(f'handling mode={mode} tile_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
-            logging.info(f'input = {input_list} output = {output_list}')
-
-            if conda_env == current_env :
-                logging.debug(f'same envs needed, run direct...')
-                cmd = ['python', script_path,
-                           log_arg,
-                           '--config' , runconfig, 
-                            ]
-            else:
-                logging.debug(f'different envs. user conda run...')
-                cmd = ['conda','run',
-                           '-n', conda_env , 
-                           'python', script_path,
-                           log_arg, 
-                           '--config' , runconfig ,                            
-                           ]            
-            cmd.append('--stage')
-            cmd.append(f'{stage}')
+    #for mode in modes:
+    #    logging.info(f'handling mode {mode}')
+    mode = modes
+    logging.info(f'handling mode {mode}')
+    n_cmds = 0
+    tileset_list = bse.get_tileset_map(mode=mode, 
+                                    stage=stage, 
+                                    label=label,
+                                    ext=ext,
+                                    arity=arity, 
+                                    instage=instage
+                                    )
+    
+    logging.debug(f'tileset_list= {tileset_list}')
+    
+    # Define template files, if requested.
+    template_tileset_list = None
+    template_stagedir = None 
+    if template_mode is not None:
+        if template_source == 'input':  
+            template_tileset_list = bse.get_tileset(template_mode, stage=instage)
+            template_stagedir = cp.get(instage, 'stagedir')
+        else:
+            template_tileset_list = bse.get_tileset(template_mode, stage=template_source)
+            template_stagedir = cp.get(template_source, 'stagedir')
+        logging.debug(f'template_stagedir={template_stagedir} template_tileset_list = {template_tileset_list}')
             
-            if template_mode is not None:            
-                cmd.append( f'--template ')
-                if template_source == 'input':
-                    template_file = os.path.join(indir, template_stagedir, template_tileset_list[i][0])
-                else:
-                    template_file = os.path.join(outdir, template_stagedir, template_tileset_list[i][0])
-                logging.debug(f'template_file = {template_file}')
-                cmd.append( template_file )            
+    # Handle batches by tile index. Define template if needed.
+    for i, fmap in enumerate( tileset_list):
+        (input_list, output_list) = fmap    
+        logging.debug(f'handling mode={mode} tile_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
+        logging.info(f'input = {input_list} output = {output_list}')
+
+        if conda_env == current_env :
+            logging.debug(f'same envs needed, run direct...')
+            cmd = ['python', script_path,
+                        log_arg,
+                        '--config' , runconfig, 
+                        ]
+        else:
+            logging.debug(f'different envs. user conda run...')
+            cmd = ['conda','run',
+                        '-n', conda_env , 
+                        'python', script_path,
+                        log_arg, 
+                        '--config' , runconfig ,                            
+                        ]            
+        cmd.append('--stage')
+        cmd.append(f'{stage}')
+        
+        if template_mode is not None:            
+            cmd.append( f'--template ')
+            if template_source == 'input':
+                template_file = os.path.join(indir, template_stagedir, template_tileset_list[i][0])
             else:
-                logging.debug(f'template_mode={template_mode}, omitting --template')
+                template_file = os.path.join(outdir, template_stagedir, template_tileset_list[i][0])
+            logging.debug(f'template_file = {template_file}')
+            cmd.append( template_file )            
+        else:
+            logging.debug(f'template_mode={template_mode}, omitting --template')
 
-            # build full paths and check for output. 
-            # build infiles/outfiles command arguments
-            inlist = []
-            outlist = []
-            if arity == 'parallel':
-                for i, fname in enumerate( output_list):
-                    if i >= num_cycles:
-                        break
-                    outfile = os.path.join(outdir, stagedir, fname)
-                    if not os.path.exists(outfile):
-                        outlist.append( outfile )
-                        rpath = input_list[i]
-                        if instage is None:
-                            infile = os.path.join(indir, rpath)
-                        else:
-                            infile = os.path.join(outdir, instage_dir, rpath)
-                        inlist.append(infile)                        
-                    else:
-                        logging.warning(f'outfile exists, skipping : {outfile}')    
-
-            if arity == 'single':
-                logging.debug(f'arity=single output_list length={len(output_list)}')
-                fname = output_list[0]
+        # build full paths and check for output. 
+        # build infiles/outfiles command arguments
+        inlist = []
+        outlist = []
+        if arity == 'parallel':
+            for i, fname in enumerate( output_list):
+                if i >= num_cycles:
+                    break
                 outfile = os.path.join(outdir, stagedir, fname)
                 if not os.path.exists(outfile):
                     outlist.append( outfile )
-                    for i, rpath in enumerate( input_list):
-                        if i >= num_cycles:
-                            break
-                        if instage is None:
-                            infile = os.path.join(indir, rpath)
-                        else:
-                            infile = os.path.join(outdir, instage_dir, rpath)
-                        inlist.append(infile)                        
+                    rpath = input_list[i]
+                    if instage is None:
+                        infile = os.path.join(indir, rpath)
+                    else:
+                        infile = os.path.join(outdir, instage_dir, rpath)
+                    inlist.append(infile)                        
+                else:
+                    logging.warning(f'outfile exists, skipping : {outfile}')    
 
-            cmd.append( '--infiles ')
-            for fpath in inlist:
-                cmd.append(fpath)
+        if arity == 'single':
+            logging.debug(f'arity=single output_list length={len(output_list)}')
+            fname = output_list[0]
+            outfile = os.path.join(outdir, stagedir, fname)
+            if not os.path.exists(outfile):
+                outlist.append( outfile )
+                for i, rpath in enumerate( input_list):
+                    if i >= num_cycles:
+                        break
+                    if instage is None:
+                        infile = os.path.join(indir, rpath)
+                    else:
+                        infile = os.path.join(outdir, instage_dir, rpath)
+                    inlist.append(infile)                        
 
-            cmd.append( '--outfiles ')    
-            for fpath in outlist:
-                cmd.append(fpath)
+        cmd.append( '--infiles ')
+        for fpath in inlist:
+            cmd.append(fpath)
 
-            if len(outlist) > 0:   
-                scmd = ' '.join(cmd)
-                logging.debug(f'Adding command: {scmd}')
-                command_list.append(cmd)
-                                
-        n_cmds = len(command_list)
-        logging.info(f'created {n_cmds} commands for mode={mode}')
+        cmd.append( '--outfiles ')    
+        for fpath in outlist:
+            cmd.append(fpath)
+
+        if len(outlist) > 0:   
+            scmd = ' '.join(cmd)
+            logging.debug(f'Adding command: {scmd}')
+            command_list.append(cmd)
+                            
+    n_cmds = len(command_list)
+    logging.info(f'created {n_cmds} commands for mode={mode}')
     
     if n_cmds > 0:
         logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    

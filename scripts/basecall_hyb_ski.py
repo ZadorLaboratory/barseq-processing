@@ -13,7 +13,7 @@ import sys
 import datetime as dt
 
 from configparser import ConfigParser
-from joblib import load, dump
+import joblib
 
 import matplotlib.pylab as plt
 import numpy as np
@@ -95,7 +95,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
                 raw_2[all_genes_ch,:,:] = 0
                 # for calling spots. x, y coordinates, channel id (1,2,4), signal intensity
                 # all genes channel 3 ignore
-                [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind]=basecall_ski_single(infile, 
+                [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind]=basecall_hyb_ski_single(infile, 
                                                                                num_c=num_c, 
                                                                                all_genes_ch=all_genes_ch, 
                                                                                raw_2=raw_2, 
@@ -108,17 +108,14 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
             logging.warning('Multiple basecall TBD')
 
     logging.debug(f'dumping results to {outfile}')
-    dump({"lroi_x":lroi_x_ind,
-          "lroi_y":lroi_y_ind,
-          "gene_id":id_t_ind,
-          "signal":sig_t_ind},
-          outfile)
-
-   
+    joblib.dump({"lroi_x":lroi_x_ind,
+                 "lroi_y":lroi_y_ind,
+                 "gene_id":id_t_ind,
+                 "signal":sig_t_ind},
+                  outfile)
 
 
-
-def basecall_ski_single(infile, 
+def basecall_hyb_ski_single(infile, 
                         num_c,
                         all_genes_ch,
                         raw_2,
@@ -203,8 +200,8 @@ def basecall_hyb_all_tiles_orig(pth,cyclename,config_pth,codebook_hyb_name,thres
         id_t_all.append(id_t_ind)
         sig_t_all.append(sig_t_ind)
         print(f'HYB BASECALL COMPLETE FOR FOLDER {hybseq[0].split("/")[-3]}')
-    dump({"lroi_x":lroi_x_all,"lroi_y":lroi_y_all,"gene_id":id_t_all,"signal":sig_t_all},os.path.join(pth,'processed','genehyb'+'.joblib'))
-
+    dump({"lroi_x":lroi_x_all,
+          "lroi_y":lroi_y_all,"gene_id":id_t_all,"signal":sig_t_all},os.path.join(pth,'processed','genehyb'+'.joblib'))
 
 
 def basecall_hyb_one_image_orig(pthw,num_c,all_genes_ch,hyb_2,thresh,prominence):

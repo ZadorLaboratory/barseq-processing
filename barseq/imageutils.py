@@ -18,15 +18,29 @@ import imageio.v3 as iio
 import numpy as np
 
 
-def read_image(infile, channel=None):
+def read_image(infile, channels=None):
+    '''
+    BARseq standard image interface. 
+    Intended to abstract out underlying formats and libraries. 
+    image is numpy.ndarray, where shape = (channel, y|height , x|width )
+    channels is list of np.ndarray indexes, starting at 0. 
+    '''
     np_array = iio.imread(infile)
     #logging.debug(f'read image shape={np_array.shape} from {infile}')
-    if channel is not None:
-        np_array = np_array[channel]
+    if channels is not None:
+        new_array = np.ndarray( ( len(channels), np_array.shape[1], np_array.shape[2] ) ) 
+        for i, channel in enumerate( channels ):
+            new_array[i] = np_array[channel]
+        np_array = new_array
         #logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
     return np_array
 
 def write_image(outfile, np_array):
+    '''
+    BARseq standard image interface. 
+    Intended to abstract out underlying formats and libraries. 
+    image is numpy.ndarray, where shape = (channel, y|height , x|width )    
+    '''
     iio.imwrite( outfile, np_array, photometric='minisblack' )
     logging.debug(f'wrote image shape={np_array.shape} to {outfile}')
  
@@ -82,8 +96,6 @@ def bd_read_images(infiles, R, C, trim=None, cropf=None ):
         logging.debug(f'no mods requests. returning all channels.')
     logging.debug(f'created image stack dimensions={I.shape}')
     return I
-
-
 
 
 def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
