@@ -42,14 +42,13 @@ class BarseqExperiment():
             -- All tiles within a mode, but across cycles, for a tilename (for registration) 
         3. Allow checking for existing output? 
 
-        Nomenclature/conventions:
+        NOMENCLATURE
         
         mode     top-level category of image subsets
         cycle    a mode has one or more cycles, consisting of positions made up of images
         image    a single image file
         tile     a set of images that represent a single FOV across cycles
         position a set of adjacent images across cycles 
-
 
         Assumes path/naming hierarchy:
         
@@ -104,6 +103,10 @@ class BarseqExperiment():
                [ M1C1/P2T1, M1C2/P2T1 ],
                [ M1C1/P2T2, M1C2/P2T2 ]
             ] 
+    
+        CONVENTIONS
+    
+
     '''
     
     def __init__(self, indir, outdir, cp=None):
@@ -134,10 +137,45 @@ class BarseqExperiment():
 
         logging.debug('BarseqExperiment metadata object intialized. ')
 
+    def __repr__(self):
+        s = f'BarseqExperiment: \n'
+        modes = list( self.modes )
+        modes.sort()
+        for mode in modes :
+            ncyc = len(self.cdict[mode])
+            ntiles = 0
+            for cyc in self.pdict[mode]:
+                for p in list( cyc.keys()):
+                    ntiles += len(cyc[p].flatten())          
+            s += f'  mode={mode}\tncycles={ncyc}\tntiles={ntiles}\n'
+            cyclelist = self.pdict[mode]
+            for i, cycle in enumerate( cyclelist):
+                s += f'    cycle[{i}]\n'
+                skeys = list( cycle.keys())
+                skeys.sort()
+                for p in skeys:
+                    (x,y) = cycle[p].shape
+                    s += f'     pos={p} tiles={x*y} [{x}x{y}]\n'
+        for stage in self.stageinfo.keys():
+            s += f'\n'
+            s += f'Stage Information:\n'
+            s += f'   [{stage}]\n'
+            (ddict, cdict, pdict) = self.stageinfo[stage]
+            modes = list( cdict.keys())
+            modes.sort()
+            s += f'    modes={modes}\n'
+            for mode in modes:
+                if ( len( pdict[mode]) > 0 ) or (len( cdict[mode])  > 0 ) :
+                    s += f'     [{mode}]\n'
+                    s += f'         n_positions = {len( pdict[mode][0])}\n'
+                    s += f'         n_cycles = {len(cdict[mode])}\n'
+        return s
+
 
     def parse_stage_dir(self, stage=None):
         '''
         Top-level combined method, handling dirs, cycles, and positions. 
+
         '''
         re_list = []
         pdict = {}
@@ -181,10 +219,11 @@ class BarseqExperiment():
                     dp, base, ext = split_path(f)
                     m = re.search(file_regex, base)
                     if m is not None:
+                        logging.debug(f'file {f} base = {base} did pass regex={file_regex}')
                         rfile = f'{d}/{base}.{ext}'
                         cyclelist.append(rfile)
                     else:
-                        logging.warning(f'file {f} did not pass image regex.')
+                        logging.warning(f'file {f} base = {base} did not pass regex={file_regex}')
                 cdict[mode].append(cyclelist)        
 
         pdict = {}
@@ -198,10 +237,11 @@ class BarseqExperiment():
                     posarray = None
                     afile = os.path.abspath(f'{parse_dir}/{rfile}')
                     dp, base, ext = split_path(afile)
-                    base = base.rsplit('.',1)[0]
+                    #base = base.rsplit('.',1)[0]
                     #logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
                     m = re.search(file_regex, base)
                     if m is not None:
+                        logging.debug(f'base={base} did pass regex={file_regex}')
                         pos = m.group(1)
                         x = m.group(2)
                         y = m.group(3)
@@ -223,7 +263,7 @@ class BarseqExperiment():
                         #logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
                         cycdict[pos][x,y] = fname 
                     else:
-                        logging.warning(f'File {afile} fails regex match.')
+                        logging.warning(f'base={base} did not pass regex={file_regex}')
                 pdict[mode].append(cycdict)
                 
             #logging.debug(f'fixing sparse matrices...')
@@ -381,6 +421,7 @@ class BarseqExperiment():
         ]        
 
         '''
+        logging.debug(f'positionset mode={mode} stage={instage}')
         positionset_list = self.get_positionset(mode=mode, stage=instage)
         
         output_list = []
@@ -391,7 +432,7 @@ class BarseqExperiment():
                 output_elem = []
                 if (ext is not None) or (label is not None):
                     for rpath in ps:
-                        (subdir, base, current_ext) =  parse_rpath(rpath)
+                        (subdir, base, current_label, current_ext) =  parse_rpath(rpath)
                         if ext is None:
                             ext = current_ext
                         if label is not None:
@@ -403,7 +444,7 @@ class BarseqExperiment():
                     output_elem = ps.copy()
                     
             elif arity == 'single':
-                (subdir, base, current_ext) = parse_rpath( ps[0] )
+                (subdir, base, current_label, current_ext) = parse_rpath( ps[0] )
                 if (ext is not None) or (label is not None):
                     if ext is None:
                         ext = current_ext
@@ -414,7 +455,7 @@ class BarseqExperiment():
                 else:
                     output_elem = os.path.join(mode , f'{base}.{ext}')
                     
-            logging.debug(f'tileset output={(ps, output_elem)}')        
+            logging.debug(f'positionset output={(ps, output_elem)}')        
             output_list.append( (ps, [ output_elem ]) )
         logging.debug(f'made list of {len(output_list)} tilesets.')     
         return output_list
@@ -422,9 +463,10 @@ class BarseqExperiment():
                 
     def get_positionset(self, mode=None, stage=None, cycle=None):
         '''  
-        Creates list of lists all tile files in sets.
+        Creates list of lists all tile files grouped by position (slice).
         Each position consists of 1 or more tiles. 
-        '''               
+        '''
+        logging.info(f'mode={mode}, stage={stage} cycle={cycle} ')               
         positionlist = []
         if mode is None:
             modes = self.modes
@@ -436,14 +478,22 @@ class BarseqExperiment():
         else:
             try:
                 (ddict, cdict, pdict) = self.stageinfo[stage]
+                logging.debug(f'positionset got cached stageinfo stage={stage}')
             except KeyError:
+                logging.debug(f'positionset re-parsing stage dir stage={stage}')
                 (ddict, cdict, pdict) = self.parse_stage_dir( stage )
-            
+
+        logging.info(f'positionset: mode={mode} stage={stage} cycle={cycle}')    
         for m in modes:
-            for cyc in self.pdict[m]: 
-                for p in list( cyc.keys()):
+            logging.debug(f'positionset: handling mode={m}')
+            mode_cyc_list = pdict[m]
+            logging.debug(f'positionset: handling mode_cyc_list len={len(mode_cyc_list)} type={type(mode_cyc_list)}') 
+            for position_dict in mode_cyc_list:
+                logging.debug(f'positionset: handling position_dict=\n{position_dict}')
+                for pos_key in list( position_dict.keys() ):
+                    logging.debug(f'handling pos_key={pos_key}')
                     tlist = []
-                    for t in cyc[p].flatten():
+                    for t in position_dict[pos_key].flatten():
                         #t = t.decode('UTF-8')                       
                         t = str(t)
                         tlist.append(t)
@@ -467,7 +517,6 @@ class BarseqExperiment():
         @arg arity      Arity from input to output. Parallel one-to-one, Single = many-to-one
         @arg instage    Use existing cached stage filemap as input. Initial input default. 
         
-
         To remain consistent with tileset handling, output is still a list of tuples, where 
         each element of the tuple is a list. 
         
@@ -482,18 +531,20 @@ class BarseqExperiment():
         ]
                  
         '''
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} ')
         file_list = self.get_filelist(mode=mode, stage=instage)
         #
         # list for input-output tuples
         output_list = []
         stagedir = self.cp.get(stage, 'stagedir')
+        
         if arity == 'parallel':
             infile_list = []
             outfile_list = []
             for rpath in file_list:
                 infile_list.append(rpath)
                 if (ext is not None) or (label is not None):
-                    (subdir, base, current_ext) =  parse_rpath(rpath)
+                    (subdir, base, current_label, current_ext) =  parse_rpath(rpath)
                     if ext is None:
                         ext = current_ext
                     if label is not None:
@@ -508,7 +559,7 @@ class BarseqExperiment():
         elif arity == 'single':
             # Use first input rpath as model for output_rpath
             # Assume mode output dir (not numbered cycle dir)
-            (subdir, base, current_ext) = parse_rpath( file_list[0] )
+            (subdir, base, current_label, current_ext) = parse_rpath( file_list[0] )
             if (ext is not None) or (label is not None):
                 if ext is None:
                     ext = current_ext
@@ -518,13 +569,10 @@ class BarseqExperiment():
                     output_elem = os.path.join( mode, f'{base}.{ext}')
             else:
                 output_elem = os.path.join( mode, f'{base}.{ext}')
-            
             output_list = [ (file_list, [ output_elem] ) ]        
-            logging.debug(f'filelist output={(ts, output_elem)}')        
-            output_list.append( (ts, [ output_elem ])  )
+            logging.debug(f'filelist output={output_list}')        
         logging.debug(f'made list of {len(output_list)} filemaps')     
         return output_list        
-        
 
     def get_cycleset_map(self,                         
                          mode='bcseq', 
@@ -563,7 +611,7 @@ class BarseqExperiment():
                 for rpath in cs:
                     infile_list.append(rpath)
                     if (ext is not None) or (label is not None):
-                        (subdir, base, current_ext) =  parse_rpath(rpath)
+                        (subdir, base, current_label, current_ext) =  parse_rpath(rpath)
                         if ext is None:
                             ext = current_ext
                         if label is not None:
@@ -578,7 +626,7 @@ class BarseqExperiment():
             elif arity == 'single':
                 # Use first input rpath as model for output_rpath
                 # Assume mode output dir (not numbered cycle dir)
-                (subdir, base, current_ext) = parse_rpath( cycle_list[0] )
+                (subdir, base, current_label, current_ext) = parse_rpath( cycle_list[0] )
                 if (ext is not None) or (label is not None):
                     if ext is None:
                         ext = current_ext
@@ -650,7 +698,7 @@ class BarseqExperiment():
                 output_elem = []
                 if (ext is not None) or (label is not None):
                     for rpath in ts:
-                        (subdir, base, current_ext) =  parse_rpath(rpath)
+                        (subdir, base, current_label, current_ext) =  parse_rpath(rpath)
                         if ext is None:
                             ext = current_ext
                         if label is not None:
@@ -664,7 +712,7 @@ class BarseqExperiment():
             elif arity == 'single':
                 # with multi-mode input, raises question of what mode outputs should be. 
                 # use whatever the first input mode is. 
-                (subdir, base, current_ext) = parse_rpath( ts[0] )
+                (subdir, base, current_label, current_ext) = parse_rpath( ts[0] )
 
                 if type(mode) == list:
                     out_mode = mode[0]
@@ -813,41 +861,6 @@ class BarseqExperiment():
                     cycdict[p] = pnew
         return pdict
 
-    def __repr__(self):
-        s = f'BarseqExperiment: \n'
-        modes = list( self.modes )
-        modes.sort()
-        for mode in modes :
-            ncyc = len(self.cdict[mode])
-            ntiles = 0
-            for cyc in self.pdict[mode]:
-                for p in list( cyc.keys()):
-                    ntiles += len(cyc[p].flatten())          
-            s += f'  mode={mode}\tncycles={ncyc}\tntiles={ntiles}\n'
-            cyclelist = self.pdict[mode]
-            for i, cycle in enumerate( cyclelist):
-                s += f'    cycle[{i}]\n'
-                skeys = list( cycle.keys())
-                skeys.sort()
-                for p in skeys:
-                    (x,y) = cycle[p].shape
-                    s += f'     pos={p} tiles={x*y} [{x}x{y}]\n'
-        for stage in self.stageinfo.keys():
-            s += f'\n'
-            s += f'Stage Information:\n'
-            s += f'   [{stage}]\n'
-            (ddcict, cdict, pdict) = self.stageinfo[stage]
-            modes = list( cdict.keys())
-            modes.sort()
-            s += f'     modes={modes}\n'
-            for mode in modes:
-                s += f'     [{mode}]\n'
-                s += f'         n_positions = {len( pdict[mode][0])}\n'
-                s += f'         n_cycles = {len(cdict[mode])}\n'
-
-            
-            
-        return s
 
     def _fix_sparse(self, sarray):
         '''
@@ -1161,7 +1174,8 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
     for mode in modes:
         logging.info(f'handling mode {mode}')
         n_cmds = 0
-        
+
+        logging.info(f'get_positionset_map mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage}')       
         file_map = bse.get_positionset_map(mode=mode, 
                                        stage=stage, 
                                        label=label,
@@ -1169,6 +1183,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                                        arity=arity, 
                                        instage=instage
                                        )
+
         logging.debug(f'file_map= {file_map}')
         
         
@@ -1655,21 +1670,26 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
 
 
 
-
-
-
-
-
 def parse_rpath(rpath):
     '''
-    Assumes relative path with single subdir
-       'geneseq03/MAX_Pos1_003_002.tif'
-       
-    '''
-    (subdir, filename) = rpath.split('/')
-    (base, ext) =  filename.rsplit('.', 1)
-    return (subdir, base, ext)
+    'hyb/MAX_Pos1_003_000.cp_mask_cyto3.tif'    
     
+    subdir = hyb
+    base = MAX_Pos1_003_000
+    label = cp_mask_cyto3
+    ext = tif
+    '''
+    (subdir, filename) = os.path.split(rpath)
+    (base, ext) = os.path.splitext(filename)
+    ext = ext.replace('.','')
+    splitlist = base.split('.')
+    base = splitlist[0]
+    if len(splitlist) > 1:
+        label = '.'.join( splitlist[1:] )
+    else:
+        label = None
+    return(subdir, base, label, ext)
+
 
 def parse_exp_indir(indir, cp=None):
     '''

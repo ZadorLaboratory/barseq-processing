@@ -1,0 +1,31 @@
+import logging
+import os
+import sys
+import datetime as dt
+
+from configparser import ConfigParser
+
+gitpath=os.path.expanduser("~/git/barseq-processing")
+sys.path.append(gitpath)
+
+from barseq.core import *
+from barseq.utils import *
+
+cp = ConfigParser()
+
+
+
+FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+logging.basicConfig(format=FORMAT)
+logging.getLogger().setLevel(logging.DEBUG)
+root_logger = logging.getLogger()
+new_handler = logging.StreamHandler()
+formatter = logging.Formatter(FORMAT)
+new_handler.setFormatter(formatter)
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+root_logger.addHandler(new_handler)
+
+cfile = ''
+# cp.read(cfile)
+

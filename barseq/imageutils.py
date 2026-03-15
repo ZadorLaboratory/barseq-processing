@@ -23,7 +23,9 @@ def read_image(infile, channels=None):
     BARseq standard image interface. 
     Intended to abstract out underlying formats and libraries. 
     image is numpy.ndarray, where shape = (channel, y|height , x|width )
-    channels is list of np.ndarray indexes, starting at 0. 
+    channels is list of np.ndarray *indexes*, starting at 0. 
+
+    Caller is responsible for converting Channel numbers to indexes (i.e. C - 1)
     '''
     np_array = iio.imread(infile)
     #logging.debug(f'read image shape={np_array.shape} from {infile}')

@@ -201,7 +201,9 @@ def basecall_hyb_all_tiles_orig(pth,cyclename,config_pth,codebook_hyb_name,thres
         sig_t_all.append(sig_t_ind)
         print(f'HYB BASECALL COMPLETE FOR FOLDER {hybseq[0].split("/")[-3]}')
     dump({"lroi_x":lroi_x_all,
-          "lroi_y":lroi_y_all,"gene_id":id_t_all,"signal":sig_t_all},os.path.join(pth,'processed','genehyb'+'.joblib'))
+          "lroi_y":lroi_y_all,
+          "gene_id":id_t_all,
+          "signal":sig_t_all},os.path.join(pth,'processed','genehyb'+'.joblib'))
 
 
 def basecall_hyb_one_image_orig(pthw,num_c,all_genes_ch,hyb_2,thresh,prominence):

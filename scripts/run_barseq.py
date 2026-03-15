@@ -46,10 +46,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         # denoise indir, outdir, ddict, cp=None
         #sub_outdir = f'{outdir}/denoised'
         logging.info(f'denoising. indir={bse.inputdir} outdir ={outdir}')
-        
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)       
+              
         logging.info(f"denoising. stage='denoise-geneseq'") 
         process_stage_cycle_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
         logging.info(f"denoising. stage='denoise-hyb'")
@@ -105,15 +102,18 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
         logging.info(f'done segment-cellpose.')
         
-
+        logging.info(f'merge segmentation data per position')
+        sub_outdir = f'{outdir}/merge'
+        process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
+        logging.info(f'done merge ')
 
         # Run stitching at end, as it is many-to-one
         #logging.info(f'stitch on regcycle hyb images')
-        #process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
+        #process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
         #logging.info(f'done stitching.')
                 
         #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/stitched'
+        #sub_outdir = f'{outdir}/stitch'
         #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
       
     except Exception as ex:

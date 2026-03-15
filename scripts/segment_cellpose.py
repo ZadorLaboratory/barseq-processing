@@ -21,11 +21,11 @@ import datetime as dt
 from configparser import ConfigParser
 from joblib import load, dump
 
-#import torch
+import torch
 import numpy as np
 
-#from cellpose import models, io
-#from cellpose.io import imread
+from cellpose import models, io
+from cellpose.io import imread
 
 from skimage import color
 from skimage.exposure import rescale_intensity
@@ -50,7 +50,7 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'segment_cellpose'
+        stage = 'segment'
 
     # We know arity is single, so we can grab the outfile 
     outfile = outfiles[0]
@@ -66,6 +66,11 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     image_channels = cp.get(image_type, 'channels').split(',')
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
+    model_name = cp.get(stage, 'model_name')
+    cell_diameter = cp.getint(stage, 'cell_diameter')
+    use_gpu=torch.cuda.is_available()
+    logging.info(f'running with model_name={model_name} cell_diam={cell_diameter} use_gpu={use_gpu}')
+
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
     (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
@@ -73,8 +78,17 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     cellpose_input_image = prepare_cellpose_input(infiles, outfiles )
     logging.debug(f'got cellpose input image shape={cellpose_input_image.shape}')
 
+    model = models.Cellpose( model_type = model_name,
+                             gpu = use_gpu)
+    channels = [[0,1]]
+    logging.info('running cellpose...')
+    masks, flows, styles, diams = model.eval( cellpose_input_image, 
+                                             diameter=cell_diameter, 
+                                             channels=channels )
+    logging.debug(f'got masks. shape={masks.shape}')
+
     logging.info(f'writing to {outfile}')
-    write_image(outfile, cellpose_input_image)
+    write_image(outfile, masks)
     logging.debug(f'done writing {outfile}')    
 
 
@@ -114,98 +128,6 @@ def prepare_cellpose_input(infiles, outfiles):
     write_image(outfile, cp_input_image)
     logging.debug(f'returning intermediate image...')
     return cp_input_image
-
-
-#
-# CODE FROM NOTEBOOK
-#
-def top_level():
-    prepare_cellpose_input(pth,
-                           nuc_ch,
-                           num_chyb,
-                           num_cgene,
-                           tilesize)
-    run_diff_env_scripts("cellpose_segmentation", 
-                         config_file, 
-                         pth=pth, 
-                         diameter=diameter, 
-                         outname=outname, 
-                         model_name=model_name)
-    import_cellpose_all_tiles(pth,dilation_radius,outname)
-
-# model_name pth dia_est in_name out_name
-
-def prepare_cellpose_input_ndg(pth,
-                           nuc_ch=5,
-                           num_chyb=5,
-                           num_cgene=4,
-                           tilesize=3200):
-    """
-    Cell segmentation function:
-    1. creates an input image stack for cellpose input per tile with nuclear  
-    information from DAPI (hyb) and gene from rest of the hyb and all geneseqs
-    """
-    [folders,pos,x,y]=get_folders(pth)
-    other_ch=list(range(0,num_chyb))
-    del other_ch[nuc_ch-1]
-    cell_inp=np.zeros([2, tilesize, tilesize])
-    for folder in folders:
-        Ih=tfl.imread(os.path.join(pth,'processed',folder,'aligned','alignedn2vhyb01.tif'), key=range(0,num_chyb,1))
-        Ig=np.zeros([Ih.shape[1],Ih.shape[2]])
-        gene_cycles=sorted(glob.glob(os.path.join(pth,'processed',folder,'aligned','alignedfixedn2vgeneseq*.tif')))
-        for gene_cycle in gene_cycles:
-            Ig=Ig+np.sum(tfl.imread(gene_cycle, key=range(0,num_cgene,1)), axis=0)
-        Inuc=Ih[nuc_ch-1,:,:]
-        Icyto=np.sum(Ih[other_ch,:,:],axis=0)+Ig
-        cell_inp[0,:,:]=uint16m(Icyto)
-        cell_inp[1,:,:]=uint16m(Inuc)
-        tfl.imwrite(os.path.join(pth,'processed',folder,'aligned','cell_inp2.tif'),uint16m(cell_inp),photometric='minisblack')
-
-import subprocess,yaml
-def run_diff_env_scripts(name,config_name, **params):
-    cfg=yaml.safe_load(open(config_name))
-    spec=cfg["tasks"][name]
-    argv=[item.format(**params) for item in spec["argv"]]
-    env=spec["env"].split(":",1)[1]
-    cmd=["conda", "run", "-n", env, "python", *argv]
-    subprocess.run(cmd, check=True)
-
-def get_folders_local(pth):
-    dr=sorted(glob.glob(os.path.join(pth,'processed','MAX*')))
-    folder=[]
-    xp=[]
-    yp=[]
-    pos=[]
-    for i,j in enumerate(dr):
-        folder.append(str(j).split('/')[-1])
-        temp=str(j).split('/')[-1].split('_')
-        pos.append(temp[1])
-        xp.append(int(temp[2])+1)
-        yp.append(int(temp[3])+1)
-    return folder,pos,xp,yp
-
-def cellpose_runner_main():
-    parser=argparse.ArgumentParser()
-    parser.add_argument("pth",help="path to your experiment folder",type=str)
-    parser.add_argument("--model-name",help="Cellpose model name",type=str,default='cyto3')
-    parser.add_argument("--diameter",help="approximate diameter of the cell",type=int, default=40)
-    parser.add_argument("--outname",help="output file name",type=str,default='cell_mask_cyto3.tif')
-
-    args=parser.parse_args()
-    use_gpu=torch.cuda.is_available()
-    
-    in_name='cell_inp2.tif'
-    out_name='cell_mask_cyto3_redo2.tif'
-    io.logger_setup()
-    model=models.Cellpose(model_type=args.model_name,gpu=use_gpu)
-    [folders,pos,xp,yp]=get_folders_local(args.pth)
-    channels=[[0,1]]
-    for folder in folders:
-        imgs=io.imread(os.path.join(args.pth,'processed',folder,'aligned',in_name))
-        masks,flows,styles,diams=model.eval(imgs,diameter=args.diameter,channels=channels)
-        io.imsave(os.path.join(args.pth,'processed',folder,'aligned',args.outname),masks)
-    print('Cellpose finished')
-    
 
 
 if __name__ == '__main__':
