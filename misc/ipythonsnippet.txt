@@ -13,8 +13,6 @@ from barseq.utils import *
 
 cp = ConfigParser()
 
-
-
 FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
 logging.basicConfig(format=FORMAT)
 logging.getLogger().setLevel(logging.DEBUG)

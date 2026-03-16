@@ -30,9 +30,12 @@ def read_image(infile, channels=None):
     np_array = iio.imread(infile)
     #logging.debug(f'read image shape={np_array.shape} from {infile}')
     if channels is not None:
-        new_array = np.ndarray( ( len(channels), np_array.shape[1], np_array.shape[2] ) ) 
-        for i, channel in enumerate( channels ):
-            new_array[i] = np_array[channel]
+        if len(channels) == 1:
+            new_array = np_array[channels[0]]
+        else:
+            new_array = np.ndarray( ( len(channels), np_array.shape[1], np_array.shape[2] ) ) 
+            for i, channel in enumerate( channels ):
+                new_array[i] = np_array[channel]
         np_array = new_array
         #logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
     return np_array
@@ -84,7 +87,7 @@ def bd_read_images(infiles, R, C, trim=None, cropf=None ):
     I = []
     for infile in infiles:
         for j in range(C):
-            I.append( np.expand_dims( read_image( infile, channel=j), axis=0))
+            I.append( np.expand_dims( read_image( infile, channels=[j]), axis=0))
     I=np.array(I)
     if cropf is not None:
         logging.debug(f'cropping image by: {cropf}')
@@ -109,7 +112,7 @@ def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
     I = []
     for i in range(1, R+1):
         for j in range(C):
-            I.append( np.expand_dims( read_image( infile, channel=j), axis=0))
+            I.append( np.expand_dims( read_image( infile, channels=[j]), axis=0))
     I=np.array(I)
     if cropf is not None:
         logging.debug(f'cropping image by: {cropf}')
