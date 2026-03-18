@@ -89,32 +89,29 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
-        #logging.info(f'basecall on hyb.')
-        #process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
+        logging.info(f'basecall on hyb.')
+        process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
         logging.info(f'done basecall-hyb.')
 
         #logging.info(f'basecall on bcseq.')
         #process_stage_tileset_map(indir, outdir, bse, stage='basecall-bcseq', cp=cp) 
         #logging.info(f'done basecall-bcseq.')
 
-        #logging.info(f'segment on hyb, and using geneseq')
-        #sub_outdir = f'{outdir}/segment'
-        #process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
-        #logging.info(f'done segment-cellpose.')
+        logging.info(f'segment on hyb, and using geneseq')
+        sub_outdir = f'{outdir}/segment'
+        process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
+        logging.info(f'done segment-cellpose.')
         
-        #logging.info(f'merge segmentation data per position')
-        #sub_outdir = f'{outdir}/merge'
-        #process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
-        #logging.info(f'done merge ')
+        logging.info(f'merge segmentation data per position')
+        sub_outdir = f'{outdir}/merge'
+        process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
+        logging.info(f'done merge ')
 
         # Run stitching at end, as it is many-to-one
-        #logging.info(f'stitch on regcycle hyb images')
-        #process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
-        #logging.info(f'done stitching.')
+        logging.info(f'stitch on regcycle hyb images')
+        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
+        logging.info(f'done stitching.')
                 
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/stitch'
-        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
       
     except Exception as ex:
         logging.error(f'got exception {ex}')

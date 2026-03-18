@@ -38,7 +38,7 @@ def merge_segment_ski( infiles, outfiles, stage=None, cp=None ):
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
-    
+       
     # get params
     dilation_radius = cp.getint(stage,'dilation_radius')
 
@@ -63,7 +63,7 @@ def handle_single_tile_segmentation(infile, dilation_radius):
     logging.debug(f'handling infile {infile} dilation_radius = {dilation_radius}')
     mask = read_image( infile )
     mask_dil = expand_labels( mask, dilation_radius)
-    measure = regionprops_table(mask_dil,properties=('label','centroid'))
+    measure = regionprops_table(mask_dil, properties=('label','centroid'))
     cell_num=measure['label']
     cent_x=measure['centroid-0']
     cent_y=measure['centroid-1']
