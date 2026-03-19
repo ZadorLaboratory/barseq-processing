@@ -108,7 +108,7 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
 
 
 # NOTEBOOK CODE
-
+# R is number of cycles. 
 # R = 7 trim = 160 C = 4
 def image_reader_trimmed(infile, trim, R, C):
     """

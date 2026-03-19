@@ -148,7 +148,7 @@ def run_command_shell(cmd):
     logging.debug(f"ran cmd='{cmdstr}' return={cp.returncode} {elapsed.seconds} seconds.")
     
     if cp.stderr is not None:
-        logging.warn(f"got stderr: {cp.stderr}")
+        logging.warning(f"got stderr: {cp.stderr}")
         pass
     if cp.stdout is not None:
         #logging.debug(f"got stdout: {cp.stdout}")
@@ -157,8 +157,8 @@ def run_command_shell(cmd):
         #logging.debug(f'successfully ran {cmdstr}')
         logging.debug(f'got rc={cp.returncode} command= {cmdstr}')
     else:
-        logging.warn(f'got rc={cp.returncode} command= {cmdstr}')
-        raise NonZeroReturnException(f'For cmd {cmdstr}')
+        logging.warning(f'got rc={cp.returncode} command= {cmdstr}')
+        # raise NonZeroReturnException(f'For cmd {cmdstr}')
     return cp
 
 # Multiprocessing  using explicity command running. 
@@ -176,24 +176,30 @@ class JobSet(object):
     def __init__(self, max_processes, jobstack):
         self.max_processes = max_processes
         self.jobstack = jobstack
-        self.threadlist = []
+        self.runners = []
         
         for x in range(0, self.max_processes):
             jr = JobRunner(self.jobstack, label=f'{x}')
-            self.threadlist.append(jr)
-        logging.debug(f'made {len(self.threadlist)} jobrunners. ')
-
+            self.runners.append(jr)
+        logging.debug(f'made {len(self.runners)} jobrunners. ')
 
     def runjobs(self):
-        logging.debug(f'starting {len(self.threadlist)} threads...')
-        for th in self.threadlist:
+        logging.debug(f'starting {len(self.runners)} threads...')
+        for th in self.runners:
             th.start()
             
         logging.debug(f'joining threads...')    
-        for th in self.threadlist:
-            th.join()
-            
+        for th in self.runners:
+            th.join()        
         logging.debug(f'all threads joined. returning...')
+    
+    def all_suceeded(self):
+        all_succeeded = True
+        for jr in self.runners:
+            if not jr.all_succeeded():
+                all_succeeded = False
+        logging.info(f'not all JobRunners completed successfully.')
+        return all_succeeded 
 
 
 class JobStack(object):
@@ -223,6 +229,7 @@ class JobRunner(threading.Thread):
         super(JobRunner, self).__init__()
         self.jobstack = jobstack
         self.label = label
+        self.return_codes = []
         
     def run(self):
         while True:
@@ -231,17 +238,31 @@ class JobRunner(threading.Thread):
                 cmdstr = ' '.join(cmdlist)
                 logging.info(f'[{self.label}] running {cmdstr}')
                 logging.debug(f'[{self.label}] got command: {cmdlist}')
-                run_command_shell(cmdlist)
-                logging.debug(f'[{self.label}] completed command: {cmdlist}')
+                cp = run_command_shell(cmdlist)
+                logging.debug(f'[{self.label}] completed command: {cmdlist} rc={cp.returncode}')
                 logging.info(f'[{self.label}] completed {cmdstr} ')
-            
-            except NonZeroReturnException:
-                logging.warning(f'[{self.label}] NonZeroReturn Exception job: {cmdlist}') 
-            
+                self.return_codes.append( cp.returncode )
             except IndexError:
                 logging.info(f'[{self.label}] Command list empty. Ending...')
                 break
-                
+
+    def all_succeded(self):
+        '''
+        True if all sub-jobs had 0 return codes. 
+        False otherwise.
+        '''
+        all_succeeded = True
+        n_total = len(self.return_codes)
+        n_failed = 0
+        for rc in self.return_codes:
+            if rc != 0:
+                all_succeeded = False
+            else:
+                n_failed += 1
+        n_succeeded = n_total - n_failed
+        logging.info(f'{n_succeeded} / {n_total} jobs succeeded. {n_failed} failed.')
+        return all_succeeded 
+
 def uint16m(x):
     y=np.uint16(np.clip(np.round(x),0,65535))
     return y

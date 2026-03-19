@@ -1097,6 +1097,9 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
+        if not jset.all_suceeded:
+            logging.error('Job failure. stage={stage}')
+            raise NonZeroReturnException(f'stage={stage}')
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
@@ -1276,8 +1279,14 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
+        if not jset.all_suceeded:
+            logging.error('Job failure. stage={stage}')
+            raise NonZeroReturnException(f'stage={stage}')
     else:
-        logging.info(f'All output exits. Skipping.')
+        logging.info(f'All output exist. Skipping.')
+    
+    
+    
     logging.info(f'done with stage={stage}...')
 
 def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=False):
@@ -1471,6 +1480,9 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
+        if not jset.all_suceeded:
+            logging.error('Job failure. stage={stage}')
+            raise NonZeroReturnException(f'stage={stage}')
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
@@ -1672,10 +1684,12 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
+        if not jset.all_suceeded:
+            logging.error('Job failure. stage={stage}')
+            raise NonZeroReturnException(f'stage={stage}')
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
-
 
 
 def parse_rpath(rpath):

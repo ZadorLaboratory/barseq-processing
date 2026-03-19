@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 #
-#
-#
 # take in all position-specific .tform_original.joblib -> global tforms_original.joblib
 # new dict indexed by. position string (i.e. 'Pos1')
 # { 

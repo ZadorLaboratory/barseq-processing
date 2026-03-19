@@ -89,8 +89,12 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
         logging.info(f'done stitching.')
 
+        #logging.info(f'merge stitching data per position')
+        #process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
+        #logging.info(f'done merge-basecall-geneseq ')
+
+
         logging.info(f'segment on hyb, and using geneseq')
-        sub_outdir = f'{outdir}/segment'
         process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
         logging.info(f'done segment-cellpose.')
         
@@ -107,16 +111,12 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #logging.info(f'done basecall-bcseq.')
 
         logging.info(f'merge segmentation data per position')
-        sub_outdir = f'{outdir}/merge'
         process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
         logging.info(f'done merge-segment ')
 
-        logging.info(f'merge basecall data per position')
-        sub_outdir = f'{outdir}/merge'
-        process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
-        logging.info(f'done merge-basecall-geneseq ')
-
-
+        #logging.info(f'merge basecall data per position')
+        #process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
+        #logging.info(f'done merge-basecall-geneseq ')
                 
       
     except Exception as ex:
