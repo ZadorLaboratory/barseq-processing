@@ -216,7 +216,11 @@ class BarseqExperiment():
                 flist.sort()
                 fnlist = []
                 for f in flist:
-                    dp, base, ext = split_path(f)
+                    # we don't use split_path because we want the whole file basename
+                    # including label (if any)
+                    dp, filename = os.path.split(f)
+                    base, ext = os.path.splitext(filename)
+                    ext = ext[1:]
                     m = re.search(file_regex, base)
                     if m is not None:
                         logging.debug(f'file {f} base = {base} did pass regex={file_regex}')
@@ -225,6 +229,7 @@ class BarseqExperiment():
                     else:
                         logging.warning(f'file {f} base = {base} did not pass regex={file_regex}')
                 cdict[mode].append(cyclelist)        
+        #logging.debug(f'cdict = {cdict}')
 
         pdict = {}
         for mode in self.modes:
@@ -236,9 +241,12 @@ class BarseqExperiment():
                 for rfile in cycle:
                     posarray = None
                     afile = os.path.abspath(f'{parse_dir}/{rfile}')
-                    dp, base, ext = split_path(afile)
-                    #base = base.rsplit('.',1)[0]
-                    #logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
+                    logging.debug(f'handling a file: {afile}')
+                    # we don't use split_path because we want the whole file basename
+                    # including label (if any)
+                    dp, filename = os.path.split(afile)
+                    base, ext = os.path.splitext(filename)
+                    ext = ext[1:]
                     m = re.search(file_regex, base)
                     if m is not None:
                         logging.debug(f'base={base} did pass regex={file_regex}')
@@ -787,7 +795,7 @@ class BarseqExperiment():
                 flist.sort()
                 fnlist = []
                 for f in flist:
-                    dp, base, ext = split_path(f)
+                    dp, base, label, ext = split_path(f)
                     rfile = f'{d}/{base}.{ext}'
                     cyclelist.append(rfile)
                 cdict[mode].append(cyclelist)
@@ -816,7 +824,7 @@ class BarseqExperiment():
                 for rfile in cycle:
                     posarray = None
                     afile = os.path.abspath(f'{self.expdir}/{rfile}')
-                    dp, base, ext = split_path(afile)
+                    dp, base, label, ext = split_path(afile)
                     # Take base as string up to first dot. 
                     base = base.split('.', 1)[0]
                     logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')

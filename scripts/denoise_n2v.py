@@ -75,7 +75,7 @@ def denoise_n2v( infiles, outfiles, stage=None, cp=None):
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]}')
 
     for i, filename in enumerate( infiles ):
-        (dirpath, base, ext) = split_path(os.path.abspath(filename))
+        (dirpath, base, label, ext) = split_path(os.path.abspath(filename))
         logging.debug(f'handling {filename}')
         #imgarray = imageio.imread(filename)
         imgarray = read_image(filename)        

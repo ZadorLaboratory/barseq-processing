@@ -84,7 +84,16 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'registering all bcseq to bcseq[0]')
         process_stage_tileset_map(indir, outdir, bse, stage='regcycle-bcseq', cp=cp)
         logging.info(f'done registering images.')
-      
+
+        logging.info(f'stitch on regcycle hyb images')
+        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
+        logging.info(f'done stitching.')
+
+        logging.info(f'segment on hyb, and using geneseq')
+        sub_outdir = f'{outdir}/segment'
+        process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
+        logging.info(f'done segment-cellpose.')
+        
         logging.info(f'basecall on geneseq.')
         process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
@@ -97,20 +106,17 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         #process_stage_tileset_map(indir, outdir, bse, stage='basecall-bcseq', cp=cp) 
         #logging.info(f'done basecall-bcseq.')
 
-        logging.info(f'segment on hyb, and using geneseq')
-        sub_outdir = f'{outdir}/segment'
-        process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
-        logging.info(f'done segment-cellpose.')
-        
         logging.info(f'merge segmentation data per position')
         sub_outdir = f'{outdir}/merge'
         process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
-        logging.info(f'done merge ')
+        logging.info(f'done merge-segment ')
 
-        # Run stitching at end, as it is many-to-one
-        logging.info(f'stitch on regcycle hyb images')
-        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
-        logging.info(f'done stitching.')
+        logging.info(f'merge basecall data per position')
+        sub_outdir = f'{outdir}/merge'
+        process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
+        logging.info(f'done merge-basecall-geneseq ')
+
+
                 
       
     except Exception as ex:

@@ -35,15 +35,32 @@ def pprint_dict(d):
 
 def split_path(filepath):
     '''
-    dir, base, ext = split_path(filepath)
+    File path parsing to handle extensions and a single dot-separated label.
+    E.g. MAX_Pos1_000_000.cp_mask_cyto3.tif
+        base = MAX_Pos1_000_000
+        label = cp_mask_cyto3
+        ext = tif
+
+    dir, base, label, ext = split_path(filepath)
     
     '''
     filepath = os.path.abspath(filepath)
     dirpath = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     base, ext = os.path.splitext(filename)
-    ext = ext[1:] # remove dot
-    return (dirpath, base, ext)
+    flist = base.split('.')
+    label = None
+    if len(flist) == 1:
+        base = flist[0]
+    elif len(flist) > 1:
+        label = flist[-1]
+        base = '.'.join(flist[:-1])
+    if len(ext) > 0:
+        ext = ext[1:] # remove dot
+    else:
+        ext = None
+    return (dirpath, base, label, ext)
+
 
 def flatten_nested_lists(lol):
     '''

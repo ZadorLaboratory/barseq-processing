@@ -78,7 +78,7 @@ def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
             os.makedirs(outdir, exist_ok=True)
             logging.debug(f'made outdir={outdir}')
         logging.info(f'Handling {infile} -> {outfile}')
-        (dirpath, base, ext) = split_path(os.path.abspath(infile))
+        (dirpath, base, label, ext) = split_path(os.path.abspath(infile))
 
         I = read_image(infile)
         I=I.copy()

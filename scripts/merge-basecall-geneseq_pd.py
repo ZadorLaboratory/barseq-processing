@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #
-# merges and dilates segmentation data for all tiles in a positioin.
-#
+# merges and bardensr data for all tiles in a position.
 #
 import argparse
 import logging

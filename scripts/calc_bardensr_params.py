@@ -136,8 +136,8 @@ def calc_bardensr_parameters(indir,
     err_c_all=[]
     total_c_all=[]
     for file in infiles:
-        dirpath, base, ext = split_path( os.path.abspath(file))
-        dirpath, subdir, ext = split_path( os.path.abspath(dirpath))
+        dirpath, base, label, ext = split_path( os.path.abspath(file))
+        dirpath, subdir, label, ext = split_path( os.path.abspath(dirpath))
         logging.debug(f'handling image base={base}')
         cropped = bd_read_image_single(file, R, C, cropf=cropf)
         img_norm = cropped / median_max[:, None, None, None]

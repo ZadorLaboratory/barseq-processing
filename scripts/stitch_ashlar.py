@@ -13,15 +13,23 @@
 #
 #  writing metadata:  https://forum.image.sc/t/python-tifffile-ome-full-metadata-support/56526/10 
 #
+#
+#
+#
+#
+#
 import argparse
+import json
 import logging
 import os
 import re
 import sys
 
+
 import datetime as dt
 
 from configparser import ConfigParser
+from joblib import dump, load
 
 import numpy as np
 
@@ -37,7 +45,6 @@ from barseq.utils import *
 
 # Disable annoying Java logging...
 logging.getLogger('kivy').setLevel(logging.WARNING)
-
 
 def process_axis_flip(reader, flip_x, flip_y):
     metadata = reader.metadata
@@ -115,8 +122,6 @@ class SingleTiffWriter:
             img = uint16m(img)
             images.append(img)
             img = None
-            #(dirpath, base, ext) = split_path(self.outpath)
-            #outfile = os.path.join(dirpath, f'{base}.{channel}.{ext}')
             logging.debug(f'Added channel {channel} to image list.')
 
         fullimage = np.dstack(images)
@@ -137,7 +142,6 @@ class SingleTiffWriter:
         logging.debug(f'done.')
 
 
-
 def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     
     if cp is None:
@@ -145,7 +149,7 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     if stage is None:
         stage = 'stitch'
 
-    # We know arity is single, so we can grab the outfile 
+    # We know arity is single, so we can grab the outfile to check paths.
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
@@ -165,7 +169,7 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     image_pattern=cp.get('barseq','image_pattern')
     image_ext = cp.get('barseq','image_ext')
     #pattern= cp.get('ashlar','pattern')        
-    (dirpath, base, ext) = split_path( infiles[0] )
+    (dirpath, base, label, ext) = split_path( infiles[0] )
     logging.debug(f'image_pattern={image_pattern} base={base} image_ext={image_ext}')
     (pattern, prefix ) = make_ashlar_pattern( image_pattern, base, ext )
     logging.debug(f'generated ashlar pattern={pattern} prefix={prefix}')
@@ -193,23 +197,100 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     mshape = edge_aligner.mosaic_shape
     logging.debug(f'mosaic shape = {mshape}')
     mosaic = reg.Mosaic( edge_aligner, mshape, verbose=True )
-    
-    # This is primary outfile, used to determine completion.
-    df = pd.DataFrame(edge_aligner.positions)
-    logging.info(f'writing positions to {outfile}')
-    df.to_csv(outfile, sep='\t')
 
-    #df = pd.DataFrame(edge_aligner.shifts)
-    #outfile = f'{outdir}/{prefix}.shifts.tsv'
-    #logging.info(f'writing shifts to {outfile}')
-    #df.to_csv(outfile, sep='\t')
-    
-    (outdir, baselabel, ext) = split_path(outfile)
-    base = baselabel.split('.',1)[0]
+    # POS.stitched.tif
+    # Image stitched according to Ashlar results.  
+    (outdir, base, label, ext) = split_path(outfile)
     out_tiff = os.path.join(outdir, f'{base}.stitched.tif')
     writer = SingleTiffWriter( mosaic, out_tiff , verbose=True)
     writer.run()
     logging.debug(f'wrote {out_tiff}(s) ...')
+
+    # POS.positions.tsv
+    # This is intended to be human readable.
+    out_tsv = os.path.join(outdir, f'{base}.positions.tsv' )   
+    df = pd.DataFrame(edge_aligner.positions)
+    logging.info(f'writing positions to {out_tsv}')
+    df.to_csv(out_tsv, sep='\t') 
+
+    # POS.tform_original.joblib
+    # This is primary outfile, used to determine completion.
+    infile_names = [ os.path.split(ifn)[1] for ifn in infiles ] 
+    Tfull={}
+    T={}
+    for i, tilename in enumerate(infile_names):
+        T['position']=[df.iloc[i,1],df.iloc[i,0]]
+        T['grid']=[0,0]
+        Tfull[tilename]=T
+        T={}
+
+    dump(Tfull, outfile )
+    logging.info(f'writing position dict to {outfile}')
+
+    # POS.tform_original.json
+    # This is intended to be human readable.
+    out_json = os.path.join(outdir, f'{base}.tform_original.json' )
+    with open(out_json, 'w') as f:
+        json.dump(Tfull, f, indent=4 )
+ 
+
+
+
+
+# NOTEBOOK CODE
+def merge_ashlar_results(pth, transform_rescale_factor=0.5, num_c=4):
+    """
+    Stitching function:
+    1. ASHLAR based stitching results are encoded in a global dictionary 
+    2. For each position (slice)-position of tiles and their names is saved as a sub-dictionary
+    3. One final dictionary with positions as keys is stored as tforms_original file
+    4. Calls function to rescale transformation
+    """ 
+    [folders,pos,_,_]=get_folders(pth)
+    unique_pos=nsort(np.unique(pos))
+    folder_names=np.array(folders)
+    Texp={}
+    Tfull={}
+    for n_pos in unique_pos:
+        T={}
+        df=pd.read_csv(os.path.join(pth,'MAX_'+n_pos+'.positions.tsv'), sep='\t')
+        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
+        for ids in pos_id:
+            tilename=folder_names[ids]+'.tif'
+            T['position']=[df.iloc[ids,2],df.iloc[ids,1]]
+            T['grid']=[0,0]
+            Tfull[tilename]=T
+            T={}
+        Texp[n_pos]=Tfull
+        Tfull={}
+    dump(Texp,os.path.join(pth,'processed','tforms_original.joblib'))
+    sx,sy=rescale_transformation(pth,folders,unique_pos,pos,transform_rescale_factor,num_c)
+    return sx,sy
+
+def rescale_transformation(pth,folders,unique_pos,pos,rescale_factor=0.5,num_c=4):
+    """
+    Stitching function:
+    1. Reads the original transformation dictionary
+    2. Downscales the coordinates as per rescale_factor and write in as new key-value pairs per tile in the original dictionary
+    3. Writes the modified dictionary
+    
+    """ 
+
+    folder_names=np.array(folders)
+    T=load(os.path.join(pth,'processed','tforms_original.joblib'))
+    sx=[]
+    sy=[]
+    for n_pos in unique_pos:
+        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
+        for ids in pos_id:
+            tilename=folder_names[ids]+'.tif'
+            T[n_pos][tilename]["ref_pos"]=[T[n_pos][tilename]["position"][0]*rescale_factor,T[n_pos][tilename]["position"][1]*rescale_factor]
+            sx.append(T[n_pos][tilename]["ref_pos"][0])
+            sy.append(T[n_pos][tilename]["ref_pos"][1])
+        
+    #pprint.pprint(T)
+    dump(T,os.path.join(pth,'processed','tforms_rescaled'+str(rescale_factor).replace('.','p')+'.joblib'))
+    return sx,sy
 
 
 

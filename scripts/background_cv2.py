@@ -78,7 +78,7 @@ def background_cv2( infiles, outfiles, stage=None, cp=None):
             logging.debug(f'made outdir={outdir}')
         logging.info(f'Handling {infile} -> {outfile}')        
         
-        (dirpath, base, ext) = split_path(os.path.abspath(infile))
+        (dirpath, base, label, ext) = split_path(os.path.abspath(infile))
 
         I = read_image( infile)        
         I=I.copy()

@@ -19,7 +19,6 @@ from configparser import ConfigParser
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
 
-import matplotlib.pylab as plt
 import numpy as np
 
 import bardensr
@@ -28,7 +27,6 @@ import bardensr.plotting
 #from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
-
 
 def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     '''
@@ -59,7 +57,7 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
-    (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
+    (dirpath, base, label, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
     
@@ -106,6 +104,7 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
 
+   
 
 
 # NOTEBOOK CODE
@@ -205,7 +204,6 @@ def bardensr_call(pth,config_pth,num_channels=4,codebook_name='codebookM1all.mat
         print(f"in {folder} found {len(spots)} spots")
 
 
-# NOTEBOOK CODE
 def import_bardensr_results(pth, 
                             fname='bardensrresult.csv',
                             prev_codebook_len=0,
@@ -303,7 +301,7 @@ if __name__ == '__main__':
                     default=None,
                     required=False, 
                     type=str, 
-                    help='label for this stage config')
+                    help='stage to use as template')
     
     parser.add_argument('-i','--infiles',
                         metavar='infiles',

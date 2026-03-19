@@ -57,7 +57,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
-    (dirpath, base, ext) = split_path(os.path.abspath(infiles[0]))
+    (dirpath, base, file_label, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
 

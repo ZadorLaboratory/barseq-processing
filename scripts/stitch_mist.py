@@ -145,7 +145,7 @@ def stitch_fijimist( infiles, outdir, stage=None, cp=None):
     # experiment/run-specific settings.
     # directories/filenames/patterns
     maxproj_regex=cp.get('maxproj','maxproj_regex')
-    (dirpath, base, ext) = split_path(infiles[0])
+    (dirpath, base, label, ext) = split_path(infiles[0])
     filename = f'{base}.{ext}'
     input_dir = dirpath
     m = re.search(maxproj_regex, filename)
