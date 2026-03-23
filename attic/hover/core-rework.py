@@ -970,3 +970,171 @@ def process_stage_tilelist_map_works_notemplate(indir, outdir, bse, stage='regis
     logging.info(f'done with stage={stage}...')
     
     
+
+    def parse_stage_cycles(self, indir, ddict, stage='basecall', cp=None):
+        '''
+        make dict of dicts of modes and cycle directory names to all files within. 
+        
+        .cdict = { <mode> ->  list of cycles -> list of relative filepaths
+        
+        '''
+        if cp is None:
+            cp = get_default_config()
+                
+        cdict = {}
+        for mode in self.modes:
+            cdict[mode] = []  # list of lists
+            for d in ddict[mode]:
+                cyclelist = []
+                cycledir = f'{indir}/{stage}/{d}'
+                logging.debug(f'listing cycle dir {cycledir}')
+                flist = os.listdir(cycledir)
+                flist.sort()
+                fnlist = []
+                for f in flist:
+                    dp, base, label, ext = split_path(f)
+                    rfile = f'{d}/{base}.{ext}'
+                    cyclelist.append(rfile)
+                cdict[mode].append(cyclelist)
+        return cdict    
+
+    def parse_stage_files(self, indir, cdict, stage='basecall', cp=None):
+        '''
+        sets of files, grouped by position 
+        '''
+        if cp is None:
+            cp = get_default_config()
+        image_regex = cp.get('barseq' , 'image_regex')        
+        logging.debug(f'image_regex={image_regex}')
+        
+        
+        pdict = {}
+        # 
+        # pdict[mode] -> cyclist[0] -> posdict['1'] ->  dok_matrix
+        #
+        for mode in self.modes:
+            pdict[mode] = []
+            cycfilelist = cdict[mode]
+            for i, cycle in enumerate( cycfilelist ):
+                logging.debug(f'creating cycle dict for {mode}[{i}]')
+                cycdict = {}
+                for rfile in cycle:
+                    posarray = None
+                    afile = os.path.abspath(f'{self.expdir}/{rfile}')
+                    dp, base, label, ext = split_path(afile)
+                    # Take base as string up to first dot. 
+                    base = base.split('.', 1)[0]
+                    logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
+                    m = re.search(image_regex, base)
+                    if m is not None:
+                        pos = m.group(1)
+                        x = m.group(2)
+                        y = m.group(3)
+                        x = int(x)
+                        y = int(y)
+                        logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
+                        logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
+                        pos = str(pos).strip()
+                        try:    
+                            posarray = cycdict[pos] 
+                            logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
+                        
+                        except KeyError:
+                            logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
+                            #cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
+                            #cycdict[pos] = coo_matrix( (50,50), dtype='S128' )
+                            cycdict[pos] = SimpleMatrix()
+                            logging.debug(f'type = {type( cycdict[pos]) }')
+                                
+                        fname = f'{rfile}'
+                        logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
+                        cycdict[pos][x,y] = fname 
+                    else:
+                        logging.warning(f'File {afile} fails a regex match.')
+                pdict[mode].append(cycdict)
+                
+            logging.debug(f'fixing sparse matrices...')
+            for i, cycdict in enumerate( pdict[mode]):
+                pkeys = list(cycdict.keys())
+                pkeys.sort()
+                for p in pkeys:
+                    sm = cycdict[p]
+                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
+                    #pnew = self._fix_sparse(sarray)
+                    pnew = sm.to_ndarray()
+                    logging.debug(f"pnew type={type(pnew)} ")
+                    cycdict[p] = pnew
+        return pdict
+        
+
+    def parse_stage_indirs(self, indir, stage='basecall', cp=None):
+        '''
+        make a map of a stage output directory, for use
+        in generating stage-by-stage processing commands. 
+        
+        '''    
+        if cp is None:
+            cp = get_default_config()
+        
+        re_list = []
+        pdict = {}
+        ddict = {}
+        modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
+        for mode in modes:
+            p = re.compile( cp.get( 'barseq',f'{mode}_regex'))
+            re_list.append(p)
+            pdict[p] = mode 
+            ddict[mode] = []
+                            
+        stagedir = os.path.join(indir, stage)
+        logging.debug(f'scanning stagedir={stagedir}')
+        dlist = os.listdir(stagedir)
+        dlist.sort()
+        for d in dlist:
+            for p in pdict.keys():
+                if p.search(d) is not None:
+                    k = pdict[p]
+                    ddict[k].append(d)
+        return ddict    
+    
+
+
+def parse_exp_indir(indir, cp=None):
+    '''
+    determine input data structure and files. 
+    return dict of lists of dirs by cycle 
+    
+     geneseq | bcseq | hyb
+    
+    As probe types are added, expand this list. 
+    
+    ddict = { 'geneseq' : 
+                [ { 'geneseq01' : ['MAX_Pos1_002_001.tif', 'MAX_Pos1_000_003.tif'] }'
+    
+    '''    
+    if cp is None:
+        cp = get_default_config()
+        
+    bcp = re.compile( cp.get('barseq','bc_regex'))
+    gsp = re.compile( cp.get('barseq','gene_regex'))
+    hyp = re.compile( cp.get('barseq','hyb_regex'))
+    tif = re.compile( cp.get('barseq','tif_regex'))
+            
+    pdict = { bcp : 'bcseq',
+              gsp : 'geneseq',
+              hyp : 'hyb'            
+             }
+        
+    ddict = { 'bcseq'   : [],
+              'geneseq' : [],
+              'hyb'     : []
+            } 
+    
+    dlist = os.listdir(indir)
+    dlist.sort()
+    for d in dlist:
+        for p in pdict.keys():
+            if p.search(d) is not None:
+                k = pdict[p]
+                ddict[k].append(d)
+    return ddict

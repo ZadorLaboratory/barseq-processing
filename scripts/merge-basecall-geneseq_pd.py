@@ -48,7 +48,7 @@ def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
     for infile in infiles:
         logging.info(f'handling {infile}...')
         try:
-            T=pd.read_csv(infile,header=0)
+            T=pd.read_csv(infile, header=0)
             lroi_x.append(T.m2)
             lroi_y.append(T.m1)
             gene_id.append(T.j)
@@ -200,7 +200,7 @@ if __name__ == '__main__':
          
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    merge_segment_ski( infiles=args.infiles, 
+    merge_basecall_geneseq_pd( infiles=args.infiles, 
                        outfiles=args.outfiles, 
                        cp=cp )
     (outdir, fname) = os.path.split(args.outfiles[0])

@@ -176,11 +176,13 @@ class BarseqExperiment():
         '''
         Top-level combined method, handling dirs, cycles, and positions. 
 
-        '''
+                '''
         re_list = []
         pdict = {}
         ddict = {}
-        modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
+        #modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
+        modes = get_config_list(self.cp, 'experiment', 'modes')
+
         for mode in modes:
             p = re.compile( self.cp.get( 'barseq',f'{mode}_regex'))
             re_list.append(p)
@@ -189,11 +191,11 @@ class BarseqExperiment():
         
         if stage is None:
             parse_dir = self.inputdir
-            file_regex = self.cp.get( 'barseq' , 'file_regex')
+            file_regex = get_config_list( self.cp, 'barseq' , 'file_regex')
         else:
             stagedir = self.cp.get(stage, 'stagedir' )
             parse_dir = os.path.join( self.outputdir, stagedir )
-            file_regex = self.cp.get( stage , 'file_regex')
+            file_regex = get_config_list( self.cp, stage , 'file_regex')
         logging.debug(f'parse directory is {parse_dir}')
         
         dlist = os.listdir(parse_dir)
@@ -215,21 +217,29 @@ class BarseqExperiment():
                 flist = os.listdir(cycledir)
                 flist.sort()
                 fnlist = []
+                n_passed = 0
+                base_passed = ''
+                n_failed = 0
+                base_failed = ''
                 for f in flist:
-                    # we don't use split_path because we want the whole file basename
+                    # we don't use split_path because we want to match against whole file basename
                     # including label (if any)
                     dp, filename = os.path.split(f)
                     base, ext = os.path.splitext(filename)
                     ext = ext[1:]
-                    m = re.search(file_regex, base)
+                    #m = re.search(file_regex, base)
+                    m = search_regex_list_any(file_regex , base )
                     if m is not None:
-                        logging.debug(f'file {f} base = {base} did pass regex={file_regex}')
+                        n_passed += 1
+                        base_passed = base
                         rfile = f'{d}/{base}.{ext}'
                         cyclelist.append(rfile)
                     else:
-                        logging.warning(f'file {f} base = {base} did not pass regex={file_regex}')
+                        n_failed += 1
+                        base_failed = base
+                logging.info(f'dir scan: file_regex={file_regex} n_passed={n_passed} E.g. {base_passed}')
+                logging.debug(f'dir scan: file_regex={file_regex} n_failed={n_failed} E.g. {base_failed}')
                 cdict[mode].append(cyclelist)        
-        #logging.debug(f'cdict = {cdict}')
 
         pdict = {}
         for mode in self.modes:
@@ -238,6 +248,11 @@ class BarseqExperiment():
             for i, cycle in enumerate( cycfilelist ):
                 #logging.debug(f'creating cycle dict for {mode}[{i}]')
                 cycdict = {}
+                n_passed = 0
+                base_passed = ''
+                n_failed = 0
+                base_failed = ''
+                passed_index = 0
                 for rfile in cycle:
                     posarray = None
                     afile = os.path.abspath(f'{parse_dir}/{rfile}')
@@ -247,31 +262,51 @@ class BarseqExperiment():
                     dp, filename = os.path.split(afile)
                     base, ext = os.path.splitext(filename)
                     ext = ext[1:]
-                    m = re.search(file_regex, base)
+                    #m = re.search(file_regex, base)
+                    m = search_regex_list_any(file_regex , base )
                     if m is not None:
-                        logging.debug(f'base={base} did pass regex={file_regex}')
-                        pos = m.group(1)
-                        x = m.group(2)
-                        y = m.group(3)
-                        x = int(x)
-                        y = int(y)
-                        #logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
-                        #logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
-                        pos = str(pos).strip()
-                        try:    
-                            posarray = cycdict[pos] 
-                            #logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
-                        
-                        except KeyError:
-                            #logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
-                            cycdict[pos] = SimpleMatrix()
-                            #logging.debug(f'type = {type( cycdict[pos]) }')
-                              
-                        fname = f'{rfile}'
-                        #logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
-                        cycdict[pos][x,y] = fname 
+                        n_passed += 1
+                        base_passed = base
+                        try:
+                            pos = m.group(1)
+                            x = m.group(2)
+                            y = m.group(3)
+                            x = int(x)
+                            y = int(y)
+                            #logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
+                            #logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
+                            pos = str(pos).strip()
+                            try:    
+                                posarray = cycdict[pos] 
+                                #logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
+                            
+                            except KeyError:
+                                #logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
+                                cycdict[pos] = SimpleMatrix()
+                                #logging.debug(f'type = {type( cycdict[pos]) }')
+                                
+                            fname = f'{rfile}'
+                            #logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
+                            cycdict[pos][x,y] = fname
+
+                        except IndexError:
+                            # Matching name may not have Position information. 
+                            # Put them all into a single 1-D position. 
+                            logging.warning(f'no matching groups for {base}')
+                            fname = f'{rfile}'
+                            try:
+                                cycdict[0][passed_index,0] = fname
+                                logging.debug(f'Setting value in existing matrix. file={fname}')
+                            except KeyError:
+                                logging.debug(f'creating new SimpleMatrix for file={fname}')
+                                cycdict[0] = SimpleMatrix()
+                                cycdict[0][passed_index,0] = fname
+                            passed_index += 1 
                     else:
-                        logging.warning(f'base={base} did not pass regex={file_regex}')
+                        n_failed += 1
+                        base_failed = base
+                logging.info(f'dir scan: file_regex={file_regex} n_passed={n_passed} E.g. {base_passed}')
+                logging.debug(f'dir scan: file_regex={file_regex} n_failed={n_failed} E.g. {base_failed}')    
                 pdict[mode].append(cycdict)
                 
             #logging.debug(f'fixing sparse matrices...')
@@ -288,7 +323,6 @@ class BarseqExperiment():
         if stage is not None:
             logging.debug(f'caching stage info for {stage}')
             self.stageinfo[stage] = (ddict, cdict, pdict)
-        
         return (ddict, cdict, pdict)    
             
 
@@ -309,7 +343,7 @@ class BarseqExperiment():
                 (ddict, cdict, pdict) = self.stageinfo[stage]
             except KeyError:
                 (ddict, cdict, pdict) = self.parse_stage_dir( stage)
-        
+
         for m in modes:
             for cyc in pdict[m]:
                 for p in list( cyc.keys()):
@@ -347,7 +381,7 @@ class BarseqExperiment():
                 (ddict, cdict, pdict) = self.parse_stage_dir( stage )
 
         for mode in modes:
-            for c in self.cdict[mode]:
+            for c in cdict[mode]:
                     clist.append(c)
         return clist 
 
@@ -392,7 +426,8 @@ class BarseqExperiment():
                         label=None, 
                         ext=None, 
                         arity='single',
-                        instage=None
+                        instage=None,
+                        strip_base=False,
                         ) :
         '''
         
@@ -401,7 +436,8 @@ class BarseqExperiment():
         @arg label      Output extra label before extension. 
         @arg ext        Output file extension. 
         @arg arity      Arity from input to output. Parallel one-to-one, Single = many-to-one
-        @arg instage    Use existing cached stage filemap as input. 
+        @arg instage    Use existing cached stage filemap as input.
+        @arg strip_base Remove base filename from output.  
         
         return similar format as get_tileset() except each element is a tuple (input_rpath, output_rpath)
         if arity is 'single' output_rpath is a single item, with leading directory set to <mode>
@@ -457,7 +493,12 @@ class BarseqExperiment():
                     if ext is None:
                         ext = current_ext
                     if label is not None:
-                        output_elem = os.path.join(mode, f'{base}.{label}.{ext}')
+                        if strip_base:
+                            # stripping base only makes sense if there is a label.
+                            # and if arity=single
+                            output_elem = os.path.join( mode, f'{label}.{ext}')
+                        else:
+                            output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                     else:
                         output_elem = os.path.join(mode, f'{base}.{ext}')
                 else:
@@ -515,7 +556,8 @@ class BarseqExperiment():
                          label=None, 
                          ext=None, 
                          arity='parallel',
-                         instage=None):
+                         instage=None,
+                         strip_base=False):
         '''
         
         @arg mode       Get map for modality, None means all. 
@@ -572,7 +614,12 @@ class BarseqExperiment():
                 if ext is None:
                     ext = current_ext
                 if label is not None:
-                    output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
+                    if strip_base:
+                        # stripping base only makes sense if there is a label.
+                        # and if arity=single
+                        output_elem = os.path.join( mode, f'{label}.{ext}')
+                    else:
+                        output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                 else:
                     output_elem = os.path.join( mode, f'{base}.{ext}')
             else:
@@ -588,16 +635,17 @@ class BarseqExperiment():
                          label=None, 
                          ext=None, 
                          arity='parallel',
-                         instage=None):
+                         instage=None,
+                         strip_base=False,
+                          ):
         '''
-        
         @arg mode       Get map for modality, None means all. 
         @arg stage      Output stage name. 
         @arg label      Output extra label before extension. 
         @arg ext        Output file extension. 
         @arg arity      Arity from input to output. Parallel one-to-one, Single = many-to-one
         @arg instage    Use existing cached stage filemap as input. Initial input default. 
-        
+        @arg strip_base Remove base filename from output.        
         
          get ordered list of cycles where elements are flat lists of relative 
          paths of ALL images in that cycle  
@@ -634,12 +682,17 @@ class BarseqExperiment():
             elif arity == 'single':
                 # Use first input rpath as model for output_rpath
                 # Assume mode output dir (not numbered cycle dir)
-                (subdir, base, current_label, current_ext) = parse_rpath( cycle_list[0] )
+                (subdir, base, current_label, current_ext) = parse_rpath( cs[0] )
                 if (ext is not None) or (label is not None):
                     if ext is None:
                         ext = current_ext
                     if label is not None:
-                        output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
+                        if strip_base:
+                            # stripping base only makes sense if there is a label.
+                            # and if arity=single
+                            output_elem = os.path.join( mode, f'{label}.{ext}')
+                        else:
+                            output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                     else:
                         output_elem = os.path.join( mode, f'{base}.{ext}')
                 else:
@@ -657,7 +710,8 @@ class BarseqExperiment():
                         label=None, 
                         ext=None, 
                         arity='parallel',
-                        instage=None
+                        instage=None,
+                        strip_base=False,        
                         ) :
         '''
         @arg mode       Get map for modality, None means all. 
@@ -666,6 +720,7 @@ class BarseqExperiment():
         @arg ext        Output file extension. 
         @arg arity      Arity from input to output. parallel one-to-one, single = many-to-one
         @arg instage    Use existing cached stage filemap as input. 
+        @arg strip_base Remove base filename from output.        
         
         return similar format as get_tileset() except each element is a tuple (input_rpath, output_rpath)
         if arity is 'single' output_rpath is a single item, with leading directory set to <mode>
@@ -743,133 +798,7 @@ class BarseqExperiment():
         logging.debug(f'made list of {len(output_list)} tilesets.')     
         return output_list
 
-    def parse_stage_indirs(self, indir, stage='basecall', cp=None):
-        '''
-        make a map of a stage output directory, for use
-        in generating stage-by-stage processing commands. 
-        
-        '''    
-        if cp is None:
-            cp = get_default_config()
-        
-        re_list = []
-        pdict = {}
-        ddict = {}
-        modes = [ x.strip() for x in cp.get('experiment','modes').split(',') ]
-        for mode in modes:
-            p = re.compile( cp.get( 'barseq',f'{mode}_regex'))
-            re_list.append(p)
-            pdict[p] = mode 
-            ddict[mode] = []
-                           
-        stagedir = os.path.join(indir, stage)
-        logging.debug(f'scanning stagedir={stagedir}')
-        dlist = os.listdir(stagedir)
-        dlist.sort()
-        for d in dlist:
-            for p in pdict.keys():
-                if p.search(d) is not None:
-                    k = pdict[p]
-                    ddict[k].append(d)
-        return ddict    
-    
-
-    def parse_stage_cycles(self, indir, ddict, stage='basecall', cp=None):
-        '''
-        make dict of dicts of modes and cycle directory names to all files within. 
-        
-        .cdict = { <mode> ->  list of cycles -> list of relative filepaths
-        
-        '''
-        if cp is None:
-            cp = get_default_config()
-                
-        cdict = {}
-        for mode in self.modes:
-            cdict[mode] = []  # list of lists
-            for d in ddict[mode]:
-                cyclelist = []
-                cycledir = f'{indir}/{stage}/{d}'
-                logging.debug(f'listing cycle dir {cycledir}')
-                flist = os.listdir(cycledir)
-                flist.sort()
-                fnlist = []
-                for f in flist:
-                    dp, base, label, ext = split_path(f)
-                    rfile = f'{d}/{base}.{ext}'
-                    cyclelist.append(rfile)
-                cdict[mode].append(cyclelist)
-        return cdict    
-
-    def parse_stage_files(self, indir, cdict, stage='basecall', cp=None):
-        '''
-        sets of files, grouped by position 
-        '''
-        if cp is None:
-            cp = get_default_config()
-        image_regex = cp.get('barseq' , 'image_regex')        
-        logging.debug(f'image_regex={image_regex}')
-        
-        
-        pdict = {}
-        # 
-        # pdict[mode] -> cyclist[0] -> posdict['1'] ->  dok_matrix
-        #
-        for mode in self.modes:
-            pdict[mode] = []
-            cycfilelist = cdict[mode]
-            for i, cycle in enumerate( cycfilelist ):
-                logging.debug(f'creating cycle dict for {mode}[{i}]')
-                cycdict = {}
-                for rfile in cycle:
-                    posarray = None
-                    afile = os.path.abspath(f'{self.expdir}/{rfile}')
-                    dp, base, label, ext = split_path(afile)
-                    # Take base as string up to first dot. 
-                    base = base.split('.', 1)[0]
-                    logging.debug(f'dp={dp} base={base} ext={ext} for file={afile}')
-                    m = re.search(image_regex, base)
-                    if m is not None:
-                        pos = m.group(1)
-                        x = m.group(2)
-                        y = m.group(3)
-                        x = int(x)
-                        y = int(y)
-                        logging.debug(f'mode={mode} cycle={i} pos={pos} x={x} y={y} type(pos)={type(pos)}')
-                        logging.debug(f'cycdict.keys() = {list( cycdict.keys() )}')
-                        pos = str(pos).strip()
-                        try:    
-                            posarray = cycdict[pos] 
-                            logging.debug(f'success. got posarray for cycle[{i}] position {pos}')
-                        
-                        except KeyError:
-                            logging.debug(f'KeyError: creating new position dict for {pos} type(pos)={type(pos)}')
-                            #cycdict[pos] = lil_matrix( (50,50), dtype='S128' )
-                            #cycdict[pos] = coo_matrix( (50,50), dtype='S128' )
-                            cycdict[pos] = SimpleMatrix()
-                            logging.debug(f'type = {type( cycdict[pos]) }')
-                              
-                        fname = f'{rfile}'
-                        logging.debug(f"saving posarray[{x},{y}] = '{rfile}'")                            
-                        cycdict[pos][x,y] = fname 
-                    else:
-                        logging.warning(f'File {afile} fails a regex match.')
-                pdict[mode].append(cycdict)
-                
-            logging.debug(f'fixing sparse matrices...')
-            for i, cycdict in enumerate( pdict[mode]):
-                pkeys = list(cycdict.keys())
-                pkeys.sort()
-                for p in pkeys:
-                    sm = cycdict[p]
-                    logging.debug(f"fixing sarray {mode} cycle[{i}] position '{p}' type={type(sm)} ")
-                    #pnew = self._fix_sparse(sarray)
-                    pnew = sm.to_ndarray()
-                    logging.debug(f"pnew type={type(pnew)} ")
-                    cycdict[p] = pnew
-        return pdict
-
-
+   
     def _fix_sparse(self, sarray):
         '''
         remove empty rows and columns. convert to normal ndarray. 
@@ -891,7 +820,41 @@ class BarseqExperiment():
         '''
         return True
 
-        
+
+def search_regex_list_any( regex_list, test_string  ):
+    '''
+    apply all regexes in regex_list to test_string 
+    return first successful match
+    otherwise return None
+    '''
+    re_match = None
+    for regex in regex_list:
+        m = re.search(regex, test_string)
+        if m is not None:
+            return m
+    return re_match
+
+
+def get_config_list(cp, section, option):
+    '''
+    parses comma and/or space-separated values from ConfigParser entry. 
+    should be forgiving, dealing with mixed combinations and uneven
+    whitespace. 
+    
+    '''
+    s = cp.get(section, option)
+    is_list = False
+    slist = []
+    if s.find(',') > -1: is_list = True
+    if s.find(' ') > -1: is_list = True
+    if is_list:
+        logging.debug(f'config option {section} {option} is a list.')
+        s = s.replace(',',' ')
+        slist = s.split()
+    else:
+        slist = [ s ]
+    return slist
+ 
     
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
@@ -1136,6 +1099,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
     modes = cp.get(stage, 'modes').split(',')
     arity = cp.get(stage, 'arity')
     num_cycles = int(cp.get(stage, 'num_cycles'))
+    strip_base = cp.getboolean(stage, 'strip_base')
     
     # Potential None params
     instage_dir = None
@@ -1192,9 +1156,9 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                                        label=label,
                                        ext=ext,
                                        arity=arity, 
-                                       instage=instage
+                                       instage=instage,
+                                       strip_base=strip_base
                                        )
-
         logging.debug(f'file_map= {file_map}')
         
         
@@ -1284,10 +1248,9 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
             raise NonZeroReturnException(f'stage={stage}')
     else:
         logging.info(f'All output exist. Skipping.')
-    
-    
-    
+
     logging.info(f'done with stage={stage}...')
+
 
 def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=False):
     '''
@@ -1320,6 +1283,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
     modes = cp.get(stage, 'modes').split(',')
     arity = cp.get(stage, 'arity')
     num_cycles = int(cp.get(stage, 'num_cycles'))
+    strip_base = cp.getboolean(stage, 'strip_base')
     
     # Potential None params
     instage_dir = None
@@ -1375,28 +1339,11 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
                                        label=label,
                                        ext=ext,
                                        arity=arity, 
-                                       instage=instage
+                                       instage=instage,
+                                       strip_base = strip_base,
                                        )
         logging.debug(f'file_map= {file_map}')
-        
-        # Use first cycle as template. 
-        #if template_mode is not None:    
-        #    template_list = bse.get_cycleset(template_mode)[0]
-        #else:
-        #    template_list = bse.get_cycleset(mode)[0]
-        #    logging.debug(f'template_list = {template_list}')
-        
-        # default template source to input directory. 
-        #template_path = indir
-        #if template_source == 'input':
-        #    logging.debug(f'template_source={template_source}')
-        #    template_path = indir
-        #elif template_source == 'output':
-        #    logging.debug(f'template_source={template_source}')
-        #    template_path = outdir
-        #else:
-        #    logging.warning(f'template_source not specified. defaulting to indir. ')
-        
+              
         for i, fmap in enumerate( file_map):
             (input_list, output_list) = fmap
             logging.debug(f'handling mode={mode} file_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
@@ -1488,7 +1435,6 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
     logging.info(f'done with stage={stage}...')
 
 
-
 def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, force=False):
     '''
     process any stage that handles a list of tiles, following input-output map. 
@@ -1522,6 +1468,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     modes = [ x.strip() for x in modes]
     num_cycles = int(cp.get(stage, 'num_cycles'))
     arity = cp.get(stage, 'arity')
+    strip_base = cp.getboolean(stage, 'strip_base')
 
     # Potential None params
     instage_dir = None
@@ -1575,9 +1522,9 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
                                     label=label,
                                     ext=ext,
                                     arity=arity, 
-                                    instage=instage
-                                    )
-    
+                                    instage=instage,
+                                    strip_base = strip_base
+                                    )    
     logging.debug(f'tileset_list= {tileset_list}')
     
     # Define template files, if requested.
@@ -1711,50 +1658,4 @@ def parse_rpath(rpath):
     else:
         label = None
     return(subdir, base, label, ext)
-
-
-def parse_exp_indir(indir, cp=None):
-    '''
-    determine input data structure and files. 
-    return dict of lists of dirs by cycle 
-    
-     geneseq | bcseq | hyb
-    
-    As probe types are added, expand this list. 
-    
-    ddict = { 'geneseq' : 
-                [ { 'geneseq01' : ['MAX_Pos1_002_001.tif', 'MAX_Pos1_000_003.tif'] }'
-    
-    
-    
-    
-    
-    '''    
-    if cp is None:
-        cp = get_default_config()
-        
-    bcp = re.compile( cp.get('barseq','bc_regex'))
-    gsp = re.compile( cp.get('barseq','gene_regex'))
-    hyp = re.compile( cp.get('barseq','hyb_regex'))
-    tif = re.compile( cp.get('barseq','tif_regex'))
-            
-    pdict = { bcp : 'bcseq',
-              gsp : 'geneseq',
-              hyp : 'hyb'            
-             }
-        
-    ddict = { 'bcseq'   : [],
-              'geneseq' : [],
-              'hyb'     : []
-            } 
-    
-    dlist = os.listdir(indir)
-    dlist.sort()
-    for d in dlist:
-        for p in pdict.keys():
-            if p.search(d) is not None:
-                k = pdict[p]
-                ddict[k].append(d)
-    return ddict
-
 

@@ -229,13 +229,10 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
 
     # POS.tform_original.json
     # This is intended to be human readable.
-    out_json = os.path.join(outdir, f'{base}.tform_original.json' )
+    out_json = os.path.join(outdir, f'{base}.tform_json.json' )
     with open(out_json, 'w') as f:
         json.dump(Tfull, f, indent=4 )
  
-
-
-
 
 # NOTEBOOK CODE
 def merge_ashlar_results(pth, transform_rescale_factor=0.5, num_c=4):
@@ -266,33 +263,6 @@ def merge_ashlar_results(pth, transform_rescale_factor=0.5, num_c=4):
     dump(Texp,os.path.join(pth,'processed','tforms_original.joblib'))
     sx,sy=rescale_transformation(pth,folders,unique_pos,pos,transform_rescale_factor,num_c)
     return sx,sy
-
-def rescale_transformation(pth,folders,unique_pos,pos,rescale_factor=0.5,num_c=4):
-    """
-    Stitching function:
-    1. Reads the original transformation dictionary
-    2. Downscales the coordinates as per rescale_factor and write in as new key-value pairs per tile in the original dictionary
-    3. Writes the modified dictionary
-    
-    """ 
-
-    folder_names=np.array(folders)
-    T=load(os.path.join(pth,'processed','tforms_original.joblib'))
-    sx=[]
-    sy=[]
-    for n_pos in unique_pos:
-        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
-        for ids in pos_id:
-            tilename=folder_names[ids]+'.tif'
-            T[n_pos][tilename]["ref_pos"]=[T[n_pos][tilename]["position"][0]*rescale_factor,T[n_pos][tilename]["position"][1]*rescale_factor]
-            sx.append(T[n_pos][tilename]["ref_pos"][0])
-            sy.append(T[n_pos][tilename]["ref_pos"][1])
-        
-    #pprint.pprint(T)
-    dump(T,os.path.join(pth,'processed','tforms_rescaled'+str(rescale_factor).replace('.','p')+'.joblib'))
-    return sx,sy
-
-
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

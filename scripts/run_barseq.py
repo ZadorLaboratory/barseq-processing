@@ -43,8 +43,8 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     # In sequence, perform all pipeline processing steps
     # placing output in sub-directories by stage. 
     try:
-        # denoise indir, outdir, ddict, cp=None
-        #sub_outdir = f'{outdir}/denoised'
+        # PREPROCESSING
+        # DENOISE, BACKGROUND, REGCHANNEL, BLEEDTHROUGH,  
         logging.info(f'denoising. indir={bse.inputdir} outdir ={outdir}')
               
         logging.info(f"denoising. stage='denoise-geneseq'") 
@@ -66,7 +66,8 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f"correcting bleedthrough. stage='bleedthrough'")       
         process_stage_cycle_map(indir, outdir, bse, stage='bleedthrough', cp=cp )
         logging.info(f'done correcting bleedthrough')
- 
+
+        # REGISTRATION
         logging.info(f'registering images within and across cycles...')
         
         logging.info(f'registering all geneseq')
@@ -84,26 +85,28 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'registering all bcseq to bcseq[0]')
         process_stage_tileset_map(indir, outdir, bse, stage='regcycle-bcseq', cp=cp)
         logging.info(f'done registering images.')
-
+ 
+        # STITCH AND SEGMENT
         logging.info(f'stitch on regcycle hyb images')
         process_stage_position_map(indir, outdir, bse, stage='stitch', cp=cp)
         logging.info(f'done stitching.')
 
-        #logging.info(f'merge stitching data per position')
-        #process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
-        #logging.info(f'done merge-basecall-geneseq ')
-
+        logging.info(f'merge stitching data per position')
+        process_stage_position_map(indir, outdir, bse, stage='merge-stitch', cp=cp)
+        logging.info(f'done merge-stitch ')
 
         logging.info(f'segment on hyb, and using geneseq')
         process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
         logging.info(f'done segment-cellpose.')
-        
+
+        # BASECALL
         logging.info(f'basecall on geneseq.')
         process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
         logging.info(f'done basecall-geneseq.')
 
         logging.info(f'basecall on hyb.')
-        process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
+        # hyb only has one cycle, so we can go directly to calling and merging.
+        process_stage_cycle_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
         logging.info(f'done basecall-hyb.')
 
         #logging.info(f'basecall on bcseq.')
@@ -114,11 +117,11 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_position_map(indir, outdir, bse, stage='merge-segment', cp=cp)
         logging.info(f'done merge-segment ')
 
-        #logging.info(f'merge basecall data per position')
-        #process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
-        #logging.info(f'done merge-basecall-geneseq ')
+        logging.info(f'merge basecall data per position')
+        process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
+        logging.info(f'done merge-basecall-geneseq ')
+       
                 
-      
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))

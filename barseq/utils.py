@@ -327,7 +327,7 @@ class SimpleMatrix:
             r = int(r)
             c = int(c)
             val = self.matrix[r][c]
-            logging.debug(f'get key is {key} r={r} c={c} val={val}')
+            #logging.debug(f'get key is {key} r={r} c={c} val={val}')
             return val
         except:
             logging.warning(f'unable to parse key={key} e.g. [ 2,5]')
@@ -345,10 +345,8 @@ class SimpleMatrix:
     def __str__(self):
         return str(self.matrix )
 
-
     def __repr__(self):
         return str(self)
-    
     
     def to_ndarray(self):
         '''
@@ -370,7 +368,7 @@ class SimpleMatrix:
             else:
                 cmax = 0
             gmax = max(cmax, gmax )
-        #logging.debug(f'making ndarray with (row,col) = ({rmax}, {gmax})')            
+        logging.debug(f'making ndarray with (row,col) = ({rmax}, {gmax})')            
         ndout = np.empty( (rmax +1 ,gmax + 1), dtype='U128'  )
         rkeys = list( self.matrix.keys())
         #logging.debug(f'rkeys= {rkeys}')
@@ -380,9 +378,8 @@ class SimpleMatrix:
             for ckey in ckeys:
                 ndout[rkey,ckey] = self.matrix[rkey][ckey]
         return ndout
-        
-        
-        
+       
+                
     def as_lol(self):
         '''
         Return list of lists, row-major

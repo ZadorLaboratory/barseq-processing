@@ -6,7 +6,152 @@
 # 
 # }
 #
-#
+import argparse
+import logging
+import os
+import re
+import sys
+
+import datetime as dt
+from configparser import ConfigParser
+
+import numpy as np
+
+from skimage.segmentation import expand_labels
+from skimage.measure import label, regionprops_table
+from joblib import dump, load
+from natsort import natsorted as nsort
+
+gitpath=os.path.expanduser("~/git/barseq-processing")
+sys.path.append(gitpath)
+
+from barseq.core import *
+from barseq.utils import *
+from barseq.imageutils import *
+
+def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
+    
+    if cp is None:
+        cp = get_default_config()
+    if stage is None:
+        stage = 'merge-stitch'
+
+    # We know arity is single, so we can grab the single outfile
+    # We also know this is an experiment-wide output, so it doesn't need tile info. 
+    #  
+    outfile = outfiles[0]
+    (outdir, file) = os.path.split(outfile)
+    outfile = os.path.join( outdir, 'tforms_original.joblib' )
+    
+    if not os.path.exists(outdir):
+        os.makedirs(outdir, exist_ok=True)
+        logging.debug(f'made outdir={outdir}')
+       
+    # get params
+    transform_rescale_factor= cp.getfloat(stage, 'transform_rescale_factor' )
+    logging.debug(f'transform_rescale_factor={transform_rescale_factor}')
+
+    #
+    infile_names = [ os.path.split(ifn)[1] for ifn in infiles ]
+    logging.debug(f'infile_names = {infile_names}') 
+    
+    Texp={}
+    for i, infile in enumerate(infiles):
+        tilename = os.path.split(infile)[1]
+        logging.info(f'handling {infile} tilename={tilename}')
+        Tfull = load(infile)
+        Texp[f'Pos{i+1}']=Tfull
+        Tfull={}
+
+    logging.debug(f'Aggregated {len(infiles)} Ashlar positions...')
+    logging.info(f'Writing full aggregated output to {outfile}')
+    dump(Texp, outfile)
+
+    # Also do rescaling on all data and write to tforms_rescaled
+    sx=[]
+    sy=[]
+    
+    for position_id in nsort( list(Texp.keys())):
+        logging.debug(f'rescaling position {position_id}')
+        for tilename in nsort( list( Texp[position_id])):
+            logging.debug(f'rescaling tilename {tilename}')
+            Texp[position_id][tilename]['ref_pos'] = [ Texp[position_id][tilename]['position'][0] * transform_rescale_factor,
+                                                       Texp[position_id][tilename]['position'][1] * transform_rescale_factor
+                                                     ]
+    trf_string = str(transform_rescale_factor).replace('.','p')
+    outfile = os.path.join( outdir, f'tforms_rescaled{trf_string}.joblib' )
+    logging.info(f'Writing full aggregated and rescaled output to {outfile}')    
+    dump(Texp, outfile)
+    
+
+# NOTEBOOK CODE
+def merge_ashlar_results(pth,transform_rescale_factor=0.5,num_c=4):
+    """
+    Stitching function:
+    1. ASHLAR based stitching results are encoded in a global dictionary 
+    2. For each position (slice)-position of tiles and their names is saved as a sub-dictionary
+    3. One final dictionary with positions as keys is stored as tforms_original file
+    4. Calls function to rescale transformation
+    """ 
+    [folders,pos,_,_]=get_folders(pth)
+    unique_pos=nsort(np.unique(pos))
+    folder_names=np.array(folders)
+    Texp={}
+    Tfull={}
+    for n_pos in unique_pos:
+        T={}
+        df=pd.read_csv(os.path.join(pth,'MAX_'+n_pos+'.positions.tsv'), sep='\t')
+        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
+        for ids in pos_id:
+            tilename=folder_names[ids]+'.tif'
+            T['position']=[df.iloc[ids,2],df.iloc[ids,1]]
+            T['grid']=[0,0]
+            Tfull[tilename]=T
+            T={}
+        Texp[n_pos]=Tfull
+        Tfull={}
+    dump(Texp,os.path.join(pth,'processed','tforms_original.joblib'))
+    sx,sy=rescale_transformation(pth,folders,unique_pos,pos,transform_rescale_factor,num_c)
+    return sx,sy
+
+
+def merge_transforms(pth,name):
+    """
+    Stitching function:
+    Merge all downscaled transforms per tile into a final transformation file
+    """ 
+    [folders,_,_,_]=get_folders(pth)
+    T={}
+    for folder in folders:
+        T[folder]=load(os.path.join(pth,'processed',folder,'global_tform_'+name+'.joblib'))
+    dump(T,os.path.join(pth,'processed','tforms_final.joblib'))
+
+def rescale_transformation(pth,folders,unique_pos,pos,rescale_factor=0.5,num_c=4):
+    """
+    Stitching function:
+    1. Reads the original transformation dictionary
+    2. Downscales the coordinates as per rescale_factor and write in as new key-value pairs per tile in the original dictionary
+    3. Writes the modified dictionary
+    
+    """ 
+
+    folder_names=np.array(folders)
+    T=load(os.path.join(pth,'processed','tforms_original.joblib'))
+    sx=[]
+    sy=[]
+    for n_pos in unique_pos:
+        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
+        for ids in pos_id:
+            tilename=folder_names[ids]+'.tif'
+            T[n_pos][tilename]["ref_pos"]=[T[n_pos][tilename]["position"][0]*rescale_factor,T[n_pos][tilename]["position"][1]*rescale_factor]
+            sx.append(T[n_pos][tilename]["ref_pos"][0])
+            sy.append(T[n_pos][tilename]["ref_pos"][1])
+        
+    #pprint.pprint(T)
+    dump(T,os.path.join(pth,'processed','tforms_rescaled'+str(rescale_factor).replace('.','p')+'.joblib'))
+    return sx,sy
+
+
 
 
 

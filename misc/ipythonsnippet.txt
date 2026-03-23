@@ -1,4 +1,5 @@
 import logging
+import glob
 import os
 import sys
 import datetime as dt
@@ -7,6 +8,9 @@ from configparser import ConfigParser
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
+
+from joblib import load, dump
+from natsort import natsorted as nsort
 
 from barseq.core import *
 from barseq.utils import *
@@ -23,6 +27,7 @@ new_handler.setFormatter(formatter)
 for handler in root_logger.handlers[:]:
     root_logger.removeHandler(handler)
 root_logger.addHandler(new_handler)
+logging.getLogger().setLevel(logging.DEBUG)
 
 cfile = ''
 # cp.read(cfile)

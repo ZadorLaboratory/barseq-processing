@@ -7,6 +7,7 @@ import argparse
 import logging
 import math
 import os
+import re
 import pprint
 import sys
 
@@ -31,10 +32,9 @@ sys.path.append(gitpath)
 from barseq.utils import *
 from barseq.imageutils import *
 
-
 def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     '''
-    take in arbitrary list of files, parallel output to outfiles. 
+    take in all tiles for 1 cycle 
           
     '''
     if cp is None:
@@ -50,10 +50,12 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
 
+    # Get parameters
     logging.info(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     image_type = cp.get(stage, 'image_type')
     image_channels = cp.get(image_type, 'channels').split(',')
+    position_regex = cp.get(stage, 'position_regex')
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
@@ -85,35 +87,42 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.info(f'loading codebook file: {cfile}')
     
     # Basecall loop.
+    # Cycle list, contains 1 or more positions. 
+    # Need to separate by position
+   
     for infile in infiles:
-        if len(infiles) == 1:
-            #raw = read_image(infile, key=range(0,num_c,1))
-            raw = read_image(infile)
-            if no_deconv:
-                raw_2 = raw
-                # zero-ing all-genes channel (3)
-                raw_2[all_genes_ch,:,:] = 0
-                # for calling spots. x, y coordinates, channel id (1,2,4), signal intensity
-                # all genes channel 3 ignore
-                [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind]=basecall_hyb_ski_single(infile, 
-                                                                               num_c=num_c, 
-                                                                               all_genes_ch=all_genes_ch, 
-                                                                               raw_2=raw_2, 
-                                                                               thresh=thresh, 
-                                                                               prominence=prominence)
-                logging.debug(f'got result: lroi_x_ind={lroi_x_ind}, lroi_y_ind={lroi_y_ind}, id_t_ind={id_t_ind}, sig_t_ind={sig_t_ind} ')
-            else:
-                logging.error('Deconvolution to be introduced')
+        (dirpath, base ) = os.path.split(infile)
+        m = re.search(position_regex, base)
+        if m is not None:
+            pos_id = m.group(1)
         else:
-            logging.warning('Multiple basecall TBD')
+            logging.error(f'Unable to extract position index from file base: {base}')
+            sys.exit(2)
 
-    logging.debug(f'dumping results to {outfile}')
+        logging.info(f'handling pos_id={pos_id}')
+        raw = read_image(infile)
+        if no_deconv:
+            raw_2 = raw
+            # zero-ing all-genes channel (3)
+            raw_2[all_genes_ch,:,:] = 0
+            # for calling spots. x, y coordinates, channel id (1,2,4), signal intensity
+            # all genes channel 3 ignore
+            [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind]=basecall_hyb_ski_single(infile, 
+                                                                            num_c=num_c, 
+                                                                            all_genes_ch=all_genes_ch, 
+                                                                            raw_2=raw_2, 
+                                                                            thresh=thresh, 
+                                                                            prominence=prominence)
+            logging.debug(f'got result: lroi_x_ind={lroi_x_ind}, lroi_y_ind={lroi_y_ind}, id_t_ind={id_t_ind}, sig_t_ind={sig_t_ind} ')
+        else:
+            logging.error('Deconvolution to be introduced')
+
+    logging.info(f'Writing results to {outfile}')
     joblib.dump({"lroi_x":lroi_x_ind,
                  "lroi_y":lroi_y_ind,
                  "gene_id":id_t_ind,
                  "signal":sig_t_ind},
                   outfile)
-
 
 def basecall_hyb_ski_single(infile, 
                         num_c,
