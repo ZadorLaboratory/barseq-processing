@@ -4,6 +4,7 @@
 #
 #
 import argparse
+import joblib
 import logging
 import os
 import re
@@ -16,7 +17,7 @@ import numpy as np
 
 from skimage.segmentation import expand_labels
 from skimage.measure import label, regionprops_table
-from joblib import dump, load
+
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
@@ -56,7 +57,8 @@ def merge_segment_ski( infiles, outfiles, stage=None, cp=None ):
         all_segmentation_dict[base]=tile_data
         #io.imsave(os.path.join(pth,'processed',folder,'aligned','dil_'+fname), mask_dil)
     logging.info(f'writing output to {outfile}')
-    dump(all_segmentation_dict, outfile )
+    joblib.dump(all_segmentation_dict, outfile )
+    logging.info(f'Done.')
     
     
 def handle_single_tile_segmentation(infile, dilation_radius):
@@ -68,28 +70,6 @@ def handle_single_tile_segmentation(infile, dilation_radius):
     cent_x=measure['centroid-0']
     cent_y=measure['centroid-1']
     return mask,mask_dil,cell_num,cent_x,cent_y
-
-# NOTEBOOK CODE
-
-def import_cellpose_all_tiles(pth,dilation_radius=3,fname='cell_mask_cyto3.tif'):
-    """
-    Cell segmentation function:
-    1. Calls single tile function to measure properties of cells--aggregates them for all tiles
-    2. Writes the combined segmentation result for all tiles
-    """
-    [folders,_,_,_]=get_folders(pth)
-    all_segmentation_dict={}
-    for i,folder in enumerate(folders):
-        tile_data={}
-        [mask,mask_dil,cell_num,cent_x,cent_y]=import_single_tile_segmentation(pth,folder,dilation_radius,fname)
-        tile_data['original_labels']=mask
-        tile_data['dilated_labels']=mask_dil
-        tile_data['cell_num']=cell_num
-        tile_data['cent_x']=cent_x
-        tile_data['cent_y']=cent_y
-        all_segmentation_dict[folder]=tile_data
-        io.imsave(os.path.join(pth,'processed',folder,'aligned','dil_'+fname),mask_dil)
-    dump(all_segmentation_dict,os.path.join(pth,'processed','all_segmentation.joblib'))
 
 
 if __name__ == '__main__':

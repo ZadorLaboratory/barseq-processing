@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Apply transforms
-# used for hyb
+# 
 # 
 import argparse
 import joblib
@@ -40,16 +40,19 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_rescaled0p5.joblib 
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/geneseq/basecalls.joblib
     # 
+    # lroi10x.joblib is main flag output. 
 
     if cp is None:
         cp = get_default_config()
 
     if stage is None:
-        stage = 'aggregate-cellids'
+        stage = 'aggregate-transform'
 
     logging.info(f'infiles={infiles} outfiles={outfiles} stage={stage}')
 
-    # We know arity is single, so we can grab the outfile 
+    # We know arity is single, so we can grab the outfile
+    # primary outfile is lroi10x.joblib
+    #  
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
@@ -76,52 +79,36 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     gene_rol=joblib.load(gene_rol_file)
     seg=joblib.load(seg_file)
     hyb_rol=joblib.load(hyb_rol_file)
-    tform =joblib.load(tforms_file)
+    tform_final =joblib.load(tforms_file)
 
-
-
-    joblib.dump(T,os.path.join(outfile))
-    logging.info(f'done processing.')
-
-
-
-
-# NOTEBOOK CODE
-
-def transform_downsized_coordinates(pth,is_bc):
-    gene_rol=load(os.path.join(pth,'processed','basecalls.joblib'))
-    seg=load(os.path.join(pth,'processed','all_segmentation.joblib'))
-    hyb_rol=load(os.path.join(pth,'processed','genehyb.joblib'))
-    Tf=load(os.path.join(pth,'processed','tforms_final.joblib'))
-    if is_bc:
-        bc_rol=load(os.path.join(pth,'processed','bc.joblib'))
-    [folders,_,_,_]=get_folders(pth)
+    fnames = list(tform_final.keys() )
+    tilenames = nsort(  [ os.path.splitext(fn)[0] for fn in fnames ] )
     T={}
-    for i,folder in enumerate(folders):
+    for i, tilename in enumerate(tilenames):
         t={}
-        tform=Tf[folder]
-        [x,y]=apply_transform(tform,gene_rol['lroi_y'][i],gene_rol['lroi_x'][i])
+        tilename = os.path.splitext(tilename)[0] 
+        tform=tform_final[tilename]        
+        [x,y]=apply_transform(tform, gene_rol['lroi_y'][i], gene_rol['lroi_x'][i])
         t['lroi10x_x']=x
         t['lroi10x_y']=y
-        [x,y]=apply_transform(tform,hyb_rol['lroi_y'][i][0],hyb_rol['lroi_x'][i][0]) 
+        [x,y]=apply_transform(tform, hyb_rol['lroi_y'][i][0],hyb_rol['lroi_x'][i][0]) 
         t['lroi10xhyb_x']=x
         t['lroi10xhyb_y']=y
-        [x,y]=apply_transform(tform,seg[folder]['cent_y'],seg[folder]['cent_x']) 
+        [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
         t['cellpos10x_x']=x
         t['cellpos10x_y']=y
-        if is_bc:
-            [x,y]=apply_transform(tform,bc_rol['lroi_y_all'][i][0],bc_rol['lroi_x_all'][i][0]) 
-            t['bcpos10x_x']=x
-            t['bcpos10x_y']=y
-        T[folder]=t
-    dump(T,os.path.join(pth,'processed','lroi10x.joblib'))
+        T[tilename]=t
+    
+    logging.info(f'Writing output to {outfile}')
+    joblib.dump(T, outfile)
+    logging.info(f'Done.')
+    
 
-def apply_transform(tform,coord_x,coord_y):
+def apply_transform(tform, coord_x, coord_y):
     """
     Global transformation function:
     1. Transforms the local coordinates of rolonies and cells to global downsized coordinates per tile
     """
-    
     if len(coord_x):
         if not (isinstance(coord_x,list) or isinstance(coord_x,np.ndarray)):
             coord_x=coord_x.to_list()
@@ -135,7 +122,6 @@ def apply_transform(tform,coord_x,coord_y):
     else:
         x=[]
         y=[]
-        
     return x,y
 
 

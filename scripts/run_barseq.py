@@ -94,7 +94,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'merge stitching data per position')
         process_stage_position_map(indir, outdir, bse, stage='merge-stitch', cp=cp)
         logging.info(f'done merge-stitch ')
-
+        
         logging.info(f'segment on hyb, and using geneseq')
         process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
         logging.info(f'done segment-cellpose.')
@@ -105,7 +105,7 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'done basecall-geneseq.')
 
         logging.info(f'basecall on hyb.')
-        # hyb only has one cycle, so we can go directly to calling and merging.
+        #hyb only has one cycle, so we can go directly to calling and merging.
         process_stage_cycle_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
         logging.info(f'done basecall-hyb.')
 
@@ -125,7 +125,14 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         process_stage_cycle_map(indir, outdir, bse, stage='aggregate-cellids', cp=cp)
         logging.info(f'done aggregate-cellids ')
 
-                
+        logging.info(f'aggregate and apply transforms')
+        process_stage_cycle_map(indir, outdir, bse, stage='aggregate-transform', cp=cp)
+        logging.info(f'done aggregate-transform ')
+
+        logging.info(f'aggregate all data')
+        process_stage_cycle_map(indir, outdir, bse, stage='aggregate-data', cp=cp)
+        logging.info(f'done aggregate-data ')
+
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))

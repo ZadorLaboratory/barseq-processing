@@ -31,7 +31,9 @@ import datetime as dt
 from configparser import ConfigParser
 from joblib import dump, load
 
+from natsort import natsorted as nsort
 import numpy as np
+
 
 import ashlar
 from ashlar import filepattern, reg, thumbnail
@@ -219,6 +221,7 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     Tfull={}
     T={}
     for i, tilename in enumerate(infile_names):
+        tilename = os.path.splitext(tilename)[0]
         T['position']=[df.iloc[i,1], df.iloc[i,0]]
         T['grid']=[0,0]
         Tfull[tilename]=T
@@ -233,36 +236,6 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     with open(out_json, 'w') as f:
         json.dump(Tfull, f, indent=4 )
  
-
-# NOTEBOOK CODE
-def merge_ashlar_results(pth, transform_rescale_factor=0.5, num_c=4):
-    """
-    Stitching function:
-    1. ASHLAR based stitching results are encoded in a global dictionary 
-    2. For each position (slice)-position of tiles and their names is saved as a sub-dictionary
-    3. One final dictionary with positions as keys is stored as tforms_original file
-    4. Calls function to rescale transformation
-    """ 
-    [folders,pos,_,_]=get_folders(pth)
-    unique_pos=nsort(np.unique(pos))
-    folder_names=np.array(folders)
-    Texp={}
-    Tfull={}
-    for n_pos in unique_pos:
-        T={}
-        df=pd.read_csv(os.path.join(pth,'MAX_'+n_pos+'.positions.tsv'), sep='\t')
-        pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
-        for ids in pos_id:
-            tilename=folder_names[ids]+'.tif'
-            T['position']=[df.iloc[ids,2], df.iloc[ids,1]]
-            T['grid']=[0,0]
-            Tfull[tilename]=T
-            T={}
-        Texp[n_pos]=Tfull
-        Tfull={}
-    dump(Texp,os.path.join(pth,'processed','tforms_original.joblib'))
-    sx,sy=rescale_transformation(pth,folders,unique_pos,pos,transform_rescale_factor,num_c)
-    return sx,sy
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

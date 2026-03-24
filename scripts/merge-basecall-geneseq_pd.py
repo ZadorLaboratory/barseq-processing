@@ -3,6 +3,7 @@
 # merges and bardensr data for all tiles in a position.
 #
 import argparse
+import joblib
 import logging
 import os
 import re
@@ -15,7 +16,7 @@ import numpy as np
 
 from skimage.segmentation import expand_labels
 from skimage.measure import label, regionprops_table
-from joblib import dump, load
+
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
@@ -59,87 +60,8 @@ def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
             logging.debug(f'No geneseq rolonies found for tile {infile}\n')
 
     logging.debug(f'Aggregated {len(infiles)} bardensrresults. Lengths: lroi_x={len(lroi_x)} lroi_y={len(lroi_y)} gene_id={len(gene_id)}')
-    dump({"lroi_x":lroi_y,"lroi_y":lroi_x,"gene_id":gene_id}, outfile)
-
-
-# NOTEBOOK CODE
-def import_bardensr_results(pth, fname='bardensrresult.csv', prev_codebook_len=0, 
-                            codebook_name='codebook.joblib', is_optseq=0, 
-                            codebook_opt_name='codebook.mat'):
-    """
-    Basecalling function for geneseq:
-    1. Calls an accumulator function to aggregate bardensr results per tile
-    2. Calls function to compute fdr for all tiles combined
-    3. Writes aggregated geneseq basecall results
-    """
-    lroi_x=[] 
-    lroi_y=[]
-    gene_id=[]
-
-    [lroi_x,lroi_y,gene_id]=accumulate_bardensr_results(pth, codebook_name, fname, 0)
-    fdr=get_fdr(pth,codebook_name,gene_id)
-    print(f'Finished importing bardensr results. FPR is {fdr}')
-
-    if is_optseq:
-        print('Has optseq')
-        codebook_path=os.path.join(pth,'processed',codebook_opt_name)
-        codebook=scipy.io.loadmat(codebook_path)['codebook']
-        [lroi_x_opt,lroi_y_opt,gene_id_opt]=accumulate_bardensr_results(pth,codebook_opt_name,fname_opt,len(codebook))
-        fdr_o=get_fdr(pth,codebook_opt_name,gene_id_opt)
-        gene_id.append(gene_id_opt)
-        lroi_x.append(lroi_x_opt)
-        lroi_y.append(lroi_y_opt)
-    dump({"lroi_x":lroi_y,"lroi_y":lroi_x,"gene_id":gene_id},os.path.join(pth,'processed','basecalls'+'.joblib')) # let's check if this works --exchanging x and y
-
-
-def accumulate_bardensr_results(pth, codebook_name, fname, prev_codebook_len):
-    """
-    Basecalling function for geneseq:
-    1. Accumulator function that combines bardensr results per tile
-    2. Returns combined basecall results to the calling function
-    """
-    # codebook_path=os.path.join(pth,'processed',codebook_name)
-    # codebook=scipy.io.loadmat(codebook_path)['codebook']
-
-    [folders,_,_,_]=get_folders(pth)
-    lroi_x=[] 
-    lroi_y=[]
-    gene_id=[]
-
-    for i,folder in enumerate(folders):
-        try:
-            T=pd.read_csv(os.path.join(pth,'processed',folder,'aligned',fname),header=0)
-            lroi_x.append(T.m2)
-            lroi_y.append(T.m1)
-            gene_id.append(T.j+prev_codebook_len)
-        except:
-            lroi_x.append([])
-            lroi_y.append([])
-            gene_id.append([])
-            print(f'No geneseq rolonies found for tile {folder}\n')
-    return(lroi_x,lroi_y,gene_id)    
-
-
-def get_fdr(pth,codebook_name,gene_id):
-    """
-    Basecalling function for geneseq:
-    Calculates fdr
-    """
-    codebook_path=os.path.join(pth,'processed',codebook_name)
-    #codebook=scipy.io.loadmat(codebook_path)['codebook']
-    codebook_full=load(codebook_path)
-    codebook=codebook_full[0]
-    genes=np.array([str(x[0][0]) for x in codebook],dtype=str)
-    pos_unused_codes=np.where(np.char.startswith(genes,'unused'))
-    err_codes=genes[pos_unused_codes]
-    id_flat = np.array([code for pos in gene_id for code in pos])
-    err_c_all1=id_flat[np.isin(id_flat,pos_unused_codes[0])]
-    fdr=(len(err_c_all1)/len(id_flat))/len(pos_unused_codes[0])*(len(genes)-len(pos_unused_codes[0]))
-    return(fdr)
-
-
-
-
+    joblib.dump({"lroi_x":lroi_y,"lroi_y":lroi_x,"gene_id":gene_id}, outfile)
+    logging.info(f'Done.')
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
