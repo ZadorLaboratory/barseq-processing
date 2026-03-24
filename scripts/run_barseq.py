@@ -120,13 +120,17 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'merge basecall data per position')
         process_stage_position_map(indir, outdir, bse, stage='merge-basecall-geneseq', cp=cp)
         logging.info(f'done merge-basecall-geneseq ')
-       
+
+        logging.info(f'aggregate and assign cell ids')
+        process_stage_cycle_map(indir, outdir, bse, stage='aggregate-cellids', cp=cp)
+        logging.info(f'done aggregate-cellids ')
+
                 
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
 
-    logging.debug(f'bse=\n{bse}')
+    #logging.debug(f'bse=\n{bse}')
 
 
 

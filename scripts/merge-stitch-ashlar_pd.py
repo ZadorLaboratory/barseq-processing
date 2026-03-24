@@ -50,6 +50,9 @@ def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
     # get params
     transform_rescale_factor= cp.getfloat(stage, 'transform_rescale_factor' )
     logging.debug(f'transform_rescale_factor={transform_rescale_factor}')
+    intensity_scaling=cp.getint(stage, 'intensity_scaling' )
+    tilesize=cp.getint(stage, 'tilesize' )
+    display_additional_rescale=cp.getfloat(stage, 'display_additional_rescale' )
 
     #
     infile_names = [ os.path.split(ifn)[1] for ifn in infiles ]
@@ -69,8 +72,7 @@ def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
 
     # Also do rescaling on all data and write to tforms_rescaled
     sx=[]
-    sy=[]
-    
+    sy=[]   
     for position_id in nsort( list(Texp.keys())):
         logging.debug(f'rescaling position {position_id}')
         for tilename in nsort( list( Texp[position_id])):
@@ -82,9 +84,63 @@ def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
     outfile = os.path.join( outdir, f'tforms_rescaled{trf_string}.joblib' )
     logging.info(f'Writing full aggregated and rescaled output to {outfile}')    
     dump(Texp, outfile)
-    
+
+
+
+
+
+
+
 
 # NOTEBOOK CODE
+def produce_tform_and_stitched_images(pth,sx,sy,intensity_scaling=3,tilesize=3200,transform_rescale_factor=0.5,display_additional_rescale=0.2):
+    """
+    Stitching function:
+    1. For all tiles, save the rescaled (downscaled) transformation per tile, apply transformation on RGB of each tile, stitch all the tramsformed RGB into one big image and store it in check_registration folder
+    2. Calls function to create a merged transform file for global position estimation
+    """ 
+    [folders,pos,x,y]=get_folders(pth)
+    unique_pos=nsort(np.unique(pos))
+    check_reg_folder=os.path.join(pth,'processed','checkregistration')
+    os.makedirs(check_reg_folder,exist_ok=True)
+    folder_names=np.array(folders)
+    filenames=sorted(glob.glob(os.path.join(pth,'processed',folders[0],'RGB',"*"+".tif")))
+    T=load(os.path.join(pth,'processed','tforms_rescaled'+str(transform_rescale_factor).replace('.','p')+'.joblib'))
+    
+    for f, filename in enumerate(filenames):
+        filename=filename.split('/')[-1]
+        I=np.zeros([int(np.max(sy)+tilesize*transform_rescale_factor),int(np.max(sx)+tilesize*transform_rescale_factor),3])
+        #ax.imshow(I,cmap='jet',vmin=0,vmax=250)
+        for n_pos in unique_pos:
+            pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
+            for ids in pos_id:
+                tilename=folder_names[ids]+'.tif'
+                tform=skimage.transform.SimilarityTransform(scale=transform_rescale_factor, translation=[T[n_pos][tilename]["ref_pos"][0],T[n_pos][tilename]["ref_pos"][1]]) 
+                dump(tform,os.path.join(pth,'processed',folder_names[ids],'global_tform_'+str(transform_rescale_factor).replace('.','p')+'.joblib'))
+                tile=tfl.imread(os.path.join(pth,'processed',folder_names[ids],'RGB',filename))
+                # if is_grayscale:
+                #     It=skimage.transform.warp(np.squeeze(tile[stitching_channel-1,:,:]),tform.inverse,preserve_range=True,output_shape=(I.shape[0],I.shape[1]))
+                # else:
+                It=skimage.transform.warp(np.squeeze(tile),tform.inverse,preserve_range=True,output_shape=(I.shape[0],I.shape[1]))
+                I=np.maximum(I,It)
+   
+        Irgb=np.uint8(np.clip(I*intensity_scaling,0,255))
+        Irgb_rescaled = np.uint8(np.clip(rescale(Irgb, display_additional_rescale, channel_axis=-1, preserve_range=True, anti_aliasing=True),0,255))
+        tfl.imwrite(os.path.join(check_reg_folder,n_pos+'_'+filename),Irgb_rescaled,photometric='rgb')
+    merge_transforms(pth,str(transform_rescale_factor).replace('.','p'))
+
+def merge_transforms(pth, name):
+    """
+    Stitching function:
+    Merge all downscaled transforms per tile into a final transformation file
+    """ 
+    [folders,_,_,_]=get_folders(pth)
+    T={}
+    for folder in folders:
+        T[folder]=load(os.path.join(pth,'processed',folder,'global_tform_'+name+'.joblib'))
+    dump(T,os.path.join(pth,'processed','tforms_final.joblib'))
+
+
 def merge_ashlar_results(pth,transform_rescale_factor=0.5,num_c=4):
     """
     Stitching function:
@@ -113,7 +169,6 @@ def merge_ashlar_results(pth,transform_rescale_factor=0.5,num_c=4):
     dump(Texp,os.path.join(pth,'processed','tforms_original.joblib'))
     sx,sy=rescale_transformation(pth,folders,unique_pos,pos,transform_rescale_factor,num_c)
     return sx,sy
-
 
 def merge_transforms(pth,name):
     """

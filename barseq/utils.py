@@ -10,6 +10,7 @@ import threading
 import datetime as dt
 
 from collections import defaultdict
+from natsort import natsorted as nsort
 
 import pandas as pd
 import numpy as np
@@ -32,6 +33,45 @@ def get_boolean(s):
 def pprint_dict(d):
     s = pprint.pformat(d, indent=4)
     return s
+
+
+def get_config_list(cp, section, option):
+    '''
+    parses comma and/or space-separated values from ConfigParser entry. 
+    should be forgiving, dealing with mixed combinations and uneven
+    whitespace. 
+
+    '''
+    s = cp.get(section, option)
+    if s == 'None':
+        slist = []
+    else:
+        slist = parse_list_string(s)
+    return slist
+
+def parse_list_string(s):
+    '''
+    parses commma and/or space-separated values. 
+    forgiving of mix of commas, whitespace. 
+    returns list of items in string
+    if already list, return as-is
+    '''
+    if type(s) == list:
+        slist = s
+    else:    
+        is_list = False
+        slist = []
+        if s.find(',') > -1: is_list = True
+        if s.find(' ') > -1: is_list = True
+        if is_list:
+            s = s.replace(',',' ')
+            slist = s.split()
+        else:
+            slist = [ s ]
+    return slist
+
+
+
 
 def split_path(filepath):
     '''
@@ -68,6 +108,29 @@ def flatten_nested_lists(lol):
     '''
     flattened = list( pd.core.common.flatten(lol) )
     return flattened
+
+
+
+def select_input_files( infiles, input_map):
+    '''
+       return order will be alphabetical by map key
+       search is brute force for now.
+    '''
+    out_list = [] 
+    k_list = nsort( list( input_map.keys()))
+    for k in k_list:
+        fname = input_map[k]
+        for cfile in infiles:
+            (dirpath, base) = os.path.split(cfile)
+            if base == fname:
+                out_list.append(cfile)
+    if len(out_list) != len(k_list):
+        logging.error(f'Unable to match all required files:\n. k_list={k_list}\n. out_list={out_list}\n infiles={infiles}')
+        sys.exit(2)
+    else:
+        logging.debug(f'found {len(out_list)} matching files.')
+    return tuple(out_list)
+
 
 
 def load_df(filepath, as_array=False, dtype='float64'):

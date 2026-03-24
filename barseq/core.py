@@ -10,6 +10,8 @@ import traceback
 from collections import defaultdict
 from configparser import ConfigParser
 
+from natsort import natsorted as nsort
+
 import scipy
 import numpy as np
 import pandas as pd
@@ -175,8 +177,7 @@ class BarseqExperiment():
     def parse_stage_dir(self, stage=None):
         '''
         Top-level combined method, handling dirs, cycles, and positions. 
-
-                '''
+        '''
         re_list = []
         pdict = {}
         ddict = {}
@@ -355,8 +356,6 @@ class BarseqExperiment():
                         tlist.append(t)
         return tlist     
 
-
-
     def get_cycleset(self, mode=None, stage=None):
         '''
          get ordered list of cycles where elements are flat lists of relative 
@@ -369,8 +368,10 @@ class BarseqExperiment():
         clist = []
         if mode is None:
             modes = self.modes
-        else:
+        elif type(mode) == str:
             modes = [mode]
+        else:
+            modes = mode
 
         if stage is None:
             cdict = self.cdict
@@ -517,10 +518,13 @@ class BarseqExperiment():
         '''
         logging.info(f'mode={mode}, stage={stage} cycle={cycle} ')               
         positionlist = []
+
         if mode is None:
             modes = self.modes
-        else:
+        elif type(mode) == str:
             modes = [mode]
+        else:
+            modes = mode
 
         if stage is None:
             pdict = self.pdict
@@ -654,17 +658,23 @@ class BarseqExperiment():
          caller must cycle through modes explicitly 
                  
         '''
-        cycle_list = self.get_cycleset(mode=mode, stage=instage)
-
-        output_list = []
-        output_elem = None 
+        instage_mode = get_config_list(self.cp, instage, 'modes')
         stagedir = self.cp.get(stage, 'stagedir')
 
-        for cs in cycle_list:
-            if arity == 'parallel':
+        cycle_list = self.get_cycleset(mode=instage_mode, stage=instage)
+            
+        output_list = []
+        output_elem = None 
+
+
+        if arity == 'parallel':
+            #
+            # for parallel, each cycle list gets output. 
+            #
+            for cfset in cycle_list:
                 infile_list = []
                 outfile_list = []
-                for rpath in cs:
+                for rpath in cfset:
                     infile_list.append(rpath)
                     if (ext is not None) or (label is not None):
                         (subdir, base, current_label, current_ext) =  parse_rpath(rpath)
@@ -678,28 +688,38 @@ class BarseqExperiment():
                     else:
                         outfile_list.append( rpath )
                 output_list.append( ( infile_list, outfile_list) )        
-                    
-            elif arity == 'single':
-                # Use first input rpath as model for output_rpath
-                # Assume mode output dir (not numbered cycle dir)
-                (subdir, base, current_label, current_ext) = parse_rpath( cs[0] )
-                if (ext is not None) or (label is not None):
-                    if ext is None:
-                        ext = current_ext
-                    if label is not None:
-                        if strip_base:
-                            # stripping base only makes sense if there is a label.
-                            # and if arity=single
-                            output_elem = os.path.join( mode, f'{label}.{ext}')
-                        else:
-                            output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
+                
+        elif arity == 'single':
+            # Use first input rpath as model for output_rpath
+            # Assume mode output dir (not numbered cycle dir)
+            # Assume stage mode as correct mode directory
+            # Flatten inputs to single input list. 
+            infile_list = []
+            for cfset in cycle_list:
+                for rpath in cfset:
+                    infile_list.append(rpath)
+            (subdir, base, current_label, current_ext) = parse_rpath( cycle_list[0][0])
+
+            if mode is None:
+                mode = self.modes[0]
+
+            if (ext is not None) or (label is not None):
+                if ext is None:
+                    ext = current_ext
+                if label is not None:
+                    if strip_base:
+                        # stripping base only makes sense if there is a label.
+                        # and if arity=single
+                        output_elem = os.path.join( mode, f'{label}.{ext}')
                     else:
-                        output_elem = os.path.join( mode, f'{base}.{ext}')
+                        output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                 else:
                     output_elem = os.path.join( mode, f'{base}.{ext}')
-                        
-                logging.debug(f'filelist output={( cs, output_elem)}')        
-                output_list.append( ( cs , [output_elem] )  )
+            else:
+                output_elem = os.path.join( mode, f'{base}.{ext}')
+                    
+            logging.debug(f'filelist output={( infile_list, output_elem)}')        
+            output_list.append( ( infile_list , [output_elem] )  )
         logging.debug(f'made list of {len(output_list)} filemaps')     
         return output_list        
         
@@ -835,27 +855,7 @@ def search_regex_list_any( regex_list, test_string  ):
     return re_match
 
 
-def get_config_list(cp, section, option):
-    '''
-    parses comma and/or space-separated values from ConfigParser entry. 
-    should be forgiving, dealing with mixed combinations and uneven
-    whitespace. 
-    
-    '''
-    s = cp.get(section, option)
-    is_list = False
-    slist = []
-    if s.find(',') > -1: is_list = True
-    if s.find(' ') > -1: is_list = True
-    if is_list:
-        logging.debug(f'config option {section} {option} is a list.')
-        s = s.replace(',',' ')
-        slist = s.split()
-    else:
-        slist = [ s ]
-    return slist
- 
-    
+
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
     cp = ConfigParser()
@@ -1280,7 +1280,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
     stagedir = cp.get(stage, 'stagedir')
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
-    modes = cp.get(stage, 'modes').split(',')
+    modes = get_config_list(cp, stage, 'modes' )
     arity = cp.get(stage, 'arity')
     num_cycles = int(cp.get(stage, 'num_cycles'))
     strip_base = cp.getboolean(stage, 'strip_base')
@@ -1431,7 +1431,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
     else:
-        logging.info(f'All output exits. Skipping.')
+        logging.info(f'All output exists. Skipping.')
     logging.info(f'done with stage={stage}...')
 
 

@@ -219,7 +219,7 @@ def stitch_ashlar( infiles, outfiles, stage=None, cp=None ):
     Tfull={}
     T={}
     for i, tilename in enumerate(infile_names):
-        T['position']=[df.iloc[i,1],df.iloc[i,0]]
+        T['position']=[df.iloc[i,1], df.iloc[i,0]]
         T['grid']=[0,0]
         Tfull[tilename]=T
         T={}
@@ -254,7 +254,7 @@ def merge_ashlar_results(pth, transform_rescale_factor=0.5, num_c=4):
         pos_id=np.array([i for i,name in enumerate(pos) if name==n_pos])
         for ids in pos_id:
             tilename=folder_names[ids]+'.tif'
-            T['position']=[df.iloc[ids,2],df.iloc[ids,1]]
+            T['position']=[df.iloc[ids,2], df.iloc[ids,1]]
             T['grid']=[0,0]
             Tfull[tilename]=T
             T={}

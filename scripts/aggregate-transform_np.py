@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Aggregate and add cell_ids
+# Apply transforms
 # used for hyb
 # 
 import argparse
@@ -25,7 +25,7 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
+def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #     cycleset map 
     #         arity=single
     #         so inputs will be (flat list of all files from first cycle)
@@ -68,92 +68,76 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #
     input_map = { 'gene_rol' : 'basecalls.joblib',
                   'hyb_rol' :  'genehyb.joblib',
-                  'seg' : 'all_segmentation.joblib'
+                  'seg' : 'all_segmentation.joblib',
+                  'tforms' : 'tforms_final.joblib',
                   }
 
-    (gene_rol_file, hyb_rol_file, seg_file) = select_input_files(infiles, input_map)
+    (gene_rol_file, hyb_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
     gene_rol=joblib.load(gene_rol_file)
     seg=joblib.load(seg_file)
     hyb_rol=joblib.load(hyb_rol_file)
+    tform =joblib.load(tforms_file)
 
-    T={}
-    tilename_list = nsort( list(seg.keys()) )
-    for i, tilename in enumerate( tilename_list) :
-        logging.debug(f'handling {tilename}') 
-        t={}
-        mask=seg[tilename]['dilated_labels']
-        coord_xg=gene_rol['lroi_x'][i]
-        coord_yg=gene_rol['lroi_y'][i]
-        coord_xh=hyb_rol['lroi_x'][i][0]
-        coord_yh=hyb_rol['lroi_y'][i][0]
-        t['cellid']= assign_rolony_to_cell(mask, coord_xg, coord_yg)
-        t['cellidhyb']= assign_rolony_to_cell(mask, coord_xh, coord_yh)
-        T[tilename]=t
+
+
     joblib.dump(T,os.path.join(outfile))
     logging.info(f'done processing.')
 
 
-def assign_rolony_to_cell(mask, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. Calls get_cellid function if there are rolonies detected in this tile or else assigns empty cell id to this tile
-    """
-    if len(coord_x):
-        cell_id=get_cellid(mask, coord_x, coord_y)
-    else:
-        cell_id=[] # earlier this was [] and was causing error later
-    return cell_id
-
-def get_cellid(mask, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. For any detected rolony-assigns it to a cell
-    2. Returns the cell ids for all rolonies in this tile
-    """
-    coord_xl=[int(np.round(x)) for x in coord_x]
-    coord_yl=[int(np.round(x)) for x in coord_y]
-    cell_id=mask[coord_xl,coord_yl]
-    return cell_id
-
 
 
 # NOTEBOOK CODE
-def aggregate_cell_ids_gene_hyb(pth,is_bc):
-    """
-    Global transformation function:
-    1. Combines gene and hyb basecalls and assigns original per tile position and cell id to each
-    2. Writes the combined rolony properties file
-    """
+
+def transform_downsized_coordinates(pth,is_bc):
     gene_rol=load(os.path.join(pth,'processed','basecalls.joblib'))
     seg=load(os.path.join(pth,'processed','all_segmentation.joblib'))
     hyb_rol=load(os.path.join(pth,'processed','genehyb.joblib'))
+    Tf=load(os.path.join(pth,'processed','tforms_final.joblib'))
     if is_bc:
         bc_rol=load(os.path.join(pth,'processed','bc.joblib'))
-    
     [folders,_,_,_]=get_folders(pth)
     T={}
-    Tbc={}
     for i,folder in enumerate(folders):
-        print(f'Operating on {folder}')
         t={}
-        mask=seg[folder]['dilated_labels']
-        coord_xg=gene_rol['lroi_x'][i]
-        coord_yg=gene_rol['lroi_y'][i]
-        coord_xh=hyb_rol['lroi_x'][i][0]
-        coord_yh=hyb_rol['lroi_y'][i][0]
-        t['cellid'] = assign_rolony_to_cell(mask,coord_xg,coord_yg)
-        t['cellidhyb'] = assign_rolony_to_cell(mask,coord_xh,coord_yh)
-        T[folder]=t
+        tform=Tf[folder]
+        [x,y]=apply_transform(tform,gene_rol['lroi_y'][i],gene_rol['lroi_x'][i])
+        t['lroi10x_x']=x
+        t['lroi10x_y']=y
+        [x,y]=apply_transform(tform,hyb_rol['lroi_y'][i][0],hyb_rol['lroi_x'][i][0]) 
+        t['lroi10xhyb_x']=x
+        t['lroi10xhyb_y']=y
+        [x,y]=apply_transform(tform,seg[folder]['cent_y'],seg[folder]['cent_x']) 
+        t['cellpos10x_x']=x
+        t['cellpos10x_y']=y
         if is_bc:
-            tbc={}
-            coord_xb=bc_rol['lroi_x_all'][i][0]
-            coord_yb=bc_rol['lroi_y_all'][i][0]
-            tbc['cellidbc']=assign_rolony_to_cell(mask,coord_xb,coord_yb)
-            Tbc[folder]=tbc
-    dump(T,os.path.join(pth,'processed','cell_id.joblib'))
-    if is_bc:
-        dump(Tbc,os.path.join(pth,'processed','bccellid.joblib'))
-    print('ALL ROLONIES ASSIGNED TO CELLS')
+            [x,y]=apply_transform(tform,bc_rol['lroi_y_all'][i][0],bc_rol['lroi_x_all'][i][0]) 
+            t['bcpos10x_x']=x
+            t['bcpos10x_y']=y
+        T[folder]=t
+    dump(T,os.path.join(pth,'processed','lroi10x.joblib'))
+
+def apply_transform(tform,coord_x,coord_y):
+    """
+    Global transformation function:
+    1. Transforms the local coordinates of rolonies and cells to global downsized coordinates per tile
+    """
+    
+    if len(coord_x):
+        if not (isinstance(coord_x,list) or isinstance(coord_x,np.ndarray)):
+            coord_x=coord_x.to_list()
+            coord_y=coord_y.to_list()
+        q=np.zeros([len(coord_x),2])
+        q[:,0]=np.reshape(coord_x,(1,-1))
+        q[:,1]=np.reshape(coord_y,(1,-1))
+        v=tform(q)
+        x=v[:,0]
+        y=v[:,1]
+    else:
+        x=[]
+        y=[]
+        
+    return x,y
+
 
 
 if __name__ == '__main__':
@@ -222,9 +206,8 @@ if __name__ == '__main__':
           
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    aggregate_cellids_py( infiles=args.infiles, 
-                          outfiles=args.outfiles,
-                          stage=args.stage,  
-                          cp=cp )
-    
+    aggregate_transform_np( infiles=args.infiles, 
+                            outfiles=args.outfiles,
+                            stage=args.stage,  
+                            cp=cp )
     logging.info(f'done processing output to {args.outfiles[0]}')
