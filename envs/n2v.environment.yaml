@@ -21,4 +21,4 @@ dependencies:
   - libgfortran
   - libgfortran5
   - natsort
-prefix: /Users/hover/anaconda3/envs/n2v
+

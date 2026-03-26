@@ -14,4 +14,4 @@ dependencies:
   - ipython
   - scikit-image
   - pytorch
-prefix: /Users/hover/anaconda3/envs/cellpose
+

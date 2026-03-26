@@ -27,15 +27,18 @@ conda env create --file ~/git/barseq-processing/envs/barseq.environment.yaml
 conda activate barseq
 ```
 
-* For the standard pipeline, create the sub-environments needed to run stages that require specialize software
+* For the standard pipeline, create the sub-environments needed to run stages that require specialize software.
 ```
 conda env create --file  ~/git/barseq-processing/envs/ashlar.environment.yaml
 conda env create --file  ~/git/barseq-processing/envs/bardensr.environment.yaml
 conda env create --file  ~/git/barseq-processing/envs/cellpose.environment.yaml
-conda env create --file  ~/git/barseq-processing/envs/n2v.environment.yaml
 ```
+The n2v conda environment may need to be installed manually. See:
+```
+~/git/barseq-processing/envs/n2v.softenv.txt
+``` 
 
-* Create a working directory for your experiment, and copy in the default configuration file. We assume that your max projection data is in a separate location, which we will link via symlink.  
+* Create a working directory for your experiment, and copy in the default configuration file. We assume that your max projection data is in a separate location, which we will link via symlink. E.g.
 
 ```
 mkdir ~/project/barseq/BC12345 ; cd ~/project/barseq/BC12345
@@ -47,10 +50,10 @@ ln -s ~/data/barseq/BC12345
 By default, commands in the pipeline will take their defaults from a single configuration file, included in the distribution ~/git/barseq-processing/etc/barseq.conf.
 
 
-
 ## Running the pipeline 
 
 ### run_barseq.py
+Run the run_barseq.py or run_geneseq.py scripts with the -h option to see full usage. 
 
 ```
 ~/git/barseq-processing/scripts/run_barseq.py 
@@ -59,6 +62,11 @@ By default, commands in the pipeline will take their defaults from a single conf
 	-O  BC12345.run1.out  	        # all output to this sub-directory
 	./BC12345	                    # BARseq max projection images organized by cycle.  
 ```
+Typically you would want to capture logging output to a file for later checking. So a normal invocation might be:
+```
+time ~/git/barseq-processing/scripts/run_barseq.py -v -c BC12345.barseq.conf -O  BC12345.run1.out ./BC12345 > run_barseq.run1.log 2>&1 
+```
+
 
 ## Auxiliary Utilities
 

@@ -20,4 +20,5 @@ dependencies:
   - python
   - joblib
   - natsort
-prefix: /Users/hover/anaconda3/envs/bardensr
+  - pip:
+    - git+https://github.com/jacksonloper/bardensr.git
