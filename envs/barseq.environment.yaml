@@ -22,4 +22,4 @@ dependencies:
   - numpy
   - joblib
   - natsort
-prefix: /Users/hover/anaconda3/envs/barseq
+
