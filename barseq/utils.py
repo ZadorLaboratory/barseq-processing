@@ -318,12 +318,12 @@ class JobRunner(threading.Thread):
             try:
                 cmdlist = self.jobstack.pop()
                 cmdstr = ' '.join(cmdlist)
-                logging.info(f'[{self.label}] running {cmdstr}')
+                logging.debug(f'[{self.label}] running {cmdstr}')
                 logging.debug(f'[{self.label}] got command: {cmdlist}')
                 cp = run_command_shell(cmdlist)
                 logging.debug(f'[{self.label}] completed command: {cmdlist} rc={cp.returncode}')
-                logging.info(f'[{self.label}]  completed: {cmdstr} ')
-                self.return_codes.append( int( cp.returncode ) )
+                logging.debug(f'[{self.label}]  completed: {cmdstr} ')
+                self.return_codes.append(int( cp.returncode )) 
             except IndexError:
                 logging.info(f'[{self.label}] Command list empty. Ending. Return codes: {self.return_codes}')
                 break
@@ -335,6 +335,7 @@ class JobRunner(threading.Thread):
         '''
         all_succeeded = True
         n_total = len(self.return_codes)
+        logging.info(f'[{self.label}] Got {n_total} return codes. ')
         n_failed = 0
         for rc in self.return_codes:
             if rc != 0:

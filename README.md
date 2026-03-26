@@ -52,23 +52,17 @@ By default, commands in the pipeline will take their defaults from a single conf
 
 ## Running the standard pipelines 
 
-### run_geneseq.py
-Run the run_geneseq.py or run_barseq.py scripts with the -h option to see full usage. 
+### run_workflow.py
+To run the standard workflows for barseq or geneseq, run the run_workflow.py script pointed at the appropriate configuration file. A typical invocation would redirect logging output to a file, e.g.
+```
+~/git/barseq-processing/scripts/run_workflow.py -v -c BC12345.geneseq.conf -O BC12345.run1.out  ./BC12345 > run_geneseq.run1.log 2>&1
+```
+run_workflow.py will get the stages and their order from the configuration file. 
 
-```
-~/git/barseq-processing/scripts/run_geneseq.py 
-	-v  				            # give verbose output.
-	-c  BC12345.geneseq.conf         # customized configuration file.   
-	-O  BC12345.run1.out  	        # all output to this sub-directory
-	./BC12345	                    # BARseq max projection images organized by cycle.  
-```
-Typically you would want to capture logging output to a file for later checking. So a normal invocation might be:
-```
-time ~/git/barseq-processing/scripts/run_geneseq.py -v -c BC12345.geneseq.conf -O  BC12345.run1.out ./BC12345 > run_barseq.run1.log 2>&1 
-```
 
 ## Customization and non-standard usage
 
+To do a more ad-hoc pipeline, examine the run_barseq.py or run_geneseq.py scripts, which explicitly call the processing steps for each stage.  
 
 
 

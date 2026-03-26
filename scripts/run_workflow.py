@@ -21,7 +21,6 @@ def process_all(indir, outdir=None, expid=None, cp=None):
     CSHL BARseq pipeline invocation
     Overall "business logic", even idiosyncratic, is capture here.
 
-
     Top level function to call into sub-steps...
     @arg indir          Top level input directory. Cycle directories below.  
     @arg outdir         Top-level output directory. Stage directories created below.  
@@ -36,67 +35,29 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         expid = cp.get('project','project_id')
     
     logging.info(f'Processing experiment {expid} directory={indir} to {outdir}')
-    
     bse = BarseqExperiment(indir, outdir, cp)
     logging.debug(f'got BarseqExperiment metadata: {bse}')
     
     # In sequence, perform all pipeline processing steps
-    # placing output in sub-directories by stage. 
+    # maptypes are tileset, cycle, position
     try:
-        # denoise indir, outdir, ddict, cp=None
-        #sub_outdir = f'{outdir}/denoised'
-        logging.info(f'denoising. indir={bse.inputdir} outdir ={outdir}')
-        
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
-        #process_stage_file_map(indir, outdir, bse, stage='denoise-bcseq', cp=cp)       
-        logging.info(f"denoising. stage='denoise-geneseq'") 
-        process_stage_cycle_map(indir, outdir, bse, stage='denoise-geneseq', cp=cp) 
-        
-        logging.info(f"denoising. stage='denoise-hyb'")
-        process_stage_cycle_map(indir, outdir, bse, stage='denoise-hyb', cp=cp)
-        logging.info(f"denoising. stage='denoise-bcseq'")
-        
-        logging.info(f"removing background. stage='background'")       
-        process_stage_cycle_map(indir, outdir, bse, stage='background', cp=cp )
-        logging.info(f'done background.')
+        stage_list = get_config_list(cp, 'experiment','stages')
+        n_stages = len(stage_list)
+        logging.info(f'got stage_list={stage_list}')
+        for i, stage in enumerate( stage_list ):
+            maptype = cp.get(stage, 'maptype')
+            modes = get_config_list(cp, stage, 'modes')
+            stage_no = i + 1
+            logging.info(f'[ {stage_no}/{n_stages} ] Running stage={stage} maptype={maptype} modes={modes}')
+            if maptype == 'position':
+                process_stage_position_map(indir, outdir, bse, stage=stage, cp=cp)
+            elif maptype == 'cycle':
+                process_stage_cycle_map(indir, outdir, bse, stage=stage, cp=cp )
+            elif maptype == 'tileset':
+                process_stage_tileset_map(indir, outdir, bse, stage=stage, cp=cp)
+            logging.info(f'[ {stage_no}/{n_stages} ] Done stage={stage}')
+        logging.info(f'Done running workflow.') 
 
-        logging.info(f"registering within-image channels. stage='regchannels'")       
-        process_stage_cycle_map(indir, outdir, bse, stage='regchannels', cp=cp )
-        logging.info(f'done registering image channels.')
-
-        logging.info(f"correcting bleedthrough. stage='bleedthrough'")       
-        process_stage_cycle_map(indir, outdir, bse, stage='bleedthrough', cp=cp )
-        logging.info(f'done correcting bleedthrough')
- 
-        logging.info(f'registering images within and across cycles...')
-        
-        logging.info(f'registering all geneseq')
-        process_stage_tileset_map(indir, outdir, bse, stage='regcycle-geneseq', cp=cp) 
-        logging.info(f'done regcycle-geneseq.')
-
-        logging.info(f'registering hyb to geneseq[0]')
-        process_stage_tileset_map(indir, outdir, bse, stage='regcycle-hyb', cp=cp) 
-        logging.info(f'done regcycle-hyb')
-
-        logging.info(f'basecall on geneseq.')
-        process_stage_tileset_map(indir, outdir, bse, stage='basecall-geneseq', cp=cp) 
-        logging.info(f'done basecall-geneseq.')
-
-        logging.info(f'basecall on hyb.')
-        process_stage_tileset_map(indir, outdir, bse, stage='basecall-hyb', cp=cp) 
-        logging.info(f'done basecall-hyb.')
-
-        sub_outdir = f'{outdir}/segment'
-        process_stage_tileset_map(indir, outdir, bse, stage='segment', cp=cp) 
-        logging.info(f'done basecall-hyb.')
-        
-        # Run stitching at end, as it is many-to-one
-        logging.info(f'stitch on regcycle hyb images')
-        process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
-        logging.info(f'done stitching.')
-               
-      
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
