@@ -65,33 +65,35 @@ run_workflow.py will get the stages and their order from the configuration file.
 To do a more ad-hoc pipeline, examine the run_barseq.py or run_geneseq.py scripts, which explicitly call the processing steps for each stage.  
 
 ### Configuration
-To do non-trivial pipeline alterations, or to handle novel input filenames, it is necessary to understand the parameters of the stage configuration variables.
+To do non-trivial pipeline alterations, or to handle novel input filenames, it is necessary to understand the parameters of the stage configuration variables. Currently all sections are in a single config file. As long as the section names do not collide, they can serve different functions. 
+
 
 ### Experiment
 
 
-#### Modes
+#### Modes and Cycles
 
+#### Tools 
 
 #### Stages
-|  option                     |   valid values       |       meaning      |
-|  -----------------------    | -------------------- | ------------------ | 
-| [regchannels]               |                      |                       |
-| modes = geneseq,bcseq,hyb.  |   mode sections      |                           |
-| maptype = cycle             | cycle, tileset, position  |  how to group map inputs                     |
-| arity= parallel             |                      |                    |
-| template_mode = None        |                      |                    |
-| template_source = None      |                      |                    |
-| num_cycles = 99             |                      |                    | 
-| stagedir = regchannels      |                      |                    |
-| file_regex = MAX_Pos(\d*)_(\d*)_(\d*) |                      |                    |
-| instage = background        |                      |                    |
-| instage_modes = geneseq,bcseq,hyb |                      |                    |
-| script_base = regchannels   |                       |                    |
-| tool = ski                  |                      |                    |
-| label = None                |                      |                    |
-| ext = None                  |                      |                    |
-| strip_base = False          |                      |                    |
+|  option                     |   valid values       |       meaning      				     |
+|  -----------------------    | -------------------- | -----------------------------         |  
+| [regchannels]               |                      |  stage name       				     |
+| modes = geneseq,bcseq,hyb.  |   mode sections      |  this stage's output modes            |
+| maptype = cycle             | cycle, tileset, position  |  how to group map inputs         |
+| arity= parallel             |   parallel, single   |  many-to-many, many-to-one            |
+| template_mode = None        |   a valid mode       |  mode to draw template arg from       |
+| template_source = None      |   a valid stage      |  stage to draw template arg from      |
+| num_cycles = 99             | usually 1 or all(99) |  number of input cycles to include in map      | 
+| stagedir = regchannels      |   arbitrary          |  subdirectory to put output in        |
+| file_regex = MAX_Pos(\d*)_(\d*)_(\d*) | regex(s) match filename base   |  ignore stray files, groups get vars   |
+| instage = background        |   a valid stage      |  stage to draw input from             |
+| instage_modes = geneseq,bcseq,hyb |    valid modes |  mode(s) to draw input from           |
+| script_base = regchannels   |   arbitrary          |  script name stem                     |
+| tool = ski                  |   a valid tool       |  script name = <stem>_<tool>.py       |
+| label = None                |   arbitrary          |  inserted output names before extension. <base>.<label>.<ext>   |
+| ext = None                  |   arbitrary          |  output extension (if different from input)  |
+| strip_base = False          |   True|False         |  output will be only <label>.<ext>    |
 
 
 
