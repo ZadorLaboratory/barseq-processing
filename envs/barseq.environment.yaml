@@ -1,0 +1,25 @@
+name: barseq
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python
+  - ipython
+  - jupyter
+  - pandas
+  - scipy
+  - seaborn
+  - tifffile
+  - imageio
+  - opencv
+  - pyarrow
+  - scikit-image
+  - hdf5
+  - networkx
+  - numpy
+  - joblib
+  - natsort
+prefix: /Users/hover/anaconda3/envs/barseq

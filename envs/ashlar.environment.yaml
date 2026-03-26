@@ -1,0 +1,20 @@
+name: ashlar
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.12.10
+  - matplotlib
+  - networkx
+  - numpy
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - ipython
+  - pandas
+  - libgfortran
+  - natsort
+prefix: /Users/hover/anaconda3/envs/ashlar

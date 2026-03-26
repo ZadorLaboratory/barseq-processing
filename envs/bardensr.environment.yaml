@@ -1,0 +1,23 @@
+name: bardensr
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - pip
+  - tensorflow
+  - pandas
+  - ipython
+  - h5py
+  - pyarrow
+  - arrow-cpp
+  - keras
+  - numpy
+  - scipy
+  - jupyter
+  - python
+  - joblib
+  - natsort
+prefix: /Users/hover/anaconda3/envs/bardensr

@@ -3,7 +3,7 @@
 #  tifffile requires zarr v2. (not 3). 
 #
 #
-conda create -n ashlar python=3.12.8 zarr=2.18.4 pandas natsort 
+conda create -n ashlar python=3.12.8 zarr=2.18.4 pandas natsort joblib
 conda activate ashlar
  
 cd ~/git 

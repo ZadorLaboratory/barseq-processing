@@ -37,24 +37,6 @@ def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
     radius=31
     local=1
 
-    def bleedthrough_linear(Is,num_c,config_pth,fname,pth,name,writefile):
-        Is=Is.copy()
-        Icorrected=np.zeros_like(Is)
-        chprofile=scipy.io.loadmat(os.path.join(config_pth,fname))['chprofile20x']
-        Ishifted2=np.float64(Is[0:num_c,:,:])
-        I_rem=Is[num_c:,:,:]
-        Icorrected=(np.reshape((np.linalg.solve(np.transpose(chprofile),((np.reshape(Ishifted2,(num_c,-1),order='F'))))),(num_c,Ishifted2.shape[1],Ishifted2.shape[2]),order='F'))
-        Icorrected=uint16m(Icorrected)
-        Icorrected=np.append(Icorrected,I_rem,axis=0)
-        if writefile:
-            tfl.imwrite(os.path.join(pth,name),Icorrected,photometric='minisblack')
-        return Icorrected
-        
-        Ibcksub_shifted=channel_alignment(Ibcksub,chshift_filename,config_pth,pth,'bck_sub'+filename,num_c,is_affine,0) # last argument is to not to write intermediate file-ng CHANNEL ALIGN-NG
-        Ibcksub_shifted_btcorr=bleedthrough_linear(Ibcksub_shifted,num_c,config_pth,chprofile_filename,pth,fixed_filename[i],1) # BLEEDTHROUGH CORRECTION-NG
-        _,gtforms_ind=geneseq_cycle_alignment_block_correlation(fixed_filename[i],templatename,subsample_rate,do_coarse,resize_factor,block_size,num_c,num_cr,pth,'aligned','aligned'+filename)
-        gtforms.append(gtforms_ind)
-
     '''
     if cp is None:
         cp = get_default_config()

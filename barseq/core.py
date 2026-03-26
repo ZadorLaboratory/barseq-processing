@@ -173,7 +173,6 @@ class BarseqExperiment():
                     s += f'         n_cycles = {len(cdict[mode])}\n'
         return s
 
-
     def parse_stage_dir(self, stage=None):
         '''
         Top-level combined method, handling dirs, cycles, and positions. 
@@ -331,6 +330,7 @@ class BarseqExperiment():
         ''' 
         returns FLAT list of ALL files across ALL cycles for mode(s)
         '''
+        logging.info(f'mode={mode} stage={stage}')
         tlist = []
         if mode is None:
             modes = self.modes
@@ -365,6 +365,7 @@ class BarseqExperiment():
          caller must cycle through modes explicitly 
                  
         '''
+        logging.info(f'mode={mode} stage={stage}')
         clist = []
         if mode is None:
             modes = self.modes
@@ -376,10 +377,7 @@ class BarseqExperiment():
         if stage is None:
             cdict = self.cdict
         else:
-            try:
-                (ddict, cdict, pdict) = self.stageinfo[stage]
-            except KeyError:
-                (ddict, cdict, pdict) = self.parse_stage_dir( stage )
+            (ddict, cdict, pdict) = self.parse_stage_dir( stage )
 
         for mode in modes:
             for c in cdict[mode]:
@@ -392,14 +390,15 @@ class BarseqExperiment():
         Get list of (ordered) lists of images for a single tile across cycles for a single mode.
         If multiple modes are called, the sets span modes. 
 
-        '''       
+        '''
+        logging.info(f'mode={mode} stage={stage}')       
         if stage is None:
             cdict = self.cdict
         else:
-            try:
-                (ddict, cdict, pdict) = self.stageinfo[stage]
-            except KeyError:
-                (ddict, cdict, pdict) = self.parse_stage_dir( stage )
+            #try:
+            #    (ddict, cdict, pdict) = self.stageinfo[stage]
+            #except KeyError:
+            (ddict, cdict, pdict) = self.parse_stage_dir( stage )
         
         # use first cycle as template
         # handle multiple modes, or None -> all modes 
@@ -428,6 +427,7 @@ class BarseqExperiment():
                         ext=None, 
                         arity='single',
                         instage=None,
+                        instage_mode=None,
                         strip_base=False,
                         ) :
         '''
@@ -466,8 +466,15 @@ class BarseqExperiment():
         ]        
 
         '''
-        logging.debug(f'positionset mode={mode} stage={instage}')
-        positionset_list = self.get_positionset(mode=mode, stage=instage)
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
+        if mode is None:
+            mode_list = list(self.cdict.keys())
+            mode_list.sort()
+            mode = mode_list
+
+        if instage is None:
+            instage_mode = mode
+        positionset_list = self.get_positionset(mode=instage_mode, stage=instage)
         
         output_list = []
         output_elem = None 
@@ -561,6 +568,7 @@ class BarseqExperiment():
                          ext=None, 
                          arity='parallel',
                          instage=None,
+                         instage_mode=None,
                          strip_base=False):
         '''
         
@@ -585,8 +593,16 @@ class BarseqExperiment():
         ]
                  
         '''
-        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} ')
-        file_list = self.get_filelist(mode=mode, stage=instage)
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
+        if mode is None:
+            mode_list = list(self.cdict.keys())
+            mode_list.sort()
+            mode = mode_list
+            
+        if instage is None:
+            instage_mode = mode
+
+        file_list = self.get_filelist(mode=instage_mode, stage=instage)
         #
         # list for input-output tuples
         output_list = []
@@ -640,6 +656,7 @@ class BarseqExperiment():
                          ext=None, 
                          arity='parallel',
                          instage=None,
+                         instage_mode=None,
                          strip_base=False,
                           ):
         '''
@@ -658,14 +675,19 @@ class BarseqExperiment():
          caller must cycle through modes explicitly 
                  
         '''
-        instage_mode = get_config_list(self.cp, instage, 'modes')
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
+        if mode is None:
+            mode_list = list(self.cdict.keys())
+            mode_list.sort()
+            mode = mode_list
+                
         stagedir = self.cp.get(stage, 'stagedir')
-
+        if instage is None:
+            instage_mode = mode
         cycle_list = self.get_cycleset(mode=instage_mode, stage=instage)
-            
+           
         output_list = []
         output_elem = None 
-
 
         if arity == 'parallel':
             #
@@ -731,6 +753,7 @@ class BarseqExperiment():
                         ext=None, 
                         arity='parallel',
                         instage=None,
+                        instage_mode=None,
                         strip_base=False,        
                         ) :
         '''
@@ -767,11 +790,15 @@ class BarseqExperiment():
           )
         ]        
         '''
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
         if mode is None:
             mode_list = list(self.cdict.keys())
             mode_list.sort()
             mode = mode_list
-        tileset_list = self.get_tileset(mode=mode, stage=instage)
+
+        if instage is None:
+            instage_mode = mode
+        tileset_list = self.get_tileset(mode=instage_mode, stage=instage)
         
         output_list = []
         output_elem = None 
@@ -922,7 +949,8 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
         instage = None
     else:
         instage_dir = cp.get(instage, 'stagedir')
-    
+    instage_mode = get_config_list(cp, stage, 'instage_modes')
+
     # Misc vars. 
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
@@ -957,7 +985,9 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
                                        label=label,
                                        ext=ext,
                                        arity=arity, 
-                                       instage=instage
+                                       instage=instage,
+                                       instage_mode=instage_mode,
+                                       strip_base = strip_base
                                        )
         logging.debug(f'file_map= {file_map}')
         
@@ -1120,7 +1150,8 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         instage = None
     else:
         instage_dir = cp.get(instage, 'stagedir')
-    
+    instage_mode = get_config_list(cp, stage, 'instage_modes')
+
     # Misc vars. 
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
@@ -1157,7 +1188,8 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                                        ext=ext,
                                        arity=arity, 
                                        instage=instage,
-                                       strip_base=strip_base
+                                       instage_mode=instage_mode,
+                                       strip_base = strip_base,
                                        )
         logging.debug(f'file_map= {file_map}')
         
@@ -1246,6 +1278,8 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         if not jset.all_suceeded:
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
+        else:
+            logging.info(f'All jobs succeeded. stage={stage}')
     else:
         logging.info(f'All output exist. Skipping.')
 
@@ -1304,7 +1338,9 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
         instage = None
     else:
         instage_dir = cp.get(instage, 'stagedir')
+    instage_mode = get_config_list(cp, stage, 'instage_modes')
     
+
     # Misc vars. 
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
@@ -1340,6 +1376,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
                                        ext=ext,
                                        arity=arity, 
                                        instage=instage,
+                                       instage_mode=instage_mode,
                                        strip_base = strip_base,
                                        )
         logging.debug(f'file_map= {file_map}')
@@ -1430,6 +1467,8 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
         if not jset.all_suceeded:
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
+        else:
+            logging.info(f'All jobs succeeded. stage={stage}')
     else:
         logging.info(f'All output exists. Skipping.')
     logging.info(f'done with stage={stage}...')
@@ -1489,6 +1528,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
         instage = None
     else:
         instage_dir = cp.get(instage, 'stagedir')
+    instage_mode = get_config_list(cp, stage, 'instage_modes')
 
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
@@ -1523,8 +1563,8 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
                                     ext=ext,
                                     arity=arity, 
                                     instage=instage,
-                                    strip_base = strip_base
-                                    )    
+                                    instage_mode=instage_mode,
+                                    strip_base = strip_base )    
     logging.debug(f'tileset_list= {tileset_list}')
     
     # Define template files, if requested.
@@ -1634,6 +1674,8 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
         if not jset.all_suceeded:
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
+        else:
+            logging.info(f'All jobs succeeded. stage={stage}')
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')

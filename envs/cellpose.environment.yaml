@@ -1,0 +1,17 @@
+name: cellpose
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - pandas
+  - numpy
+  - imageio
+  - cellpose=3.1.1.3
+  - tifffile
+  - ipython
+  - scikit-image
+  - pytorch
+prefix: /Users/hover/anaconda3/envs/cellpose
