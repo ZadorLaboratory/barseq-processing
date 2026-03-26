@@ -305,9 +305,9 @@ class JobRunner(threading.Thread):
                 cp = run_command_shell(cmdlist)
                 logging.debug(f'[{self.label}] completed command: {cmdlist} rc={cp.returncode}')
                 logging.info(f'[{self.label}] completed {cmdstr} ')
-                self.return_codes.append( cp.returncode )
+                self.return_codes.append( int( cp.returncode ) )
             except IndexError:
-                logging.info(f'[{self.label}] Command list empty. Ending...')
+                logging.info(f'[{self.label}] Command list empty. Ending. Return codes: {self.return_codes}')
                 break
 
     def all_succeded(self):
@@ -321,7 +321,6 @@ class JobRunner(threading.Thread):
         for rc in self.return_codes:
             if rc != 0:
                 all_succeeded = False
-            else:
                 n_failed += 1
         n_succeeded = n_total - n_failed
         logging.info(f'{n_succeeded} / {n_total} jobs succeeded. {n_failed} failed.')

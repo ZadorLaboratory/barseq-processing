@@ -4,7 +4,7 @@ This protocol will guide you through setup, configuration, and running that take
 The pipeline consists of a top-level runner script, core code, and a set of scripts that implement the low-level logic of each stage of the pipeline. Initial input is the raw image data organized in subdirectories by modality and cycle. Final output is a set of dataframes. 
 
 ## Install software and dependencies
-These instructions assume familiarity with running bioinformatics pipelines...
+These instructions assume familiarity with running bioinformatics pipelines. They are regularly run and tested on MacOS and Linux.  
 
 * Clone the barseq-processing software from the repository to the standard location. (This assumes you already have git installed. If not, install it first). 
 

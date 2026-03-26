@@ -17,4 +17,5 @@ dependencies:
   - pandas
   - libgfortran
   - natsort
-prefix: /Users/hover/anaconda3/envs/ashlar
+  - pip:
+    - git+https://github.com/ZadorLaboratory/ashlar-zador.git
