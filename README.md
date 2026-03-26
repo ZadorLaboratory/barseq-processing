@@ -64,6 +64,37 @@ run_workflow.py will get the stages and their order from the configuration file.
 
 To do a more ad-hoc pipeline, examine the run_barseq.py or run_geneseq.py scripts, which explicitly call the processing steps for each stage.  
 
+### Configuration
+To do non-trivial pipeline alterations, or to handle novel input filenames, it is necessary to understand the parameters of the stage configuration variables.
+
+### Experiment
+
+
+#### Modes
+
+
+#### Stages
+|  option                     |   valid values       |       meaning      |
+|  -----------------------    | -------------------- | ------------------ | 
+| [regchannels]               |                      |                       |
+| modes = geneseq,bcseq,hyb.  |   mode sections      |                           |
+| maptype = cycle             | cycle, tileset, position  |  how to group map inputs                     |
+| arity= parallel             |                      |                    |
+| template_mode = None        |                      |                    |
+| template_source = None      |                      |                    |
+| num_cycles = 99             |                      |                    | 
+| stagedir = regchannels      |                      |                    |
+| file_regex = MAX_Pos(\d*)_(\d*)_(\d*) |                      |                    |
+| instage = background        |                      |                    |
+| instage_modes = geneseq,bcseq,hyb |                      |                    |
+| script_base = regchannels   |                       |                    |
+| tool = ski                  |                      |                    |
+| label = None                |                      |                    |
+| ext = None                  |                      |                    |
+| strip_base = False          |                      |                    |
+
+
+
 
 
 
