@@ -180,7 +180,7 @@ class BarseqExperiment():
         re_list = []
         pdict = {}
         ddict = {}
-        #modes = [ x.strip() for x in self.cp.get('experiment','modes').split(',') ]
+
         modes = get_config_list(self.cp, 'experiment', 'modes')
 
         for mode in modes:
@@ -237,8 +237,7 @@ class BarseqExperiment():
                     else:
                         n_failed += 1
                         base_failed = base
-                logging.info(f'dir scan: file_regex={file_regex} n_passed={n_passed} E.g. {base_passed}')
-                logging.debug(f'dir scan: file_regex={file_regex} n_failed={n_failed} E.g. {base_failed}')
+                logging.debug(f'dir scan: file_regex={file_regex}  n_passed={n_passed} n_failed={n_failed} E.g. {base_failed}')
                 cdict[mode].append(cyclelist)        
 
         pdict = {}
@@ -305,8 +304,7 @@ class BarseqExperiment():
                     else:
                         n_failed += 1
                         base_failed = base
-                logging.info(f'dir scan: file_regex={file_regex} n_passed={n_passed} E.g. {base_passed}')
-                logging.debug(f'dir scan: file_regex={file_regex} n_failed={n_failed} E.g. {base_failed}')    
+                logging.debug(f'dir scan: file_regex={file_regex}  n_passed={n_passed} n_failed={n_failed} E.g. {base_failed}')    
                 pdict[mode].append(cycdict)
                 
             #logging.debug(f'fixing sparse matrices...')
@@ -395,9 +393,6 @@ class BarseqExperiment():
         if stage is None:
             cdict = self.cdict
         else:
-            #try:
-            #    (ddict, cdict, pdict) = self.stageinfo[stage]
-            #except KeyError:
             (ddict, cdict, pdict) = self.parse_stage_dir( stage )
         
         # use first cycle as template
@@ -1054,7 +1049,7 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
                             infile = os.path.join(outdir, instage_dir, rpath)
                         inlist.append(infile)                        
                     else:
-                        logging.warning(f'outfile exists, skipping : {outfile}')    
+                        logging.debug(f'outfile exists, skipping : {outfile}')    
             if arity == 'single':
                 logging.debug(f'arity=single output_list length={len(output_list)}')
                 fname = output_list[0]
@@ -1115,7 +1110,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
     Assumes one or more input files to process.     
     
     '''
-    logging.info(f'indir={indir}, outdir={outdir} stage={stage} force={force}')
+    logging.info(f'handling stage={stage} indir={indir}, outdir={outdir} force={force}')
     if cp is None:
         cp = get_default_config()
     cfilename = os.path.join( outdir, 'barseq.conf' )
@@ -1239,7 +1234,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                             infile = os.path.join(outdir, instage_dir, rpath)
                         inlist.append(infile)                        
                     else:
-                        logging.warning(f'outfile exists, skipping : {outfile}')    
+                        logging.debug(f'outfile exists, skipping : {outfile}')    
             if arity == 'single':
                 logging.debug(f'arity=single output_list length={len(output_list)}')
                 fname = output_list[0]
@@ -1303,7 +1298,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
     Assumes one or more input files to process.     
     
     '''
-    logging.info(f'indir={indir}, outdir={outdir} stage={stage} force={force}')
+    logging.info(f'handling stage={stage} indir={indir}, outdir={outdir} force={force}')
     if cp is None:
         cp = get_default_config()
     cfilename = os.path.join( outdir, 'barseq.conf' )
@@ -1378,13 +1373,13 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
                                        instage=instage,
                                        instage_mode=instage_mode,
                                        strip_base = strip_base,
-                                       )
+                                       ) 
         logging.debug(f'file_map= {file_map}')
               
         for i, fmap in enumerate( file_map):
             (input_list, output_list) = fmap
             logging.debug(f'handling mode={mode} file_index={i} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
-            logging.info(f'input = {input_list} output = {output_list}')
+            logging.debug(f'input = {input_list} output = {output_list}')
 
             #template_rpath = template_list[i]
             if conda_env == current_env :
@@ -1428,7 +1423,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
                             infile = os.path.join(outdir, instage_dir, rpath)
                         inlist.append(infile)                        
                     else:
-                        logging.warning(f'outfile exists, skipping : {outfile}')    
+                        logging.debug(f'outfile exists, skipping : {outfile}')    
             if arity == 'single':
                 logging.debug(f'arity=single output_list length={len(output_list)}')
                 fname = output_list[0]
@@ -1492,7 +1487,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     Optionally allows one template to process input against.     
     
     '''
-    logging.info(f'stage={stage}  indir={indir}, outdir={outdir} force={force}')
+    logging.info(f'handling stage={stage}  indir={indir}, outdir={outdir} force={force}')
     if cp is None:
         cp = get_default_config()
     cfilename = os.path.join( outdir, 'barseq.conf' )
@@ -1631,7 +1626,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
                         infile = os.path.join(outdir, instage_dir, rpath)
                     inlist.append(infile)                        
                 else:
-                    logging.warning(f'outfile exists, skipping : {outfile}')    
+                    logging.debug(f'outfile exists, skipping : {outfile}')    
 
         if arity == 'single':
             logging.debug(f'arity=single output_list length={len(output_list)}')
@@ -1681,23 +1676,5 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     logging.info(f'done with stage={stage}...')
 
 
-def parse_rpath(rpath):
-    '''
-    'hyb/MAX_Pos1_003_000.cp_mask_cyto3.tif'    
-    
-    subdir = hyb
-    base = MAX_Pos1_003_000
-    label = cp_mask_cyto3
-    ext = tif
-    '''
-    (subdir, filename) = os.path.split(rpath)
-    (base, ext) = os.path.splitext(filename)
-    ext = ext.replace('.','')
-    splitlist = base.split('.')
-    base = splitlist[0]
-    if len(splitlist) > 1:
-        label = '.'.join( splitlist[1:] )
-    else:
-        label = None
-    return(subdir, base, label, ext)
+
 

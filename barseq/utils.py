@@ -71,7 +71,25 @@ def parse_list_string(s):
             slist = [ s ]
     return slist
 
-
+def parse_rpath(rpath):
+    '''
+    'hyb/MAX_Pos1_003_000.cp_mask_cyto3.tif'    
+    
+    subdir = hyb
+    base = MAX_Pos1_003_000
+    label = cp_mask_cyto3
+    ext = tif
+    '''
+    (subdir, filename) = os.path.split(rpath)
+    (base, ext) = os.path.splitext(filename)
+    ext = ext.replace('.','')
+    splitlist = base.split('.')
+    base = splitlist[0]
+    if len(splitlist) > 1:
+        label = '.'.join( splitlist[1:] )
+    else:
+        label = None
+    return(subdir, base, label, ext)
 
 
 def split_path(filepath):
@@ -304,7 +322,7 @@ class JobRunner(threading.Thread):
                 logging.debug(f'[{self.label}] got command: {cmdlist}')
                 cp = run_command_shell(cmdlist)
                 logging.debug(f'[{self.label}] completed command: {cmdlist} rc={cp.returncode}')
-                logging.info(f'[{self.label}] completed {cmdstr} ')
+                logging.info(f'[{self.label}]  completed: {cmdstr} ')
                 self.return_codes.append( int( cp.returncode ) )
             except IndexError:
                 logging.info(f'[{self.label}] Command list empty. Ending. Return codes: {self.return_codes}')

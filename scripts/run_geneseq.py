@@ -132,10 +132,6 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
 
-    #logging.debug(f'bse=\n{bse}')
-
-
-
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

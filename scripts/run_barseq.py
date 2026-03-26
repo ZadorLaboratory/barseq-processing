@@ -88,25 +88,18 @@ def process_all(indir, outdir=None, expid=None, cp=None):
         logging.info(f'done basecall-hyb.')
 
         sub_outdir = f'{outdir}/segment'
-        process_stage_tilelist(new_indir, sub_outdir, bse, stage='segment-', cp=cp) 
+        process_stage_tileset_map(indir, sub_outdir, bse, stage='segment', cp=cp) 
         logging.info(f'done basecall-hyb.')
         
         # Run stitching at end, as it is many-to-one
         logging.info(f'stitch on regcycle hyb images')
         process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None)
         logging.info(f'done stitching.')
-                
-        #new_indir = sub_outdir
-        #sub_outdir = f'{outdir}/stitched'
-        #process_stage_positionlist(new_indir, sub_outdir, bse, stage='stitch', cp=cp)
+               
       
     except Exception as ex:
         logging.error(f'got exception {ex}')
         logging.error(traceback.format_exc(None))
-
-    logging.debug(f'bse=\n{bse}')
-
-
 
 
 if __name__ == '__main__':
