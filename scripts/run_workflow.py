@@ -55,6 +55,11 @@ def process_all(indir, outdir=None, expid=None, cp=None):
                 process_stage_cycle_map(indir, outdir, bse, stage=stage, cp=cp )
             elif maptype == 'tileset':
                 process_stage_tileset_map(indir, outdir, bse, stage=stage, cp=cp)
+            elif maptype == 'filelist':
+                process_stage_file_map(indir, outdir, bse, stage=stage, cp=cp)
+            else:
+                logging.error(f'maptype {maptype} not valid. Exitting.')
+                sys.exit(1)
             logging.info(f'[ {stage_no}/{n_stages} ] Done stage={stage}')
         logging.info(f'Done running workflow.') 
 

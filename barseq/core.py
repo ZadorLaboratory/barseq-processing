@@ -23,8 +23,7 @@ from barseq.utils import *
 
 class BarseqExperiment():
     '''
-        Methods and data structure to keep and deliver
-        sets of files in groupings as needed.
+        Methods and data structure to keep and deliver sets of files in groupings as needed.
         Generates maps of stage-to-stage file relationships as required.  
         Centralized metadata. 
         Abstract out mode identifiers from directory names, paths from cycles, and names from position tilesets. 
@@ -37,7 +36,7 @@ class BarseqExperiment():
         subdir to subdir by steps in the pipeline. 
         
         Goal is to 
-        1. Fully validate (for missing images) before proceeding. 
+        1. Fully validate (for missing input files) before proceeding. 
         2. Allow retrieving...
             -- All tiles in flat form, grouped by chunksize (for flat processing). 
             -- All tiles, grouped by position, and grouped by chunksize (for stitching).
@@ -877,13 +876,11 @@ def search_regex_list_any( regex_list, test_string  ):
     return re_match
 
 
-
 def get_default_config():
     dc = os.path.expanduser('~/git/barseq-processing/etc/barseq.conf')
     cp = ConfigParser()
     cp.read(dc)
     return cp
-
     
 def get_script_dir():
     logging.debug(f'getting current script name {sys.argv[0]}')
@@ -1089,7 +1086,7 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
     else:
-        logging.info(f'All output exits. Skipping.')
+        logging.info(f'All output exists. Skipping.')
     logging.info(f'done with stage={stage}...')
 
 
@@ -1276,7 +1273,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         else:
             logging.info(f'All jobs succeeded. stage={stage}')
     else:
-        logging.info(f'All output exist. Skipping.')
+        logging.info(f'All output exists. Skipping.')
 
     logging.info(f'done with stage={stage}...')
 
@@ -1546,9 +1543,6 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
         log_arg = '-d'
 
     command_list = []
-    
-    #for mode in modes:
-    #    logging.info(f'handling mode {mode}')
     mode = modes
     logging.info(f'handling mode {mode}')
     n_cmds = 0
@@ -1676,5 +1670,108 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     logging.info(f'done with stage={stage}...')
 
 
+def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
+    '''
+    Abstracted generic function. Retrieves maptype from config. 
+    
+    @arg indir          Top-level input directory (with cycle dirs below)
+    @arg outdir         Outdir is top-level out directory (with cycle dirs below) UNLIKE stage_all_images
+    @arg bse            bse is BarseqExperiment metadata object with relative file/mode layout
+    @arg stage          Pipeline stage label in cp.
+    @arg cp             ConfigParser object to refer to.    
+ 
+    @return None
+
+    handle all files in a related list, with output to parallel folders.
+    Assumes one or more input files to process.
+    Optionally allows one template to process input against.     
+    '''
+    if cp is None:
+        cp = get_default_config()
+    maptype = cp.get(stage, 'maptype')
+    logging.info(f'handling stage={stage} maptype={maptype} indir={indir}, outdir={outdir} force={force}')
+
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+
+    # general parameters
+    script_base = cp.get(stage, 'script_base')
+    stagedir = cp.get(stage, 'stagedir')
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    modes = get_config_list(cp, stage, 'modes' )
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+    arity = cp.get(stage, 'arity')
+    strip_base = cp.getboolean(stage, 'strip_base')
+
+    # Potential None params
+    instage_dir = None
+    label = cp.get(stage, 'label')
+    if label == 'None':
+        label = None
+    ext = cp.get( stage, 'ext')
+    if ext == 'None':
+        ext = None
+    template_mode = cp.get(stage, 'template_mode')
+    if template_mode == 'None':
+        template_mode = None
+    template_source = cp.get(stage, 'template_source')
+    if template_source == 'None':
+        template_source = None
+    instage = cp.get(stage, 'instage')
+    if instage == 'None':
+        instage = None
+    else:
+        instage_dir = cp.get(instage, 'stagedir')
+    instage_mode = get_config_list(cp, stage, 'instage_modes')
+
+    # tool information
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    log_level = logging.getLogger().getEffectiveLevel()
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+
+    # tool-specific parameters 
+    n_jobs = int( cp.get(tool, 'n_jobs') )
+    n_threads = int( cp.get(tool, 'n_threads') )
+    logging.debug(f'handling stage={stage} indir={indir} outdir={outdir} template_mode={template_mode} template_source={template_source} ')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
+
+    # tool debug level
+    log_arg = ''
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    command_list = []
+  
+    for mode in modes:
+        logging.info(f'handling mode {mode}')
+        n_cmds = 0
 
 
+
+
+
+
+    n_cmds = len(command_list)
+    logging.info(f'created {n_cmds} commands for mode={mode}')
+    
+    if n_cmds > 0:
+        logging.info(f'Creating jobset for {n_cmds} jobs on {n_jobs} CPUs ')    
+        jstack = JobStack()
+        jstack.setlist(command_list)
+        jset = JobSet( max_processes = n_jobs, jobstack = jstack)
+        logging.debug(f'running jobs...')
+        jset.runjobs()
+        if not jset.all_suceeded:
+            logging.error('Job failure. stage={stage}')
+            raise NonZeroReturnException(f'stage={stage}')
+        else:
+            logging.info(f'All jobs succeeded. stage={stage}')
+    else:
+        logging.info(f'All output exits. Skipping.')
+    logging.info(f'done with stage={stage}...')

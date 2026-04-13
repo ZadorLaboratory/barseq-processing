@@ -17,6 +17,9 @@ from configparser import ConfigParser
 import numpy as np
 from natsort import natsorted as nsort
 
+from scipy.spatial.distance import cdist
+from scipy.sparse import coo_matrix
+
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
 
@@ -53,6 +56,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
 
     # Get parameters
     logging.info(f'handling stage={stage} to outdir={outdir}')
+    project_id = cp.get( 'project','project_id')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     starting_slice_idx = cp.getint( stage, 'starting_slice_idx')
     starting_fov_idx = cp.getint( stage, 'starting_fov_idx')
@@ -139,26 +143,82 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                           cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
-    #
-    # d['hyb_rol_id'].min() = 1
-    # d
-    #
     codebook_combined = pd.concat([ codebook_geneseq, codebook_hyb], axis=0 )
     d['hyb_rol_id1'] = d['hyb_rol_id'] + len(codebook_geneseq)
 
 
-    #.    d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0])-1
-    #     codebook_comb=[codebook[0],hyb_codebook[0]]
+    d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
+    d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
+    d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')
+    d=merge_gene_hyb_dict(d,'pos_10x_ally','pos_10x_ally_hyb','combined_gene_hyb_pos10x_y')
+    d=merge_gene_hyb_dict(d,'pos_40x_allx','pos_40x_allx_hyb','combined_gene_hyb_pos40x_x')
+    d=merge_gene_hyb_dict(d,'pos_40x_ally','pos_40x_ally_hyb','combined_gene_hyb_pos40x_y')
+    d=merge_gene_hyb_dict(d,'cellidall','cellidall_hyb','combined_gene_hyb_cellidall')
+    d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall') 
+    
+    border_size=np.round(fraction_border * tilesize)
+    pos_id=d['combined_gene_hyb_id']>0 # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
+    pos_inside_border_x=(d['combined_gene_hyb_pos40x_x'] > border_size-1) & (d['combined_gene_hyb_pos40x_x'] < tilesize-border_size+1)
+    pos_inside_border_y=(d['combined_gene_hyb_pos40x_y'] > border_size-1) & (d['combined_gene_hyb_pos40x_y'] < tilesize-border_size+1)
+    filter_id=pos_id & pos_inside_border_x & pos_inside_border_y
 
+    filtered_d={}
+    filtered_d=data_dict_organizer(filtered_d,'initialize', combined_gene_hyb_id=[], combined_gene_hyb_fov=[], 
+                                   combined_gene_hyb_pos10x_x=[], combined_gene_hyb_pos10x_y=[],
+                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],
+                                   combined_gene_hyb_cellidall=[],
+                                   combined_gene_hyb_sliceidall=[])
 
+    filtered_d=data_dict_organizer(filtered_d,'append',
+                                   combined_gene_hyb_id=d['combined_gene_hyb_id'][filter_id],
+                                   combined_gene_hyb_fov=d['combined_gene_hyb_fov'][filter_id],
+                                   combined_gene_hyb_pos10x_x=d['combined_gene_hyb_pos10x_x'][filter_id],
+                                   combined_gene_hyb_pos10x_y=d['combined_gene_hyb_pos10x_y'][filter_id],
+                                   combined_gene_hyb_pos40x_x=d['combined_gene_hyb_pos40x_x'][filter_id],
+                                   combined_gene_hyb_pos40x_y=d['combined_gene_hyb_pos40x_y'][filter_id],
+                                   combined_gene_hyb_cellidall=d['combined_gene_hyb_cellidall'][filter_id],
+                                   combined_gene_hyb_sliceidall=d['combined_gene_hyb_sliceidall'][filter_id])
+    
+    filtered_d=data_dict_organizer(filtered_d,'concat',
+                                   combined_gene_hyb_id=[],combined_gene_hyb_fov=[],
+                                   combined_gene_hyb_pos10x_x=[],combined_gene_hyb_pos10x_y=[],
+                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],
+                                   combined_gene_hyb_cellidall=[],
+                                   combined_gene_hyb_sliceidall=[])
 
+    cells=d['cell_list_all'].copy() # check if copy messed something
+    genes=np.unique(d['combined_gene_hyb_id'])
+    rol_id=d['combined_gene_hyb_id'].copy()
+    rol_cell=d['combined_gene_hyb_cellidall'].copy()
+    v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'], dropna=False)
+    v=v.reindex(index=cells, columns=genes, fill_value=0)
+    exp_m=coo_matrix(v.to_numpy())
+    processed_data={'all_data':d,
+                    'filtered_data':filtered_d,
+                    'expmat': exp_m,
+                    'cells': cells,
+                    'gene_id': genes,
+                    'codebook_combined': codebook_combined}
     logging.info(f'Writing output to {outfile}')
-    joblib.dump(d, outfile)
+    joblib.dump(processed_data, outfile)
+
+    logging.info(f'Writing out data subsets...')    
+    # Output subsets...
+    # create individual output data files. DFs. Pandas matrix.
+    #
+    of = os.path.join( outdir, f'{project_id}.cellsbygenes.tsv')
+    v.to_csv(of, sep='\t') 
+    logging.info(f'Wrote cells X genes matrix to {of}')
+
+    of = os.path.join(outdir, f'{project_id}.codebook_combined.tsv') 
+    codebook_combined.to_csv(of, sep='\t')
+    logging.info(f'Wrote combined codebook to {of}')
+
     logging.info(f'Done.')
 
 
 
-def data_dict_organizer(d, operation, **kwargs):
+def data_dict_organizer(d, operation, **kwargs): 
     """
     Helper function: Organizes dictionaries
     """
@@ -173,7 +233,7 @@ def data_dict_organizer(d, operation, **kwargs):
     return d
 
 
-def merge_gene_hyb_dict_notebook(d,key1,key2,key3):#
+def merge_gene_hyb_dict(d,key1,key2,key3):#
     """
     Helper function: Combines gene and hyb data into one dictionary
     """

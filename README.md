@@ -65,8 +65,9 @@ run_workflow.py will get the stages and their order from the configuration file.
 To do a more ad-hoc pipeline, examine the run_barseq.py or run_geneseq.py scripts, which explicitly call the processing steps for each stage.  
 
 ### Configuration
-To do non-trivial pipeline alterations, or to handle novel input filenames, it is necessary to understand the parameters of the stage configuration variables. Currently all sections are in a single config file. As long as the section names do not collide, they can serve different functions. 
+To do non-trivial pipeline alterations, or to handle novel input filenames, it is necessary to understand the parameters of the various types of configuration variables. Configs are standard **[section] option=val** formatted files, handled by the standard Python ConfigParser class.   
 
+Currently all sections are in a single config file. As long as the section names do not collide, they can serve different functions.  
 
 ### Experiment
 
@@ -76,7 +77,7 @@ To do non-trivial pipeline alterations, or to handle novel input filenames, it i
 #### Tools 
 
 #### Stages
-|  option                     |   valid values       |       meaning      				     |
+|  section/option             |   valid values       |       meaning      				     |
 |  -----------------------    | -------------------- | -----------------------------         |  
 | [regchannels]               |                      |  stage name       				     |
 | modes = geneseq,bcseq,hyb.  |   mode sections      |  this stage's output modes            |
@@ -86,7 +87,7 @@ To do non-trivial pipeline alterations, or to handle novel input filenames, it i
 | template_source = None      |   a valid stage      |  stage to draw template arg from      |
 | num_cycles = 99             | usually 1 or all(99) |  number of input cycles to include in map      | 
 | stagedir = regchannels      |   arbitrary          |  subdirectory to put output in        |
-| file_regex = MAX_Pos(\d*)_(\d*)_(\d*) | regex(s) match filename base   |  ignore stray files, groups get vars   |
+| file_regex = MAX_Pos(\d*)_(\d*)_(\d*) | regex(s) match filename base   |  ignore stray files, groups allow variable retrieval   |
 | instage = background        |   a valid stage      |  stage to draw input from             |
 | instage_modes = geneseq,bcseq,hyb |    valid modes |  mode(s) to draw input from           |
 | script_base = regchannels   |   arbitrary          |  script name stem                     |
