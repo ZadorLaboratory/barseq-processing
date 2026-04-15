@@ -144,5 +144,5 @@ if __name__ == '__main__':
     bleedthrough_np( infiles=args.infiles, 
                      outfiles=args.outfiles, 
                      cp=cp )
-    
+    (outdir, file) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')

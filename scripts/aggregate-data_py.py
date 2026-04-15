@@ -202,6 +202,31 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     logging.info(f'Writing output to {outfile}')
     joblib.dump(processed_data, outfile)
 
+    rolonies={'id':filtered_d['combined_gene_hyb_id'],
+              'pos10_x':filtered_d['combined_gene_hyb_pos10x_x'],
+              'pos10_y':filtered_d['combined_gene_hyb_pos10x_y'],
+              'pos40_x':filtered_d['combined_gene_hyb_pos40x_x'],
+              'pos40_y':filtered_d['combined_gene_hyb_pos40x_y'],
+              'slice':filtered_d['combined_gene_hyb_sliceidall'],
+              'genes':codebook_combined,
+              'fov':filtered_d['combined_gene_hyb_fov'],
+              'fov_names':tilenames}
+
+    neurons={'expmat':exp_m,
+             'id':d['cell_list_all'],
+             'pos10x_x':d['cell_pos_10x_allx'],
+             'pos10x_y':d['cell_pos_10x_ally'],
+             'pos40x_x':d['cell_pos_40x_allx'],
+             'pos40x_y':d['cell_pos_40x_ally'],
+             'slice':d['sliceidall_cell'],
+             'genes':codebook_combined,
+             'fov':d['fov_cell'],
+             'fov_names':tilenames}
+
+    alldata = {"rolonies":rolonies, "neurons":neurons} 
+    joblib.dump( alldata, os.path.join(outdir, 'alldata.joblib'))
+    logging.info('ALL DATA IS ORGANIZED')
+
     logging.info(f'Writing out data subsets...')    
     # Output subsets...
     # create individual output data files. DFs. Pandas matrix.
@@ -282,10 +307,10 @@ def organize_processed_data(pth,config_pth,
                           cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
-    for i,folder in enumerate(folders):
+    for i, folder in enumerate(folders):
         # i = 0
         # folder = 'MAX_Pos1_000_000'
-        pos_id=np.array([j for j,name in enumerate(npos) if name==pos[i]]) # search for slice/position number for this tile
+        pos_id = np.array([j for j,name in enumerate(npos) if name==pos[i]]) # search for slice/position number for this tile
         # array([0])
 
         d=data_dict_organizer(d,'append',
@@ -411,7 +436,7 @@ def organize_processed_data(pth,config_pth,
              'fov':d['fov_cell'],
              'fov_names':folders}
     dated_filename='alldata'+str(today)+'.joblib'
-    dump({"rolonies":rolonies,"neurons":neurons},os.path.join(pth,'processed',dated_filename))
+    dump({"rolonies":rolonies, "neurons":neurons}, os.path.join(pth,'processed',dated_filename))
     print('ALL DATA IS ORGANIZED')
     return dated_filename
 

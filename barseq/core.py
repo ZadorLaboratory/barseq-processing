@@ -5,6 +5,7 @@ import os
 import pprint
 import re
 import sys
+import time
 import traceback
 
 from collections import defaultdict
@@ -1082,6 +1083,7 @@ def process_stage_file_map(indir, outdir, bse, stage='denoise-geneseq', cp=None,
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
+        time.sleep(2)
         if not jset.all_suceeded:
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
@@ -1173,7 +1175,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         logging.info(f'handling mode {mode}')
         n_cmds = 0
 
-        logging.info(f'get_positionset_map mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage}')       
+        logging.info(f'get_positionset_map mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} instage_mode={instage_mode}')       
         file_map = bse.get_positionset_map(mode=mode, 
                                        stage=stage, 
                                        label=label,
@@ -1184,7 +1186,6 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                                        strip_base = strip_base,
                                        )
         logging.debug(f'file_map= {file_map}')
-        
         
         for i, fmap in enumerate( file_map):
             (input_list, output_list) = fmap
@@ -1237,6 +1238,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                 fname = output_list[0]
                 outfile = os.path.join(outdir, stagedir, fname)
                 if not os.path.exists(outfile):
+                    logging.debug(f'outfile {outfile} does not exist.')
                     outlist.append( outfile )
                     for rpath in input_list:
                         if instage is None:
@@ -1244,6 +1246,8 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
                         else:
                             infile = os.path.join(outdir, instage_dir, rpath)
                         inlist.append(infile)                        
+                else:
+                    logging.debug(f'outfile {outfile} does exist.')
 
             cmd.append( '--infiles ')
             for fpath in inlist:
@@ -1267,7 +1271,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         jset = JobSet( max_processes = n_jobs, jobstack = jstack)
         logging.debug(f'running jobs...')
         jset.runjobs()
-        if not jset.all_suceeded:
+        if not jset.all_suceeded():
             logging.error('Job failure. stage={stage}')
             raise NonZeroReturnException(f'stage={stage}')
         else:

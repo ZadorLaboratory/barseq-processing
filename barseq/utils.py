@@ -243,7 +243,7 @@ def run_command_shell(cmd):
         # raise NonZeroReturnException(f'For cmd {cmdstr}')
     return cp
 
-# Multiprocessing  using explicity command running. 
+# Multiprocessing  using explicit command running. 
 #            jstack = JobStack()
 #            cmd = ['program','-a','arg1','-b','arg2','arg3']
 #            jstack.addjob(cmd)
@@ -273,6 +273,7 @@ class JobSet(object):
         logging.debug(f'joining threads...')    
         for th in self.runners:
             th.join()        
+        
         logging.debug(f'all threads joined. returning...')
     
     def all_suceeded(self):
@@ -280,7 +281,7 @@ class JobSet(object):
         for jr in self.runners:
             if not jr.all_succeeded():
                 all_succeeded = False
-        logging.info(f'not all JobRunners completed successfully.')
+                logging.warning(f'not all JobRunners completed successfully.')
         return all_succeeded 
 
 
@@ -325,10 +326,11 @@ class JobRunner(threading.Thread):
                 logging.debug(f'[{self.label}]  completed: {cmdstr} ')
                 self.return_codes.append(int( cp.returncode )) 
             except IndexError:
-                logging.info(f'[{self.label}] Command list empty. Ending. Return codes: {self.return_codes}')
+                logging.info(f'[{self.label}] Command stack empty. Ending. ')
                 break
+        logging.info(f'Jobrunner ending. Return codes: {self.return_codes}')
 
-    def all_succeded(self):
+    def all_succeeded(self):
         '''
         True if all sub-jobs had 0 return codes. 
         False otherwise.
