@@ -144,9 +144,9 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                           fov_cell=[],sliceidall_cell=[])
 
     codebook_combined = pd.concat([ codebook_geneseq, codebook_hyb], axis=0 )
+    codebook_combined.reset_index(inplace=True, drop=True)
+
     d['hyb_rol_id1'] = d['hyb_rol_id'] + len(codebook_geneseq)
-
-
     d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
     d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
     d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')
