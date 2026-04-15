@@ -84,7 +84,7 @@ def background_cv2( infiles, outfiles, stage=None, cp=None):
         I=I.copy()
         I_filtered=np.zeros_like(I)
         I_rem=I[num_channels:,:,:]
-        I=I[0:num_channels,:,:]
+        I=I[ 0:num_channels , : , : ]
         k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
         for i in range(len(I)):
             bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel = k)

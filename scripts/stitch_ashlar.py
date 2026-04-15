@@ -13,11 +13,7 @@
 #
 #  writing metadata:  https://forum.image.sc/t/python-tifffile-ome-full-metadata-support/56526/10 
 #
-#
-#
-#
-#
-#
+
 import argparse
 import json
 import logging
