@@ -24,34 +24,8 @@ from barseq.imageutils import *
 
 def regchannels_ski( infiles, outfiles, stage=None, cp=None):
     '''
-    
-    def channel_alignment(I_filtered,fname,config_pth,pth,name,num_c,is_affine,writefile):
-        I_filtered=I_filtered.copy()
-        Ishifted=np.zeros_like(I_filtered)
-        I_rem=I_filtered[num_c:,:,:]
-        I_filtered=I_filtered[0:num_c,:,:]
-        
-        chshift=scipy.io.loadmat(os.path.join(config_pth,fname))['chshift20x']
-        
-        for i in range(chshift.shape[0]):
-            if is_affine:
-                tform=chshift[i] # refine this later on-ng
-            else:
-                tform=skimage.transform.SimilarityTransform(translation=-chshift[i,:]) # remember this takes -shifts-ng
-                
-            It=skimage.transform.warp(np.squeeze(I_filtered[i,:,:]),tform,preserve_range=True,output_shape=(I_filtered.shape[1],I_filtered.shape[2]))
-            Ishifted[i,:,:]=np.expand_dims(It,0)
-        Ishifted[num_c:,:,:]=I_rem    
-        Ishifted=uint16m(Ishifted)
-        if writefile:
-            tfl.imwrite(os.path.join(pth,name),Ishifted,photometric='minisblack')
-        return Ishifted
-
-    Ibcksub_shifted=channel_alignment(Ibcksub,chshift_filename,config_pth,pth,'bck_sub'+filename,num_c,is_affine,0) 
-        # last argument is to not to write intermediate file-ng CHANNEL ALIGN-NG
-    
-    '''
-    
+       
+    ''' 
     if cp is None:
         cp = get_default_config()
 

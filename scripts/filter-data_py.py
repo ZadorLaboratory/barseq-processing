@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#
-# Apply transforms
-# 
+# Filter overlapping areas so we don't double-count anything...
 # 
 import argparse
 import joblib
@@ -30,8 +28,8 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 def filter_data(infiles, outfiles, stage=None, cp=None):
-    #.    inputs: 'processeddata.joblib'.  
-    # filt_neurons.joblib is main flag output. 
+    #    inputs: 'alldata.joblib'.  
+    #    filt_neurons.joblib is main flag output. 
     if cp is None:
         cp = get_default_config()
 
@@ -43,10 +41,9 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     # We have heterogenous input files, so we need to confirm all are present, and 
     # figure out which is which. 
     # return order from select function will be alphabetical by key name.  
-    input_map = {   'alldata'  :  'alldata.joblib',
-                    'processeddata'   :  'processeddata.joblib',
-                  }
-    
+    input_map = {   'alldata'       :  'alldata.joblib',
+                    'processeddata' :  'processeddata.joblib',
+                }
     (alldata_file, processeddata_file) = select_input_files(infiles, input_map)
 
     # We know arity is single, so we can grab the outfile
@@ -70,7 +67,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
 
     logging.info(f'stage={stage} rescale_factor={rescale_factor} px={px} box_half_width_um={box_half_width_um} search_radius_um = {search_radius_um} ')
 
-    data=joblib.load(alldata_file)
+    data = joblib.load(alldata_file)
     pr = px / rescale_factor
     overlap_half_width = np.round(box_half_width_um / pr)
     search_radius = np.round(search_radius_um / pr)
@@ -79,40 +76,41 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     center_y=neurons['pos10x_y']
     exp_mat=neurons['expmat'].todense() # I should do it in csr rather than dense--memory efficient
 
-    xmin = center_x-overlap_half_width
-    xmax = center_x+overlap_half_width
-    ymin = center_y-overlap_half_width
-    ymax = center_y+overlap_half_width
-    c=np.column_stack((center_x,center_y))
-    num_slices=np.unique(neurons['slice'])
-    filt_neurons={}
-    id_to_keep_all=[]
+    xmin = center_x - overlap_half_width
+    xmax = center_x + overlap_half_width
+    ymin = center_y - overlap_half_width
+    ymax = center_y + overlap_half_width
+    c = np.column_stack((center_x,center_y))
+    num_slices = np.unique(neurons['slice'])
+    filt_neurons = {}
+    id_to_keep_all =[]
     
     for uslice in num_slices:       
-        idx_slice=neurons['slice']==uslice
+        idx_slice = neurons['slice'] == uslice
         ## this will crash for big population of cells
         # dist=cdist(c[idx_slice],c[idx_slice],'euclidean')
         # dist_nearest=(dist<search_radius)
         # [cell_id,nearest_neigh_id]=np.nonzero(dist_nearest)
         # fov_neigh=neurons['fov'][idx_slice][nearest_neigh_id]
         # fov_cell=neurons['fov'][idx_slice][cell_id]
-
         # sel_cells_id=fov_cell!=fov_neigh
         # distances_neigh=dist[cell_id[sel_cells_id],nearest_neigh_id[sel_cells_id]]
 
-        tree=cKDTree(c[idx_slice])
-        sparse_dist=tree.sparse_distance_matrix(tree, max_distance=search_radius, output_type='coo_matrix')
-        cell_id=sparse_dist.row
-        nearest_neigh_id=sparse_dist.col
-        dist_vals=sparse_dist.data
-        fov_neigh=neurons['fov'][idx_slice][nearest_neigh_id]
-        fov_cell=neurons['fov'][idx_slice][cell_id]
-        sel_cells_id=fov_cell!=fov_neigh
-        distances_neigh=dist_vals[sel_cells_id] 
+        tree = cKDTree( c[idx_slice] )
+        sparse_dist = tree.sparse_distance_matrix(tree, 
+                                                  max_distance=search_radius, 
+                                                  output_type='coo_matrix')
+        cell_id = sparse_dist.row
+        nearest_neigh_id = sparse_dist.col
+        dist_vals = sparse_dist.data
+        fov_neigh = neurons['fov'][idx_slice][nearest_neigh_id]
+        fov_cell = neurons['fov'][idx_slice][cell_id]
+        sel_cells_id = fov_cell != fov_neigh
+        distances_neigh = dist_vals[sel_cells_id] 
     
-        search_cells_id=cell_id[sel_cells_id]
-        search_neighbors_id=nearest_neigh_id[sel_cells_id]
-        search_dist=distances_neigh
+        search_cells_id = cell_id[sel_cells_id]
+        search_neighbors_id = nearest_neigh_id[sel_cells_id]
+        search_dist = distances_neigh
         
         id_overlap=((((xmin[idx_slice][search_cells_id]<xmin[idx_slice][search_neighbors_id])&(xmin[idx_slice][search_neighbors_id]<xmax[idx_slice][search_cells_id])) |
                      ((xmin[idx_slice][search_cells_id]<xmax[idx_slice][search_neighbors_id])&(xmax[idx_slice][search_neighbors_id]<xmax[idx_slice][search_cells_id]))) & 
@@ -147,7 +145,6 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
         
         #plt.tight_layout()
         #plt.show()
-
 
         n_cells_slice = int(idx_slice.sum())
         adj = csr_matrix((np.ones(len(overlap_cells_id)), 

@@ -461,7 +461,7 @@ class BarseqExperiment():
         ]        
 
         '''
-        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} instage_mode={instage_mode} strip_base={strip_base}')
         if mode is None:
             mode_list = list(self.cdict.keys())
             mode_list.sort()
@@ -470,7 +470,6 @@ class BarseqExperiment():
         if instage is None:
             instage_mode = mode
         positionset_list = self.get_positionset(mode=instage_mode, stage=instage)
-        
         output_list = []
         output_elem = None 
         
@@ -1175,7 +1174,7 @@ def process_stage_position_map(indir, outdir, bse, stage='stitch', cp=None, forc
         logging.info(f'handling mode {mode}')
         n_cmds = 0
 
-        logging.info(f'get_positionset_map mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} instage_mode={instage_mode}')       
+        logging.info(f'get_positionset_map(mode={mode}, stage={stage}, label={label}, ext={ext}, arity={arity}, instage={instage}, instage_mode={instage_mode}')       
         file_map = bse.get_positionset_map(mode=mode, 
                                        stage=stage, 
                                        label=label,
@@ -1365,7 +1364,7 @@ def process_stage_cycle_map(indir, outdir, bse, stage='stitch', cp=None, force=F
     for mode in modes:
         logging.info(f'handling mode {mode}')
         n_cmds = 0
-        
+        logging.info(f'get_cycleset_map(mode={mode}, stage={stage}, label={label}, ext={ext}, arity={arity}, instage={instage}, instage_mode={instage_mode}')   
         file_map = bse.get_cycleset_map(mode=mode, 
                                        stage=stage, 
                                        label=label,
@@ -1550,6 +1549,7 @@ def process_stage_tileset_map(indir, outdir, bse, stage='register', cp=None, for
     mode = modes
     logging.info(f'handling mode {mode}')
     n_cmds = 0
+    logging.info(f'get_tileset_map(mode={mode}, stage={stage}, label={label}, ext={ext}, arity={arity}, instage={instage}, instage_mode={instage_mode}')
     tileset_list = bse.get_tileset_map(mode=mode, 
                                     stage=stage, 
                                     label=label,
@@ -1779,3 +1779,76 @@ def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
     else:
         logging.info(f'All output exits. Skipping.')
     logging.info(f'done with stage={stage}...')
+
+
+def get_stagelist_info(cp):
+    '''
+    Make nicely formatted list of stages and descriptions for printing. 
+    '''
+    pad_w = 4
+    max_w = 0
+    outstring = ""
+
+    sections = get_config_list(cp, 'experiment','stages')
+    for section in sections:
+        if len(section) > max_w :
+            max_w = len(section)
+
+    for section in sections:
+        p_w = max_w - len(section)
+        p_w += pad_w
+        d = cp.get(section, 'desc')
+        outstring += f'{section}{' ' * p_w}{d}\n'
+    return outstring
+
+
+def run_workflow(indir, outdir=None, expid=None, cp=None, halt=None):
+    '''
+    CSHL BARseq pipeline invocation
+
+    Top level function to call into sub-steps...
+    @arg indir          Top level input directory. Cycle directories below.  
+    @arg outdir         Top-level output directory. Stage directories created below.  
+    @arg cp             ConfigParser object defining stage and implementation behavior.
+    @arg halt           Stop processing when halt stage is reached.  
+     
+    '''
+    if cp is None:
+        cp = get_default_config()
+        
+    expid = cp.get('project','project_id')
+    logging.info(f'Processing experiment {expid} directory={indir} to {outdir}')
+    bse = BarseqExperiment(indir, outdir, cp)
+    logging.debug(f'got BarseqExperiment metadata: {bse}')
+    
+    # In sequence, perform all pipeline processing steps
+    # maptypes are tileset, cycle, position
+    try:
+        stage_list = get_config_list(cp, 'experiment','stages')
+        n_stages = len(stage_list)
+        logging.info(f'got stage_list={stage_list}')
+        for i, stage in enumerate( stage_list ):
+            maptype = cp.get(stage, 'maptype')
+            modes = get_config_list(cp, stage, 'modes')
+            stage_no = i + 1
+            logging.info(f'[ {stage_no}/{n_stages} ] Running stage={stage} maptype={maptype} modes={modes}')
+            if maptype == 'position':
+                process_stage_position_map(indir, outdir, bse, stage=stage, cp=cp)
+            elif maptype == 'cycle':
+                process_stage_cycle_map(indir, outdir, bse, stage=stage, cp=cp )
+            elif maptype == 'tileset':
+                process_stage_tileset_map(indir, outdir, bse, stage=stage, cp=cp)
+            elif maptype == 'filelist':
+                process_stage_file_map(indir, outdir, bse, stage=stage, cp=cp)
+            else:
+                logging.error(f'maptype {maptype} not valid. Exitting.')
+                sys.exit(1)
+            logging.info(f'[ {stage_no}/{n_stages} ] Done stage={stage}')
+            if stage == halt:
+                logging.info(f'halt stage= {halt}, current stage {stage}, Done.')
+                sys.exit(0)
+        logging.info(f'Done running workflow.') 
+
+    except Exception as ex:
+        logging.error(f'got exception {ex}')
+        logging.error(traceback.format_exc(None))

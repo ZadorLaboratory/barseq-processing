@@ -11,6 +11,7 @@
 import argparse
 import logging
 import os
+import pprint
 import shutil
 
 def make_index_range(start, end, shift=False):
@@ -86,18 +87,26 @@ def make_copy_map(indir, outdir, col_start, col_end, row_start, row_end , positi
     logging.debug(f'copy map len={len(copy_map )}, e.g.: {copy_map[0]}')
     return copy_map
 
-def copy_transform_position_tiles(indir, outdir, col_start, col_end, row_start, row_end , position):
+def copy_transform_position_tiles(indir, outdir, 
+                                  col_start, col_end, 
+                                  row_start, row_end, 
+                                  position, dry_run=False):
     copy_map = make_copy_map(indir, outdir, col_start, col_end, row_start, row_end , position)
+    copy_map_s = pprint.pformat(copy_map)
     logging.info(f'copy_map = {copy_map}')
-    for (infile, outfile) in copy_map:
-        if os.path.exists(infile):
-            dirpath, filename = os.path.split(outfile)
-            os.makedirs(dirpath, exist_ok=True)
-            shutil.copyfile(infile, outfile)
-            logging.debug(f'{infile} -> {outfile}')
-        else:
-            logging.warning(f'{infile} does not exist!')
-    logging.info(f'done slimming from {indir} to {outdir}')
+    if not dry_run:
+        for (infile, outfile) in copy_map:
+            if os.path.exists(infile):
+                dirpath, filename = os.path.split(outfile)
+                os.makedirs(dirpath, exist_ok=True)
+                shutil.copyfile(infile, outfile)
+                logging.debug(f'{infile} -> {outfile}')
+            else:
+                logging.warning(f'{infile} does not exist!')
+        logging.info(f'done slimming from {indir} to {outdir}')
+    else:
+        logging.info(f'dry run requested. no copying. ')
+        print( copy_map_s)
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
@@ -115,7 +124,13 @@ if __name__ == '__main__':
                         action="store_true", 
                         dest='verbose', 
                         help='verbose logging')
-    
+
+    parser.add_argument('-n', '--dry_run', 
+                        action="store_true",
+                        default=False,  
+                        dest='dry_run', 
+                        help='do not perform copy, just print map.')
+
     parser.add_argument('-I','--indir', 
                     metavar='indir',
                     required=True, 
@@ -172,5 +187,6 @@ if __name__ == '__main__':
                                   args.col_end,
                                   args.row_start,
                                   args.row_end,
-                                  args.position)
+                                  args.position,
+                                  args.dry_run)
     

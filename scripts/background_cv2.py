@@ -37,25 +37,6 @@ def background_cv2( infiles, outfiles, stage=None, cp=None):
     radius=31
     local=1
 
-    def back_sub_opencv_open(I,radius,pth,name,num_c,writefile):
-        I=I.copy()
-        I_filtered=np.zeros_like(I)
-        I_rem=I[num_c:,:,:]
-        I=I[0:num_c,:,:]
-        k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
-        for i in range(len(I)):
-            bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel= k)
-            I_filtered[i,:,:]=I[i,:,:]-np.expand_dims(bck,0)
-        
-        I_filtered[num_c:,:,:]=I_rem    
-        I_filtered=uint16m(I_filtered)
-        if writefile:
-            tfl.imwrite(os.path.join(pth,name),I_filtered,photometric='minisblack')
-        return I_filtered
-        
-    I=tfl.imread(os.path.join(pth,'n2vgeneseq02.tif'),key=range(0,4,1))
-    Ifilt=back_sub_opencv_open(I,31,pth,'bcksb.tif',4,0)
-
     '''
     if cp is None:
         cp = get_default_config()
@@ -67,7 +48,6 @@ def background_cv2( infiles, outfiles, stage=None, cp=None):
     output_dtype = cp.get( stage,'output_dtype')
     num_channels = 4
 
-    #logging.debug(f'image_types={image_types} channels={image_channels}')
     logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_channels}')
 
     for i, infile in enumerate(infiles):
