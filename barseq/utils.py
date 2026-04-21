@@ -36,6 +36,17 @@ def pprint_dict(d):
     return s
 
 
+def get_config_none(cp, section, option):
+    '''
+    Returns normal value, unless value is None|none which returns Python None. 
+    '''
+    v = cp.get(section, option)
+    if v.lower() == 'none':
+        return None
+    else:
+        return v
+
+
 def get_config_list(cp, section, option):
     '''
     parses comma and/or space-separated values from ConfigParser entry. 
@@ -252,7 +263,6 @@ def run_command_shell(cmd):
 #
 #            will block until all jobs in jobstack are done, using <max_processes> jobrunners that
 #            pull from the stack.
-#
 
 class JobSet(object):
     def __init__(self, max_processes, jobstack):
@@ -273,16 +283,17 @@ class JobSet(object):
         logging.debug(f'joining threads...')    
         for th in self.runners:
             th.join()        
-        
         logging.debug(f'all threads joined. returning...')
     
-    def all_suceeded(self):
-        all_succeeded = True
+    def all_jobs_succeeded(self):
+        all_jobs_succeeded = True
         for jr in self.runners:
-            if not jr.all_succeeded():
-                all_succeeded = False
+            if not jr.all_jobs_succeeded():
+                all_jobs_succeeded = False
                 logging.warning(f'not all JobRunners completed successfully.')
-        return all_succeeded 
+        if all_jobs_succeeded:
+            logging.info(f'all jobs succeeded.')
+        return all_jobs_succeeded 
 
 
 class JobStack(object):
@@ -313,6 +324,7 @@ class JobRunner(threading.Thread):
         self.jobstack = jobstack
         self.label = label
         self.return_codes = []
+        self.all_succeeded = True
         
     def run(self):
         while True:
@@ -320,17 +332,18 @@ class JobRunner(threading.Thread):
                 cmdlist = self.jobstack.pop()
                 cmdstr = ' '.join(cmdlist)
                 logging.debug(f'[{self.label}] running {cmdstr}')
-                logging.debug(f'[{self.label}] got command: {cmdlist}')
                 cp = run_command_shell(cmdlist)
-                logging.debug(f'[{self.label}] completed command: {cmdlist} rc={cp.returncode}')
-                logging.debug(f'[{self.label}]  completed: {cmdstr} ')
+                logging.debug(f'[{self.label}] completed command: {cmdstr} rc={cp.returncode}')
+                if int(cp.returncode) != 0:
+                    self.all_succeeded = False
+                    logging.warning('a job failed with non-zero return.')
                 self.return_codes.append(int( cp.returncode )) 
             except IndexError:
                 logging.info(f'[{self.label}] Command stack empty. Ending. ')
                 break
         logging.info(f'Jobrunner ending. Return codes: {self.return_codes}')
 
-    def all_succeeded(self):
+    def all_succeeded_old(self):
         '''
         True if all sub-jobs had 0 return codes. 
         False otherwise.
@@ -346,6 +359,10 @@ class JobRunner(threading.Thread):
         n_succeeded = n_total - n_failed
         logging.info(f'{n_succeeded} / {n_total} jobs succeeded. {n_failed} failed.')
         return all_succeeded 
+
+    def all_jobs_succeeded(self):
+        return self.all_succeeded
+
 
 def uint16m(x):
     y=np.uint16(np.clip(np.round(x),0,65535))

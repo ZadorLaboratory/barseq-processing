@@ -48,7 +48,7 @@ if __name__ == '__main__':
                         type=str, 
                         help=f'Stage name to stop after.')
 
-    parser.add_argument('-l', '--list', 
+    parser.add_argument('-L', '--list', 
                         action="store_true",
                         default=False, 
                         dest='list', 
@@ -76,10 +76,12 @@ if __name__ == '__main__':
         logging.getLogger().setLevel(logging.INFO)   
         loglevel = 'info'
     
+    logging.debug(f'args = {args}') 
+
     cp = ConfigParser()
     cp.read(args.config)
     cdict = format_config(cp)
-    logging.debug(f'Running with config={args.config}:\n{cdict}')
+    #logging.debug(f'Running with config={args.config}:\n{cdict}')
 
     indir = os.path.abspath('./')
     if args.indir is not None:
@@ -94,7 +96,9 @@ if __name__ == '__main__':
     
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    if list:
+    if not args.list:
+        logging.debug(f'list is false')
+    else:
         stagelist = get_stagelist_info(cp)
         print(stagelist)
         sys.exit(0) 
