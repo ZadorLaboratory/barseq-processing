@@ -357,11 +357,8 @@ class BarseqExperiment():
             mode = mode_list
 
         stagedir = self.cp.get(stage, 'stagedir')
-        #if instage is None:
-        #    instage_mode = get_config_list(self.cp, stage , 'modes')
-        #else:
-        #    instage_mode = get_config_list(self.cp, instage, 'modes')       
-
+        # instage_mode = get_config_list(self.cp, stage , 'instage_modes')
+       
         logging.info(f'get_stage_files(mode={instage_mode}, stage={instage}, maptype={maptype})')
         infile_set = self.get_stage_files(mode=instage_mode, stage=instage, maptype=maptype)
 
@@ -607,7 +604,7 @@ def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
     logging.debug(f'handling stage={stage} indir={indir} outdir={outdir} ')
     
     # Get grouped file mapping(s)
-    logging.info(f'get_stage_map( mode={mode}, stage={stage}, maptype={maptype}, label={label}, ext={ext}, arity={arity}, instage={instage}, instage_mode={instage_mode}, strip_base={strip_base})')
+    logging.info(f"get_stage_map( mode={mode}, stage='{stage}', maptype='{maptype}', label='{label}', ext='{ext}', arity='{arity}', instage='{instage}', instage_mode={instage_mode}, strip_base={strip_base})")
     file_map = bse.get_stage_map( mode=mode, 
                                        stage=stage, 
                                        label=label,

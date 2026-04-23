@@ -24,7 +24,7 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
+def merge_basecall_hyb_pd( infiles, outfiles, stage=None, cp=None ):
     
     if cp is None:
         cp = get_default_config()
