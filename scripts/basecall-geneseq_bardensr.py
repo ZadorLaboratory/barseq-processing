@@ -6,6 +6,7 @@
 #
 
 import argparse
+import json
 import logging
 import math
 import os
@@ -61,11 +62,23 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
     
+    intensity_thresh = None
+    (subdir, base, current_label, current_ext) = parse_rpath(outfile)
+    param_file = os.path.join(subdir, f'{base}.bardensrparams.json')
+    if os.path.exists(param_file):
+        with open(param_file, 'r' ) as f:
+            data = json.load(f)
+            intensity_thresh = float( data['intensity_thresh_refined'] )
+            logging.info(f'Successfully loaded intensity_thresh = {intensity_thresh}')
+    else:
+        intensity_thresh = cp.getfloat(stage, 'intensity_thresh')
+        logging.warning(f'Failed to load intensity thresh. Pulled from config: {intensity_thresh}')
+
     noisefloor_final = cp.getfloat(stage, 'noisefloor_final')
-    intensity_thresh = cp.getfloat(stage, 'intensity_thresh')
     trim = cp.getint(stage, 'trim')
     cropf = cp.getfloat(stage, 'cropf')
-    logging.debug(f'noisefloor_final={noisefloor_final} intensity_thresh={intensity_thresh} trim={trim} cropf={cropf}')
+    #logging.debug(f'noisefloor_final={noisefloor_final} intensity_thresh={intensity_thresh} trim={trim} cropf={cropf}')
+    logging.debug(f'noisefloor_final={noisefloor_final} trim={trim} cropf={cropf}')
 
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')

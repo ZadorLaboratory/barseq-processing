@@ -29,7 +29,7 @@ def merge_basecall_hyb_pd( infiles, outfiles, stage=None, cp=None ):
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'merge-basecall-geneseq'
+        stage = 'merge-basecall-hyb'
 
     # We know arity is single, so we can grab the single outfile 
     outfile = outfiles[0]
@@ -37,29 +37,17 @@ def merge_basecall_hyb_pd( infiles, outfiles, stage=None, cp=None ):
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
-       
-    # get params
-    
+           
     #
-    lroi_x=[] 
-    lroi_y=[]
-    gene_id=[]
-
+    tile_dict = {}
     for infile in infiles:
-        logging.info(f'handling {infile}...')
-        try:
-            T=pd.read_csv(infile, header=0)
-            lroi_x.append(T.m2)
-            lroi_y.append(T.m1)
-            gene_id.append(T.j)
-        except:
-            lroi_x.append([])
-            lroi_y.append([])
-            gene_id.append([])
-            logging.debug(f'No geneseq rolonies found for tile {infile}\n')
+        (subdir, base, current_label, current_ext) = parse_rpath(infile)
+        logging.info(f'handling {infile} base={base}')
+        gho = joblib.load(infile)
+        tile_dict[base] = gho
 
-    logging.debug(f'Aggregated {len(infiles)} bardensrresults. Lengths: lroi_x={len(lroi_x)} lroi_y={len(lroi_y)} gene_id={len(gene_id)}')
-    joblib.dump({"lroi_x":lroi_y,"lroi_y":lroi_x,"gene_id":gene_id}, outfile)
+    logging.debug(f'Merged {len(infiles)} genehyb. ')
+    joblib.dump(tile_dict, outfile)
     logging.info(f'Done.')
 
 if __name__ == '__main__':
@@ -121,8 +109,9 @@ if __name__ == '__main__':
          
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    merge_basecall_geneseq_pd( infiles=args.infiles, 
-                       outfiles=args.outfiles, 
+    merge_basecall_hyb_pd( infiles=args.infiles, 
+                       outfiles=args.outfiles,
+                       stage=args.stage,  
                        cp=cp )
     (outdir, fname) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')

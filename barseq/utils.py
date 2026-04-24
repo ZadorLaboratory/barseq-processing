@@ -56,7 +56,7 @@ def get_config_list(cp, section, option):
     '''
     s = cp.get(section, option)
     if s == 'None':
-        slist = []
+        slist = None
     else:
         slist = parse_list_string(s)
     return slist
@@ -161,6 +161,41 @@ def select_input_files( infiles, input_map):
         logging.debug(f'found {len(out_list)} matching files.')
     return tuple(out_list)
 
+
+def make_tiledict_dataframe(tile_dict):
+    '''
+    take tile_dict (or multi-variate dict of dicts indexed by single key, 
+    with multiple sub-keys )
+    create flat dataframe from all 
+    
+    { 't1' : { 'col1' : <list1>, 
+               'col2' : <list2>},      ====>
+      't2' : { 'col1' : <list3>, 
+               'col2' : <list4>}             
+    }
+        
+         t   col1  col2  
+    -------------------
+    0    t1   l1a  l2a
+    1    t1   l1b  l2b 
+    2    t1   l1c  l2c 
+    3    t2   l3a  l4a
+    4    t2   l3b  l4b
+    5    t2   l3c  l4c
+  
+    '''
+    outdf_list = []
+    for tilename in list(tile_dict.keys()):
+        tdf = pd.DataFrame()
+        tile_data = tile_dict[tilename]
+        for col in list(tile_data.keys()):
+            cser = pd.Series(tile_data[col])
+            tdf[col] = cser
+        tdf['tile_name'] = tilename
+        outdf_list.append(tdf)
+    outdf = pd.concat( outdf_list, ignore_index=True)
+    outdf.reset_index(inplace=True, drop=True)
+    return outdf
 
 
 def load_df(filepath, as_array=False, dtype='float64'):

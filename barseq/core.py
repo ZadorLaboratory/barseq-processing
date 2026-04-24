@@ -359,7 +359,7 @@ class BarseqExperiment():
         stagedir = self.cp.get(stage, 'stagedir')
         # instage_mode = get_config_list(self.cp, stage , 'instage_modes')
        
-        logging.info(f'get_stage_files(mode={instage_mode}, stage={instage}, maptype={maptype})')
+        logging.info(f"get_stage_files(mode={instage_mode}, stage='{instage}', maptype='{maptype}')")
         infile_set = self.get_stage_files(mode=instage_mode, stage=instage, maptype=maptype)
 
         # Holds list of input-output sets, to be used one per process...
@@ -461,12 +461,38 @@ class BarseqExperiment():
             (ddict, cdict, pdict) = self.parse_stage_dir( stage )
 
         if maptype == 'cycle':
+            '''
+            single mode: simple case for single mode. one file set for each cycle.  
+            
+            multiple modes: merge cycles by ordered set. 
+            i.e. a cycle set may include files from multiple modes, first with first, 
+            second with second, etc. 
+            '''
             logging.debug(f'getting cycle files')
-            for m in modes:
+            if len(modes) == 1:
+                m = modes[0]
                 logging.debug(f'cycle: handling mode={m}')
-                for c in cdict[m]:
-                        outlist.append(c)    
-        
+                for cycle_filelist in cdict[m]:
+                    outlist.append(cycle_filelist)            
+    
+            elif len(modes) > 1:
+                max_len = 1
+                for m in modes:
+                    mlen = len(cdict[m])
+                    if mlen > max_len:
+                        max_len = mlen
+                idx = 0
+                while idx < max_len:
+                    cycle_filelist = []
+                    for m in modes:
+                        try:
+                            for rpath in cdict[m][idx]:
+                                cycle_filelist.append(rpath)
+                        except IndexError:
+                            pass
+                    outlist.append(cycle_filelist)
+                    idx += 1
+                    
         elif maptype == 'position':
             logging.debug(f'getting position files')
             for m in modes:

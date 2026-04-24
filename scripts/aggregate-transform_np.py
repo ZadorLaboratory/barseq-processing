@@ -32,6 +32,8 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #.    inputs: 'basecalls.joblib'.  
     #             'all_segmentation.joblib'   
     #             'genehyb.joblib'
+    #             'tforms_final.joblib'
+    #
     #. There may be more inputs that required, so only select relevant ones...
     # E.g.
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/all_segmentation.joblib 
@@ -81,17 +83,16 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     hyb_rol=joblib.load(hyb_rol_file)
     tform_final =joblib.load(tforms_file)
 
-    fnames = list(tform_final.keys() )
-    tilenames = nsort(  [ os.path.splitext(fn)[0] for fn in fnames ] )
+    tilename_list = nsort( list(seg.keys() ))
     T={}
-    for i, tilename in enumerate(tilenames):
+    for i, tilename in enumerate(tilename_list):
+        logging.debug(f'handling {tilename}') 
         t={}
-        tilename = os.path.splitext(tilename)[0] 
         tform=tform_final[tilename]        
-        [x,y]=apply_transform(tform, gene_rol['lroi_y'][i], gene_rol['lroi_x'][i])
+        [x,y]=apply_transform(tform, gene_rol[tilename]['lroi_y'], gene_rol[tilename]['lroi_x'])
         t['lroi10x_x']=x
         t['lroi10x_y']=y
-        [x,y]=apply_transform(tform, hyb_rol['lroi_y'][i][0],hyb_rol['lroi_x'][i][0]) 
+        [x,y]=apply_transform(tform, hyb_rol[tilename]['lroi_y'][0][0],hyb_rol[tilename]['lroi_x'][0][0]) 
         t['lroi10xhyb_x']=x
         t['lroi10xhyb_y']=y
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 

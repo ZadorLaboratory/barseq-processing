@@ -34,8 +34,7 @@ from barseq.imageutils import *
 
 def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     '''
-    take in all tiles for 1 cycle 
-          
+    take in all tiles for 1 cycle           
     '''
     if cp is None:
         cp = get_default_config()
@@ -118,18 +117,23 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
                                                                                  prominence=prominence)
         logging.debug(f'got result: lroi_x_ind={lroi_x_ind}, lroi_y_ind={lroi_y_ind}, id_t_ind={id_t_ind}, sig_t_ind={sig_t_ind} ')
 
-        lroi_x_all.append(lroi_x_ind)
-        lroi_y_all.append(lroi_y_ind)
-        id_t_all.append(id_t_ind)
-        sig_t_all.append(sig_t_ind)
+        lroi_x_all.append([np.concatenate(lroi_x_ind) if any(len(x) for x in lroi_x_ind) else []])
+        lroi_y_all.append([np.concatenate(lroi_y_ind) if any(len(x) for x in lroi_y_ind) else []])
+        id_t_all.append([np.concatenate(id_t_ind) if any(len(x) for x in id_t_ind) else []])
+        sig_t_all.append([np.concatenate(sig_t_ind) if any(len(x) for x in sig_t_ind) else []])
 
-    logging.info(f'Writing results to {outfile}')
-    joblib.dump({"lroi_x":lroi_x_all, 
+        #lroi_x_all.append(lroi_x_ind)
+        #lroi_y_all.append(lroi_y_ind)
+        #id_t_all.append(id_t_ind)
+        #sig_t_all.append(sig_t_ind)
+
+    data_dict = {"lroi_x":lroi_x_all, 
                  "lroi_y":lroi_y_all, 
                  "gene_id":id_t_all, 
-                 "signal":sig_t_all}, 
-                 outfile)
+                 "signal":sig_t_all}
 
+    logging.info(f'Writing results to {outfile}')
+    joblib.dump(data_dict, outfile)
 
 
 def basecall_hyb_ski_single(infile, 
@@ -157,6 +161,15 @@ def basecall_hyb_ski_single(infile,
             m = regionprops(label_peaks,a_masked)
             mask[n,:,:] = uint16m(binary_dilation(a_max))
             [lroi_x, lroi_y, id_t, sig_t] = quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2)
+
+    gene_map = np.zeros(hyb_2.shape[1:], dtype=np.uint8)
+    for ch_idx in range(len(lroi_x)):
+        for k in range(len(lroi_x[ch_idx])):
+            r = int(round(lroi_x[ch_idx][k]))
+            c = int(round(lroi_y[ch_idx][k]))
+            gene_map[r, c] = id_t[ch_idx][k] + 1  # +1 so background stays 0
+
+    # tfl.imwrite(os.path.join(pthw, 'basecall_map_hyb.tif'), gene_map, photometric='minisblack')
     return(lroi_x, lroi_y, id_t, sig_t)
 
 
@@ -170,16 +183,19 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
     lroi1_x=[]
     lroi1_y=[]
     id1=[]
+    ch_to_gene={0:0,1:1,3:2}  # skip all_genes_ch=2
     for i,peaks in enumerate(m):
         lroi1_x.append(peaks.centroid[0])
         lroi1_y.append(peaks.centroid[1])
         sig1.append(peaks.intensity_max)
+        # id1.append(ch_to_gene[np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]])])
         id1.append(np.argmax(hyb_2[:,peaks.coords[0][0],peaks.coords[0][1]])+1) # added 1 here to max channel to match codebook 1,2 and 4
     lroi_x.append(lroi1_x)
     lroi_y.append(lroi1_y)
     id_t.append(id1)
     sig_t.append(sig1)
     return(lroi_x,lroi_y,id_t,sig_t)
+
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

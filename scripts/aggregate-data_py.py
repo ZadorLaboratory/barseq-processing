@@ -104,15 +104,16 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                           cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
-    fnames = list(tform_final.keys() )
-    tilenames = nsort(  [ os.path.splitext(fn)[0] for fn in fnames ] )
     T={}
-    for i, tilename in enumerate(tilenames):
+    tilename_list = nsort( list(seg.keys()) )
+    for i, tilename in enumerate( tilename_list) :
+        logging.debug(f'handling {tilename}') 
         pos_id = np.array([i])
         logging.debug(f'handling tile id: {tilename} i={i} ')
         d = data_dict_organizer(d,'append',
-                              fov=np.full(len(gene_rol['gene_id'][i]),i), 
-                              gene_rol_id=np.array(gene_rol['gene_id'][i]),
+                              fov=np.full(len(gene_rol[tilename]['gene_id']),i), 
+                              gene_rol_id=np.array(gene_rol[tilename]['gene_id']),
+                              XXXXXXXXX
                               pos_10x_allx=coord[tilenames[i]]['lroi10x_x'],
                               pos_10x_ally=coord[tilenames[i]]['lroi10x_y'],
                               pos_40x_allx=np.array(gene_rol['lroi_x'][i]),

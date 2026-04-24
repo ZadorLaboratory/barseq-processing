@@ -13,10 +13,10 @@ import datetime as dt
 from configparser import ConfigParser
 
 import numpy as np
+import pandas as pd
 
 from skimage.segmentation import expand_labels
 from skimage.measure import label, regionprops_table
-
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
@@ -42,26 +42,30 @@ def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
     # get params
     
     #
-    lroi_x=[] 
-    lroi_y=[]
-    gene_id=[]
-
+    tile_dict = {}
     for infile in infiles:
-        logging.info(f'handling {infile}...')
-        try:
-            T=pd.read_csv(infile, header=0)
-            lroi_x.append(T.m2)
-            lroi_y.append(T.m1)
-            gene_id.append(T.j)
-        except:
-            lroi_x.append([])
-            lroi_y.append([])
-            gene_id.append([])
-            logging.debug(f'No geneseq rolonies found for tile {infile}\n')
+        (subdir, base, current_label, current_ext) = parse_rpath(infile)
+        logging.info(f'handling {infile} base={base}') 
+        df=pd.read_csv(infile, header=0)
+        lroi_x = list(df.m2)
+        lroi_y = list(df.m1)
+        gene_id = list(df.j)
+        tile_data = {"lroi_x": lroi_y, "lroi_y":lroi_x, "gene_id":gene_id}
+        tile_dict[base] = tile_data
 
-    logging.debug(f'Aggregated {len(infiles)} bardensrresults. Lengths: lroi_x={len(lroi_x)} lroi_y={len(lroi_y)} gene_id={len(gene_id)}')
-    joblib.dump({"lroi_x":lroi_y,"lroi_y":lroi_x,"gene_id":gene_id}, outfile)
+    logging.debug(f'Merged {len(infiles)} bardensrresults. Lengths: lroi_x={len(lroi_x)} lroi_y={len(lroi_y)} gene_id={len(gene_id)}')
+    logging.info(f'Writing merged data to joblib: {outfile} ')
+    joblib.dump(tile_dict, outfile)
+
+    outdf = make_tiledict_dataframe(tile_dict)
+    dir, base, label, ext = split_path(outfile)
+    outfile = os.path.join(dir, f'{base}.tsv')
+    logging.info(f'Writing merged data to TSV: {outfile} ')
+    outdf.to_csv(outfile, sep='\t')
     logging.info(f'Done.')
+
+
+
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
@@ -123,7 +127,8 @@ if __name__ == '__main__':
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     merge_basecall_geneseq_pd( infiles=args.infiles, 
-                       outfiles=args.outfiles, 
+                       outfiles=args.outfiles,
+                       stage=args.stage,  
                        cp=cp )
     (outdir, fname) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')
