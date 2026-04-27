@@ -109,32 +109,33 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     for i, tilename in enumerate( tilename_list) :
         logging.debug(f'handling {tilename}') 
         pos_id = np.array([i])
-        logging.debug(f'handling tile id: {tilename} i={i} ')
+        logging.debug(f'handling tile id: {tilename} i={i} pos_id = {pos_id} ')
         d = data_dict_organizer(d,'append',
                               fov=np.full(len(gene_rol[tilename]['gene_id']),i), 
                               gene_rol_id=np.array(gene_rol[tilename]['gene_id']),
-                              XXXXXXXXX
-                              pos_10x_allx=coord[tilenames[i]]['lroi10x_x'],
-                              pos_10x_ally=coord[tilenames[i]]['lroi10x_y'],
-                              pos_40x_allx=np.array(gene_rol['lroi_x'][i]),
-                              pos_40x_ally=np.array(gene_rol['lroi_y'][i]),
-                              cellidall=np.array(cell_id[tilenames[i]]['cellid']) + np.array(i*starting_fov_idx * dummy_cell_num),# if len(cellid[folders[i]]['cellid']) else np.array([0]),
-                              sliceidall=np.full(len(gene_rol['gene_id'][i]), pos_id+starting_slice_idx), # check this later,does it require -1 or not
-                              hyb_rol_id=hyb_rol['gene_id'][i][0],
-                              fov_hyb=np.full(len(hyb_rol['gene_id'][i][0]),i),
-                              pos_10x_allx_hyb=coord[tilenames[i]]['lroi10xhyb_x'],
-                              pos_10x_ally_hyb=coord[tilenames[i]]['lroi10xhyb_y'],
-                              pos_40x_allx_hyb=hyb_rol['lroi_x'][i][0],
-                              pos_40x_ally_hyb=hyb_rol['lroi_y'][i][0],
-                              cellidall_hyb=np.array(cell_id[tilenames[i]]['cellidhyb']) + np.array(i * starting_fov_idx * dummy_cell_num),
-                              sliceidall_hyb=np.full(len(hyb_rol['gene_id'][i][0]), pos_id + starting_slice_idx),
-                              cell_list_all=np.array(seg[tilenames[i]]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num),
-                              cell_pos_10x_allx=coord[tilenames[i]]['cellpos10x_x'],
-                              cell_pos_10x_ally=coord[tilenames[i]]['cellpos10x_y'],
-                              cell_pos_40x_allx=seg[tilenames[i]]['cent_x'],
-                              cell_pos_40x_ally=seg[tilenames[i]]['cent_y'],
-                              fov_cell=np.full(len(seg[tilenames[i]]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[tilenames[i]]['cell_num']), pos_id + starting_slice_idx))
+                              pos_10x_allx=coord[tilename]['lroi10x_x'],
+                              pos_10x_ally=coord[tilename]['lroi10x_y'],
+                              pos_40x_allx=np.array(gene_rol[tilename]['lroi_x']),
+                              pos_40x_ally=np.array(gene_rol[tilename]['lroi_y'][i]),
+                              # if len(cellid[folders[i]]['cellid']) else np.array([0]),
+                              cellidall=np.array(cell_id[tilename]['cellid']) + np.array( i*starting_fov_idx * dummy_cell_num),
+                              # check this later,does it require -1 or not
+                              sliceidall=np.full(len(gene_rol[tilename]['gene_id']), pos_id + starting_slice_idx), 
+                              hyb_rol_id=hyb_rol[tilename]['gene_id'][0],
+                              fov_hyb=np.full(len(hyb_rol[tilename]['gene_id'][0]),i),
+                              pos_10x_allx_hyb=coord[tilename]['lroi10xhyb_x'],
+                              pos_10x_ally_hyb=coord[tilename]['lroi10xhyb_y'],
+                              pos_40x_allx_hyb=hyb_rol[tilename]['lroi_x'][0],
+                              pos_40x_ally_hyb=hyb_rol[tilename]['lroi_y'][0],
+                              cellidall_hyb=np.array(cell_id[tilename]['cellidhyb']) + np.array( i * starting_fov_idx * dummy_cell_num),
+                              sliceidall_hyb=np.full(len(hyb_rol[tilename]['gene_id'][0]), pos_id + starting_slice_idx),
+                              cell_list_all=np.array(seg[tilename]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num),
+                              cell_pos_10x_allx=coord[tilename]['cellpos10x_x'],
+                              cell_pos_10x_ally=coord[tilename]['cellpos10x_y'],
+                              cell_pos_40x_allx=seg[tilename]['cent_x'],
+                              cell_pos_40x_ally=seg[tilename]['cent_y'],
+                              fov_cell=np.full(len(seg[tilename]['cell_num']),i),
+                              sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
 
     d=data_dict_organizer(d,'concat',fov=[],gene_rol_id=[],
                           pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
@@ -211,7 +212,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
               'slice':filtered_d['combined_gene_hyb_sliceidall'],
               'genes':codebook_combined,
               'fov':filtered_d['combined_gene_hyb_fov'],
-              'fov_names':tilenames}
+              'fov_names':tilename_list}
 
     neurons={'expmat':exp_m,
              'id':d['cell_list_all'],
@@ -222,7 +223,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
              'slice':d['sliceidall_cell'],
              'genes':codebook_combined,
              'fov':d['fov_cell'],
-             'fov_names':tilenames}
+             'fov_names':tilename_list}
 
     alldata = {"rolonies":rolonies, "neurons":neurons} 
     joblib.dump( alldata, os.path.join(outdir, 'alldata.joblib'))
@@ -337,7 +338,7 @@ def organize_processed_data(pth,config_pth,
                               cell_pos_40x_allx=seg[folders[i]]['cent_x'],
                               cell_pos_40x_ally=seg[folders[i]]['cent_y'],
                               fov_cell=np.full(len(seg[folders[i]]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id+starting_slice_idx))
+                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id + starting_slice_idx))
 
     d=data_dict_organizer(d,'concat',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
                           cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
