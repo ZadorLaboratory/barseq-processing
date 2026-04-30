@@ -52,10 +52,14 @@ By default, commands in the pipeline will take their defaults from a single conf
 
 ## Running the standard pipelines 
 
-### run_workflow.py
+### process_workflow.py
 To run the standard workflows for barseq or geneseq, run the run_workflow.py script pointed at the appropriate configuration file. A typical invocation would redirect logging output to a file, e.g.
 ```
-~/git/barseq-processing/scripts/run_workflow.py -v -c BC12345.geneseq.conf -O BC12345.run1.out  ./BC12345 > run_geneseq.run1.log 2>&1
+~/git/barseq-processing/scripts/process_workflow.py 
+    -v 
+    -c BC12345.geneseq.conf 
+    -O BC12345.run1.out  
+    ./BC12345 > run_geneseq.run1.log 2>&1
 ```
 run_workflow.py will get the stages and their order from the configuration file. 
 
