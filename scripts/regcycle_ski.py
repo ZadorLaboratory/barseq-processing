@@ -122,7 +122,6 @@ def regcycle_ski(infiles, outfiles, template=None, stage=None, cp=None ):
       
         moving_aligned=uint16m(moving_aligned)
         moving_aligned_full=moving_aligned.copy()
-
         logging.debug(f'done processing {base}.{ext} ')
         logging.info(f'writing to {outfile}')
         write_image(outfile, moving_aligned_full)

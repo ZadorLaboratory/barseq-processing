@@ -21,21 +21,6 @@ from barseq.imageutils import *
 
 def background_cv2( infiles, outfiles, stage=None, cp=None):
     '''
-    image_type = [ geneseq | bcseq | hyb ]
-
-    is_affine=0
-    num_initial_c=5 # initial channels in first round of sequencing to read
-    num_later_c=4 # subsequent cycle channels to read
-    num_c=4 # channels to perform bleedthrough-correction and channel alignment, 
-    needs more elegant solution--ng
-    subsample_rate=4
-    do_coarse=0
-    resize_factor=2
-    block_size=128
-    chshift_filename='chshift20x-20220218.mat'
-    chprofile_filename='chprofile20x-50-30-20-40-20220218.mat'
-    radius=31
-    local=1
 
     '''
     if cp is None:

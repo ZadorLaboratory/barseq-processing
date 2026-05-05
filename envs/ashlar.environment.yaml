@@ -17,5 +17,6 @@ dependencies:
   - pandas
   - libgfortran
   - natsort
+  - pip
   - pip:
     - git+https://github.com/ZadorLaboratory/ashlar-zador.git

@@ -59,9 +59,6 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
 
-
-
-
     logging.info(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     
