@@ -7,6 +7,7 @@ channels:
   - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python
+  - anndata
   - h5py
   - imageio
   - ipython

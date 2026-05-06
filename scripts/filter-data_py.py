@@ -12,6 +12,7 @@ import sys
 import datetime as dt
 from configparser import ConfigParser
 
+import anndata as ad
 import numpy as np
 from natsort import natsorted as nsort
 
@@ -176,150 +177,36 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     dfexpmat.to_csv(of, sep='\t') 
     logging.info(f'Wrote cells X genes matrix to {of}')
 
-    logging.info(f'Writing output to {outfile}')
+    # --- obs dataframe ---
+    obs = pd.DataFrame( 
+        {   'cell_id': np.asarray( d['id']).ravel() 
+            'pos_x': np.asarray(d['pos10x_x']).ravel(),
+            'pos_y': np.asarray(d['pos10x_y']).ravel(),
+            'slice': np.asarray(d['slice']).ravel(),         
+         } )    
+
+    # --- var dataframe ---
+    genes=[ g[0][0].item() for g in filt_neurons['genes']]
+    genes = np.array(genes)
+
+    var = pd.DataFrame(index=genes)
+    var["gene_symbol"] = genes
+
+    # --- make AnnData ---
+    adata = ad.AnnData(X=dfexpmat, obs=obs, var=var)
+
+    # optional: put spatial coordinates in obsm like Scanpy expects
+    adata.obsm["spatial"] = obs[["pos_x", "pos_y"]].to_numpy()
+
+    aof = os.path.join( outdir, f'{project_id}.filt_neuron.anndata.h5ad')
+    logging.info(f'Writing anndata to {aof}')
+    adata.write_h5ad(aof)
+
+    logging.info(f'Writing overall output to {outfile}')
     joblib.dump(output_data, outfile)
 
     logging.info(f'Done.')
 
-
-# NOTEBOOK CODE
-
-#from scipy.spatial.distance import cdist
-from scipy.sparse import coo_matrix
-from scipy.spatial import cKDTree
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import connected_components
-def filter_overlapping_cells_ver2(pth, fname='alldata06092025.joblib', rescale_factor=0.5,px=0.33,box_half_width_um=5,search_radius_um=200):
-    """
-    Postprocessing function:
-    1. Removes overlapping neurons per tile
-    2. Searching within a circle of search radius 200 um around per cell, looking for only cells from different fov and removing cells within a square of overlap width 10um
-    3. Saves the final output filt_neurons
-    """
-    data=load(os.path.join(pth,'processed',fname))
-    pr=px/rescale_factor
-    overlap_half_width=np.round(box_half_width_um/pr)
-    search_radius=np.round(search_radius_um/pr)
-    neurons=data['neurons']
-    center_x=neurons['pos10x_x']
-    center_y=neurons['pos10x_y']
-    exp_mat=neurons['expmat'].todense() # I should do it in csr rather than dense--memory efficient
-
-    xmin=center_x-overlap_half_width
-    xmax=center_x+overlap_half_width
-    ymin=center_y-overlap_half_width
-    ymax=center_y+overlap_half_width
-    c=np.column_stack((center_x,center_y))
-    num_slices=np.unique(neurons['slice'])
-    filt_neurons={}
-    id_to_keep_all=[]
-    for uslice in num_slices:
-        
-        idx_slice=neurons['slice']==uslice
-
-    ## this will crash for big population of cells
-        # dist=cdist(c[idx_slice],c[idx_slice],'euclidean')
-        # dist_nearest=(dist<search_radius)
-        # [cell_id,nearest_neigh_id]=np.nonzero(dist_nearest)
-        # fov_neigh=neurons['fov'][idx_slice][nearest_neigh_id]
-        # fov_cell=neurons['fov'][idx_slice][cell_id]
-
-        # sel_cells_id=fov_cell!=fov_neigh
-        # distances_neigh=dist[cell_id[sel_cells_id],nearest_neigh_id[sel_cells_id]]
-
-        tree=cKDTree(c[idx_slice])
-        sparse_dist=tree.sparse_distance_matrix(tree, max_distance=search_radius, output_type='coo_matrix')
-        cell_id=sparse_dist.row
-        nearest_neigh_id=sparse_dist.col
-        dist_vals=sparse_dist.data
-        fov_neigh=neurons['fov'][idx_slice][nearest_neigh_id]
-        fov_cell=neurons['fov'][idx_slice][cell_id]
-        sel_cells_id=fov_cell!=fov_neigh
-        distances_neigh=dist_vals[sel_cells_id] 
-    
-        search_cells_id=cell_id[sel_cells_id]
-        search_neighbors_id=nearest_neigh_id[sel_cells_id]
-        search_dist=distances_neigh
-        
-        id_overlap=((((xmin[idx_slice][search_cells_id]<xmin[idx_slice][search_neighbors_id])&(xmin[idx_slice][search_neighbors_id]<xmax[idx_slice][search_cells_id])) |
-                     ((xmin[idx_slice][search_cells_id]<xmax[idx_slice][search_neighbors_id])&(xmax[idx_slice][search_neighbors_id]<xmax[idx_slice][search_cells_id]))) & 
-                     (((ymin[idx_slice][search_cells_id]<ymin[idx_slice][search_neighbors_id])&(ymin[idx_slice][search_neighbors_id]<ymax[idx_slice][search_cells_id])) | 
-                     ((ymin[idx_slice][search_cells_id]<ymax[idx_slice][search_neighbors_id])&(ymax[idx_slice][search_neighbors_id]<ymax[idx_slice][search_cells_id]))))
-    
-        #id_overlap = search_dist < overlap_half_width
-
-
-
-
-    
-        overlap_cells_id=search_cells_id[id_overlap]
-        overlap_neighbors_id=search_neighbors_id[id_overlap]
-        overlap_distance=search_dist[id_overlap]
-        # for i,idc in enumerate(overlap_cells_id):
-        #     print(f"Cell {neurons['id'][idc]} in fov {neurons['fov_names'][neurons['fov'][idc]]} is matched to cell {neurons['id'][overlap_neighbors_id[i]]} in fov {neurons['fov_names'][neurons['fov'][overlap_neighbors_id[i]]]} with distance {overlap_distance[i]}")
-        
-        print(f"Total cells: {len(center_x[idx_slice])}")
-        print(f"Cells in overlap pairs: {len(np.unique(overlap_cells_id))}")
-        print(f"Fraction of cells in overlaps: {len(np.unique(overlap_cells_id))/len(center_x[idx_slice]):.2%}")
-        
-        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
-        is_overlap = np.zeros(len(center_x[idx_slice]), dtype=bool)
-        is_overlap[np.unique(overlap_cells_id)] = True
-        
-        axes[0].scatter(center_x[idx_slice][~is_overlap], center_y[idx_slice][~is_overlap], s=0.5, c='yellow', label='non-overlap')
-        axes[0].scatter(center_x[idx_slice][is_overlap], center_y[idx_slice][is_overlap], s=0.5, c='red', label='overlap')
-        axes[0].set_title(f'Overlap detection ({is_overlap.sum()} flagged)')
-        axes[0].axis('image')
-        axes[0].legend(markerscale=10)
-        
-        axes[1].hist(overlap_distance, bins=100)
-        axes[1].set_xlabel('Centroid distance (px)')
-        axes[1].set_title('Distances of detected overlaps')
-        
-        plt.tight_layout()
-        plt.show()
-
-        n_cells_slice = int(idx_slice.sum())
-        adj = csr_matrix((np.ones(len(overlap_cells_id)), 
-                         (overlap_cells_id, overlap_neighbors_id)), 
-                         shape=(n_cells_slice, n_cells_slice))
-        adj = adj + adj.T  # symmetrize
-        n_components, comp_labels = connected_components(adj, directed=False)
-        
-        total_exp_cell = np.asarray(np.sum(exp_mat[idx_slice,:], axis=1)).flatten()
-        
-        is_removed = np.zeros(n_cells_slice)
-        for comp in range(n_components):
-            members = np.where(comp_labels == comp)[0]
-            if len(members) <= 1:
-                continue
-            best = members[np.argmax(total_exp_cell[members])]
-            is_removed[members] = 1
-            is_removed[best] = 0
-        
-        id_to_keep = is_removed == 0
-        id_to_keep_all.append(id_to_keep)
-    id_to_keep_all=np.concatenate(id_to_keep_all)    
-    expmat=coo_matrix(exp_mat[id_to_keep_all,:])
-    filt_neurons['expmat']=expmat
-    filt_neurons['id']=neurons['id'][id_to_keep_all]
-    filt_neurons['pos10x_x']=neurons['pos10x_x'][id_to_keep_all]
-    filt_neurons['pos10x_y']=neurons['pos10x_y'][id_to_keep_all]
-    filt_neurons['pos40x_x']=neurons['pos40x_x'][id_to_keep_all]
-    filt_neurons['pos40x_y']=neurons['pos40x_y'][id_to_keep_all]
-    filt_neurons['slice']=neurons['slice'][id_to_keep_all]
-    filt_neurons['genes']=neurons['genes']
-    filt_neurons['fov']=neurons['fov'][id_to_keep_all]
-    filt_neurons['fov_names']=neurons['fov_names']
-    
-    dump({"filt_neurons":filt_neurons,"removecells_all":id_to_keep_all},os.path.join(pth,'processed','filt_neurons.joblib'))
-
-    print(f"search_radius: {search_radius}")
-    print(f"cross-FOV pairs: {sel_cells_id.sum()}")
-    print(f"overlap pairs: {id_overlap.sum()}")
-    print(f"cells removed: {int((id_to_keep_all==0).sum())}")
-    
-    print(f'OVERLAPPING CELLS REMOVED, {np.sum(id_to_keep_all)} {100*np.sum(id_to_keep_all)/len(center_x)} % cells kept out of {len(center_x)}--PROCESSING FINISHED')
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
