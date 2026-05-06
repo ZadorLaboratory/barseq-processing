@@ -1,0 +1,12 @@
+#
+# UNDER CONSTRUCTION
+#
+# Direct install from pip after conda setup. 
+# Could eventually be integrated into barseq.environment.yaml
+# PROBLEM: All commands have .py removed from their name, complicating the
+# running of sub-processes. 
+#
+
+conda env create -f barseq.environment.yaml  
+conda activate barseq 
+pip install --no-build-isolation git+https://github.com/ZadorLaboratory/barseq-processing.git

@@ -10,7 +10,6 @@ from configparser import ConfigParser
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
 
-
 from natsort import natsorted as nsort
 
 from barseq.core import *
@@ -32,4 +31,39 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 cfile = ''
 # cp.read(cfile)
+
+#
+# pipeline map
+#
+cell_id_file     = 'merge/hyb/cell_id.joblib'
+coord_file      = 'merge/hyb/lroi10x.joblib'
+gene_rol_file   = 'merge/geneseq/basecalls.joblib'
+hyb_rol_file    = 'merge/hyb/genehyb.joblib'
+seg_file        = 'merge/hyb/all_segmentation.joblib'
+tforms_file     = 'merge/hyb/tforms_final.joblib'
+
+resource_dir = os.path.expanduser('~/git/barseq-processing/resource')
+codebook_hyb_file = os.path.join(resource_dir, 'codebook_hyb.tsv')
+codebook_hyb = pd.read_csv(codebook_hyb_file, sep='\t', index_col=0)
+codebook_geneseq_file = os.path.join(resource_dir, 'codebook_geneseq.tsv')
+codebook_geneseq = pd.read_csv(codebook_geneseq_file, sep='\t', index_col=0)
+
+
+# old pipeline map
+codebook_geneseq_file = 'processed/codebook.joblib'
+codebook_hyb_file = 'processed/hyb_codebook.joblib'
+codebook=joblib.load(codebook_geneseq_file)
+hyb_codebook=joblib.load(codebook_hyb_file)
+
+cell_id_file    = 'processed/cell_id.joblib'
+coord_file      = 'processed/lroi10x.joblib'
+gene_rol_file   = 'processed/basecalls.joblib' 
+hyb_rol_file    = 'processed/genehyb.joblib'
+seg_file        = 'processed/all_segmentation.joblib'
+tforms_file     = 'processed/tforms_final.joblib'
+
+#./processed/processeddata.joblib
+#./processed/filt_neurons.joblib
+#./processed/alldata06052026.joblib
+#./processed/codebookforbardensr.joblib
 

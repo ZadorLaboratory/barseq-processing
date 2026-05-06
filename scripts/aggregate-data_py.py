@@ -68,7 +68,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
 
     # We have heterogenous input files, so we need to confirm all are present, and 
     # figure out which is which. 
-    #   'basecalls.joblib'.  'all_segmentation.joblib'   'genehyb.joblib' ...
+    # 'basecalls.joblib'.  'all_segmentation.joblib'   'genehyb.joblib' ...
     # return order from select function will be alphabetical by key name.  
     input_map = {   'cellid'  :  'cell_id.joblib',
                     'coord'   :  'lroi10x.joblib',
@@ -104,39 +104,37 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                           cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
-    T={}
     tilename_list = nsort( list(seg.keys()) )
     for i, tilename in enumerate( tilename_list) :
         logging.debug(f'handling {tilename}') 
         pos_id = np.array([i])
         logging.debug(f'handling tile id: {tilename} i={i} pos_id = {pos_id} ')
-        d=data_dict_organizer(d,'append', fov=np.full(len(gene_rol[tilename]['gene_id']),i) )
-        d=data_dict_organizer(d,'append', gene_rol_id= np.array(gene_rol[tilename]['gene_id']) )                              
-        d=data_dict_organizer(d,'append', pos_10x_allx=coord[tilename]['lroi10x_x'])
-        d=data_dict_organizer(d,'append', pos_10x_ally=coord[tilename]['lroi10x_y'])
-        d=data_dict_organizer(d,'append', pos_40x_allx=np.array(gene_rol[tilename]['lroi_x']))
-        d=data_dict_organizer(d,'append', pos_40x_ally=np.array(gene_rol[tilename]['lroi_y']))
-        # if len(cellid[folders[i]]['cellid']) else np.array([0]),
-        d=data_dict_organizer(d,'append', cellidall=np.array(cell_id[tilename]['cellid']) + np.array( i*starting_fov_idx * dummy_cell_num))
-        # check this later,does it require -1 or not
-        d=data_dict_organizer(d,'append', sliceidall=np.full(len(gene_rol[tilename]['gene_id']), pos_id + starting_slice_idx)) 
-        d=data_dict_organizer(d,'append', hyb_rol_id=hyb_rol[tilename]['gene_id'])
-        d=data_dict_organizer(d,'append', fov_hyb=np.full(len(hyb_rol[tilename]['gene_id']),i))
-        d=data_dict_organizer(d,'append', pos_10x_allx_hyb=coord[tilename]['lroi10xhyb_x'])
-        d=data_dict_organizer(d,'append', pos_10x_ally_hyb=coord[tilename]['lroi10xhyb_y'])
-        d=data_dict_organizer(d,'append', pos_40x_allx_hyb=hyb_rol[tilename]['lroi_x'])
-        d=data_dict_organizer(d,'append', pos_40x_ally_hyb=hyb_rol[tilename]['lroi_y'])
-        d=data_dict_organizer(d,'append', cellidall_hyb=np.array(cell_id[tilename]['cellidhyb']) + np.array( i * starting_fov_idx * dummy_cell_num))
-        d=data_dict_organizer(d,'append', sliceidall_hyb=np.full(len(hyb_rol[tilename]['gene_id']), pos_id + starting_slice_idx))
-        d=data_dict_organizer(d,'append', cell_list_all=np.array(seg[tilename]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num))
-        d=data_dict_organizer(d,'append', cell_pos_10x_allx=coord[tilename]['cellpos10x_x'])
-        d=data_dict_organizer(d,'append', cell_pos_10x_ally=coord[tilename]['cellpos10x_y'])
-        d=data_dict_organizer(d,'append', cell_pos_40x_allx=seg[tilename]['cent_x'])
-        d=data_dict_organizer(d,'append', cell_pos_40x_ally=seg[tilename]['cent_y'])
-        d=data_dict_organizer(d,'append', fov_cell=np.full(len(seg[tilename]['cell_num']),i))
-        d=data_dict_organizer(d,'append', sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
+        d=data_dict_organizer(d,'append',
+                              fov=np.full(len(gene_rol['gene_id'][i]),i),
+                              gene_rol_id=np.array(gene_rol['gene_id'][i]),
+                              pos_10x_allx=coord[folders[i]]['lroi10x_x'],
+                              pos_10x_ally=coord[folders[i]]['lroi10x_y'],
+                              pos_40x_allx=np.array(gene_rol['lroi_x'][i]),
+                              pos_40x_ally=np.array(gene_rol['lroi_y'][i]),
+                              cellidall=np.array(cellid[folders[i]]['cellid'])+np.array(i*starting_fov_idx*dummy_cell_num),# if len(cellid[folders[i]]['cellid']) else np.array([0]),
+                              sliceidall=np.full(len(gene_rol['gene_id'][i]),pos_id+starting_slice_idx), # check this later,does it require -1 or not
+                              hyb_rol_id=hyb_rol['gene_id'][i][0],
+                              fov_hyb=np.full(len(hyb_rol['gene_id'][i][0]),i),
+                              pos_10x_allx_hyb=coord[folders[i]]['lroi10xhyb_x'],
+                              pos_10x_ally_hyb=coord[folders[i]]['lroi10xhyb_y'],
+                              pos_40x_allx_hyb=hyb_rol['lroi_x'][i][0],
+                              pos_40x_ally_hyb=hyb_rol['lroi_y'][i][0],
+                              cellidall_hyb=np.array(cellid[folders[i]]['cellidhyb'])+np.array(i*starting_fov_idx*dummy_cell_num),
+                              sliceidall_hyb=np.full(len(hyb_rol['gene_id'][i][0]),pos_id+starting_slice_idx),
+                              cell_list_all=np.array(seg[folders[i]]['cell_num'])+np.array(i*starting_fov_idx*dummy_cell_num),
+                              cell_pos_10x_allx=coord[folders[i]]['cellpos10x_x'],
+                              cell_pos_10x_ally=coord[folders[i]]['cellpos10x_y'],
+                              cell_pos_40x_allx=seg[folders[i]]['cent_x'],
+                              cell_pos_40x_ally=seg[folders[i]]['cent_y'],
+                              fov_cell=np.full(len(seg[folders[i]]['cell_num']),i),
+                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id+starting_slice_idx))
 
-    logging.debug(f'Done appending. Concatting keys...')
+    logging.debug(f'Done appending. Concatenating...')
     d=data_dict_organizer(d,'concat', fov=[])
     d=data_dict_organizer(d,'concat', gene_rol_id=[])
     d=data_dict_organizer(d,'concat', pos_10x_allx=[])
@@ -346,12 +344,9 @@ def aggregate_data_py_tileindex(infiles, outfiles, stage=None, cp=None):
     #codebook_hyb = joblib.load(os.path.join(outdir, 'hyb_codebook.joblib'))  
 
     d={}
-    d=data_dict_organizer(d,'initialize',fov=[], gene_rol_id=[],
-                          pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],cellidall=[],sliceidall=[],
-                          hyb_rol_id=[],fov_hyb=[],
-                          pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
-                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],
-                          cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
+    d=data_dict_organizer(d,'initialize',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
+                          cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
+                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
     T={}
@@ -515,27 +510,20 @@ def data_dict_organizer(d, operation, **kwargs):
     return d
 
 
-def merge_gene_hyb_dict(d,key1,key2,key3):#
+def merge_gene_hyb_dict(d, key1, key2, key3):
     """
     Helper function: Combines gene and hyb data into one dictionary
     """
-    ar=[d[key1],d[key2]]
-    d[key3]=np.concatenate(ar)
+    ar=[d[key1], d[key2]]
+    d[key3]= np.concatenate(ar)
     return d
 
 
 #########################
 # NOTEBOOK CODE
 #########################
-
-def organize_processed_data(pth,config_pth,
-                            is_optseq=0,
-                            hyb_codebook_name='codebookhyb.mat',
-                            starting_slice_idx=1,
-                            starting_fov_idx=1,
-                            dummy_cell_num=10000,
-                            tilesize=3200,
-                            fraction_border=0.07):
+def organize_processed_data_notebook(pth,config_pth,is_optseq=0,hyb_codebook_name='codebookhyb.mat',starting_slice_idx=1,starting_fov_idx=1,dummy_cell_num=10000,tilesize=3200,
+                           fraction_border=0.07):
     """
     Postprocessing function:
     Organizes all the data into rolonies and neurons--prepares a big dictionary
@@ -551,24 +539,17 @@ def organize_processed_data(pth,config_pth,
     hyb_codebook=scipy.io.loadmat(os.path.join(config_pth,hyb_codebook_name))['codebookhyb']
     dump([hyb_codebook],os.path.join(pth,'processed','hyb_codebook.joblib'))
     hyb_codebook=load(os.path.join(pth,'processed','hyb_codebook.joblib'))
-    
     [folders,pos,_,_]=get_folders(pth)
-    # pos = ['Pos1', 'Pos1',  'Pos1', ... ] 
-    # folders = [['MAX_Pos1_000_000', 'MAX_Pos1_000_001', ...]
     npos=nsort(np.unique(pos))
-    # npos= [np.str_('Pos1')]
-
     d={}
     d=data_dict_organizer(d,'initialize',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
                           cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
                           cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
 
-    for i, folder in enumerate(folders):
-        # i = 0
-        # folder = 'MAX_Pos1_000_000'
-        pos_id = np.array([j for j,name in enumerate(npos) if name==pos[i]]) # search for slice/position number for this tile
-        # array([0])
+    for i,folder in enumerate(folders):
+        
+        pos_id=np.array([j for j,name in enumerate(npos) if name==pos[i]]) # search for slice/position number for this tile
 
         d=data_dict_organizer(d,'append',
                               fov=np.full(len(gene_rol['gene_id'][i]),i),
@@ -593,37 +574,22 @@ def organize_processed_data(pth,config_pth,
                               cell_pos_40x_allx=seg[folders[i]]['cent_x'],
                               cell_pos_40x_ally=seg[folders[i]]['cent_y'],
                               fov_cell=np.full(len(seg[folders[i]]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id + starting_slice_idx))
+                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id+starting_slice_idx))
 
     d=data_dict_organizer(d,'concat',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
                           cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
                           cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
                           fov_cell=[],sliceidall_cell=[])
-    
-    
-    # codebook. type = list.   
-    # codebook[0] -> array...  np.ndarray
-    # codebook[0][0] -> array([array(['Calb1'], dtype='<U5'), array(['AGTTCGG'], dtype='<U7')], dtype=object)
-    # codebook[0][0][0] -> array(['Calb1'], dtype='<U5') 
-    # codebook[0][0][0][0] ->. np.str_('Calb1') 
-    #
-    # hyb_codebook type=list
-    # 
-    # hyb_codebook[0] -> array
-    # hyb_codebook[0][0]  array([array(['Slc17a7'], dtype='<U7'), array([[1]], dtype=uint8)], dtype=object)
-    # hyb_codebook[0][0][0]   array(['Slc17a7'], dtype='<U7')
-    # hyb_codebook[0][0][0][0] -> np.str_('Slc17a7')
-
     if is_optseq:
         print('Has optseq')
         codebook_optseq=load(os.path.join(pth,'processed','codebook_optseq.joblib'))
-        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0])-1+len(codebook_optseq[0])-1
+        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0])+len(codebook_optseq[0])# -2 not needed this subtraction if passing index from above
         codebook_comb=[codebook[0],codebook_optseq[0],hyb_codebook[0]]
     else:
-        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0])-1
+        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0]) #-1 not needed this subtraction if passing index from above
         codebook_comb=[codebook[0],hyb_codebook[0]]
+        
     codebook_comb=np.concatenate(codebook_comb)
-
     d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
     d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
     d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')
@@ -631,9 +597,10 @@ def organize_processed_data(pth,config_pth,
     d=merge_gene_hyb_dict(d,'pos_40x_allx','pos_40x_allx_hyb','combined_gene_hyb_pos40x_x')
     d=merge_gene_hyb_dict(d,'pos_40x_ally','pos_40x_ally_hyb','combined_gene_hyb_pos40x_y')
     d=merge_gene_hyb_dict(d,'cellidall','cellidall_hyb','combined_gene_hyb_cellidall')
-    d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall') 
+    d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall')
+
     
-    border_size=np.round(fraction_border * tilesize)
+    border_size=np.round(fraction_border*tilesize)
 
     pos_id=d['combined_gene_hyb_id']>0 # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
     pos_inside_border_x=(d['combined_gene_hyb_pos40x_x']>border_size-1) & (d['combined_gene_hyb_pos40x_x']<tilesize-border_size+1)
@@ -653,15 +620,15 @@ def organize_processed_data(pth,config_pth,
                                    combined_gene_hyb_pos40x_y=d['combined_gene_hyb_pos40x_y'][filter_id],
                                    combined_gene_hyb_cellidall=d['combined_gene_hyb_cellidall'][filter_id],
                                    combined_gene_hyb_sliceidall=d['combined_gene_hyb_sliceidall'][filter_id])
-    
     filtered_d=data_dict_organizer(filtered_d,'concat',combined_gene_hyb_id=[],combined_gene_hyb_fov=[],combined_gene_hyb_pos10x_x=[],combined_gene_hyb_pos10x_y=[],
-                                  combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],combined_gene_hyb_cellidall=[],combined_gene_hyb_sliceidall=[])
+                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],combined_gene_hyb_cellidall=[],combined_gene_hyb_sliceidall=[])
 
+    
     cells=d['cell_list_all'].copy() # check if copy messed something
     genes=np.unique(d['combined_gene_hyb_id'])
     rol_id=d['combined_gene_hyb_id'].copy()
     rol_cell=d['combined_gene_hyb_cellidall'].copy()
-    v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'], dropna=False)
+    v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'],dropna=False)
     v=v.reindex(index=cells, columns=genes, fill_value=0)
     exp_m=coo_matrix(v.to_numpy())
     processed_data={'all_data':d,
@@ -693,32 +660,10 @@ def organize_processed_data(pth,config_pth,
              'fov':d['fov_cell'],
              'fov_names':folders}
     dated_filename='alldata'+str(today)+'.joblib'
-    dump({"rolonies":rolonies, "neurons":neurons}, os.path.join(pth,'processed',dated_filename))
+    dump({"rolonies":rolonies,"neurons":neurons},os.path.join(pth,'processed',dated_filename))
     print('ALL DATA IS ORGANIZED')
     return dated_filename
 
-
-def data_dict_organizer_notebook(d,operation,**kwargs):#
-    """
-    Helper function: Organizes dictionaries
-    """
-    if operation=='initialize':
-        d.update(kwargs)
-    elif operation=='append':
-        for key in kwargs:
-            d[key].append(kwargs[key])
-    elif operation=='concat':
-        for key in kwargs:
-            d[key]=np.concatenate(d[key])
-    return d
-
-def merge_gene_hyb_dict_notebook(d, key1, key2, key3):
-    """
-    Helper function: Combines gene and hyb data into one dictionary
-    """
-    ar=[d[key1],d[key2]]
-    d[key3]=np.concatenate(ar)
-    return d
 
 
 if __name__ == '__main__':

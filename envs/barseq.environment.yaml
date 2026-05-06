@@ -7,19 +7,19 @@ channels:
   - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python
+  - h5py
+  - imageio
   - ipython
+  - joblib
   - jupyter
+  - natsort
+  - networkx
+  - numpy
+  - opencv
   - pandas
+  - pyarrow
+  - scikit-image
   - scipy
   - seaborn
   - tifffile
-  - imageio
-  - opencv
-  - pyarrow
-  - scikit-image
-  - hdf5
-  - networkx
-  - numpy
-  - joblib
-  - natsort
 

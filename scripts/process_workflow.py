@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-O','--outdir', 
                     metavar='outdir',
-                    default=None,  
+                    default=os.path.abspath( os.path.expanduser('./')),  
                     type=str, 
                     help='Outdir.')
     

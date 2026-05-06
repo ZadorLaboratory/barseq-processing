@@ -9,6 +9,7 @@ from barseq.core import *
 from barseq.utils import *
 
 def process_workflow():
+
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
     logging.getLogger().setLevel(logging.WARN)
