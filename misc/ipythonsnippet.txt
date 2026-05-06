@@ -50,6 +50,7 @@ codebook_geneseq = pd.read_csv(codebook_geneseq_file, sep='\t', index_col=0)
 
 
 # old pipeline map
+
 codebook_geneseq_file = 'processed/codebook.joblib'
 codebook_hyb_file = 'processed/hyb_codebook.joblib'
 codebook=joblib.load(codebook_geneseq_file)
@@ -67,3 +68,20 @@ tforms_file     = 'processed/tforms_final.joblib'
 #./processed/alldata06052026.joblib
 #./processed/codebookforbardensr.joblib
 
+def get_folders(pth):
+    """
+    Universal function:
+    Scans the processed directory to get total tiles (folders),names, positions and x and y grid points 
+    """
+    dr=nsort(glob.glob(os.path.join(pth,'processed','MAX*')))
+    folder=[]
+    xp=[]
+    yp=[]
+    pos=[]
+    for i,j in enumerate(dr):
+        folder.append(str(j).split('/')[-1])
+        temp=str(j).split('/')[-1].split('_')
+        pos.append(temp[1])
+        xp.append(int(temp[2])+1)
+        yp.append(int(temp[3])+1)
+    return folder,pos,xp,yp

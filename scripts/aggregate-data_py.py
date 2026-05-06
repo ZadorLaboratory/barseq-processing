@@ -27,6 +27,35 @@ sys.path.append(gitpath)
 from barseq.utils import *
 from barseq.imageutils import *
 
+def make_pos_id_map( tilename_list, image_regex, position_group):
+    '''
+    make map (dict) from tilename to position INDEX (starting at 0)
+    e.g.
+    MAX_Pos1_000_000 -> 0
+    MAX_Pos2_000_000 -> 1
+
+    Retain order. 
+    Tolerate non-integer position identifiers. 
+    '''
+    tilename_list = nsort(tilename_list)
+    pos_list = []
+    pos_id_map = {}
+    for tilename in tilename_list:
+        m = re.search(image_regex, tilename)
+        if m is not None:
+            pos = m.group(position_group)
+            pos_list.append(pos)
+        else:
+            logging.error(f'unable to parse {tilename} for position!')
+    unique_pos = list(dict.fromkeys(pos_list))
+    index_list = []
+    for i, tilename in enumerate(tilename_list):
+        p = pos_list[i]
+        pos_id_map[tilename] = unique_pos.index(p)
+    return pos_id_map
+
+
+
 def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     #     cycleset map 
     #         arity=single
@@ -63,6 +92,8 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     dummy_cell_num =  cp.getint( stage, 'dummy_cell_num')
     tilesize = cp.getint( stage, 'tilesize' ) 
     fraction_border= cp.getfloat( stage, 'fraction_border')
+    image_regex = cp.get('barseq', 'file_regex')
+    position_group = cp.getint('barseq', 'position_group')
 
     today=datetime.date.today().strftime('%d%m%Y')
 
@@ -105,36 +136,50 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                           fov_cell=[],sliceidall_cell=[])
 
     tilename_list = nsort( list(seg.keys()) )
+    pos_id_map = make_pos_id_map( tilename_list, image_regex, position_group)
+
     for i, tilename in enumerate( tilename_list) :
         logging.debug(f'handling {tilename}') 
-        pos_id = np.array([i])
+        pos_id = np.array([ pos_id_map[tilename] ])
         logging.debug(f'handling tile id: {tilename} i={i} pos_id = {pos_id} ')
         d=data_dict_organizer(d,'append',
-                              fov=np.full(len(gene_rol['gene_id'][i]),i),
-                              gene_rol_id=np.array(gene_rol['gene_id'][i]),
-                              pos_10x_allx=coord[folders[i]]['lroi10x_x'],
-                              pos_10x_ally=coord[folders[i]]['lroi10x_y'],
-                              pos_40x_allx=np.array(gene_rol['lroi_x'][i]),
-                              pos_40x_ally=np.array(gene_rol['lroi_y'][i]),
-                              cellidall=np.array(cellid[folders[i]]['cellid'])+np.array(i*starting_fov_idx*dummy_cell_num),# if len(cellid[folders[i]]['cellid']) else np.array([0]),
-                              sliceidall=np.full(len(gene_rol['gene_id'][i]),pos_id+starting_slice_idx), # check this later,does it require -1 or not
-                              hyb_rol_id=hyb_rol['gene_id'][i][0],
-                              fov_hyb=np.full(len(hyb_rol['gene_id'][i][0]),i),
-                              pos_10x_allx_hyb=coord[folders[i]]['lroi10xhyb_x'],
-                              pos_10x_ally_hyb=coord[folders[i]]['lroi10xhyb_y'],
-                              pos_40x_allx_hyb=hyb_rol['lroi_x'][i][0],
-                              pos_40x_ally_hyb=hyb_rol['lroi_y'][i][0],
-                              cellidall_hyb=np.array(cellid[folders[i]]['cellidhyb'])+np.array(i*starting_fov_idx*dummy_cell_num),
-                              sliceidall_hyb=np.full(len(hyb_rol['gene_id'][i][0]),pos_id+starting_slice_idx),
-                              cell_list_all=np.array(seg[folders[i]]['cell_num'])+np.array(i*starting_fov_idx*dummy_cell_num),
-                              cell_pos_10x_allx=coord[folders[i]]['cellpos10x_x'],
-                              cell_pos_10x_ally=coord[folders[i]]['cellpos10x_y'],
-                              cell_pos_40x_allx=seg[folders[i]]['cent_x'],
-                              cell_pos_40x_ally=seg[folders[i]]['cent_y'],
-                              fov_cell=np.full(len(seg[folders[i]]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id+starting_slice_idx))
+                              fov = np.full(len(gene_rol[tilename]['gene_id']),i),
+                              gene_rol_id = np.array(gene_rol[tilename]['gene_id']),
+                              pos_10x_allx = coord[tilename]['lroi10x_x'],
+                              pos_10x_ally = coord[tilename]['lroi10x_y'],
+                              pos_40x_allx = np.array(gene_rol[tilename]['lroi_x']),
+                              pos_40x_ally = np.array(gene_rol[tilename]['lroi_y']),
 
-    logging.debug(f'Done appending. Concatenating...')
+                              # if len(cellid[tilename]['cellid']) else np.array([0]),
+                              cellidall = np.array( cell_id[tilename]['cellid'] ) + np.array(i * starting_fov_idx * dummy_cell_num), 
+                              
+                              # check this later,does it require -1 or not
+                              sliceidall = np.full(len(gene_rol[tilename]['gene_id']) , pos_id + starting_slice_idx ),  
+                              
+                              hyb_rol_id = hyb_rol[tilename]['gene_id'][0][0],
+
+                              # possible mismatch? nested list in our hyb_rol vs. notebook?
+                              fov_hyb = np.full(len( hyb_rol[tilename]['gene_id'][0][0] ),i),
+                              
+                              pos_10x_allx_hyb = coord[tilename]['lroi10xhyb_x'],
+                              pos_10x_ally_hyb = coord[tilename]['lroi10xhyb_y'],
+                              pos_40x_allx_hyb = hyb_rol[tilename]['lroi_x'][0][0],
+                              pos_40x_ally_hyb = hyb_rol[tilename]['lroi_y'][0][0],
+
+                              cellidall_hyb = np.array(cell_id[tilename]['cellidhyb']) + np.array(i * starting_fov_idx * dummy_cell_num ),
+                              sliceidall_hyb = np.full(len(hyb_rol[tilename]['gene_id'][0][0]), pos_id + starting_slice_idx ),
+                              cell_list_all=np.array(seg[tilename]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num ),
+                              
+                              cell_pos_10x_allx=coord[tilename]['cellpos10x_x'],
+                              cell_pos_10x_ally=coord[tilename]['cellpos10x_y'],
+                              
+                              cell_pos_40x_allx=seg[tilename]['cent_x'],
+                              cell_pos_40x_ally=seg[tilename]['cent_y'],
+                              
+                              fov_cell=np.full(len(seg[tilename]['cell_num']),i),
+                              sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
+
+    logging.debug(f'Done appending. Concatenating tile arrays')
     d=data_dict_organizer(d,'concat', fov=[])
     d=data_dict_organizer(d,'concat', gene_rol_id=[])
     d=data_dict_organizer(d,'concat', pos_10x_allx=[])
@@ -165,20 +210,12 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     #              -> array ['Rorb'] , ['GCTAGAG']
     #      [1] -> array len=111
     #              -> array ['Rorb'], [1,0,0,0,1, ...]  length=28 uint8
-    # 
-
     codebook_combined = pd.concat([ codebook_geneseq, codebook_hyb], axis=0 )
     codebook_combined.reset_index(inplace=True, drop=True)
 
-    #
-    # 
-    #
-    cglen = len(codebook_geneseq)
-    hriorig =  d['hyb_rol_id'][0][0][0]
-    #d['hyb_rol_id1'] = d['hyb_rol_id'][0][0] + cglen
-    logging.debug(f'orig hyb_rol_id={hriorig} type={type(hriorig)} cglen={cglen} type={type(cglen)}')
-    d['hyb_rol_id1'] = hriorig + cglen
+    d['hyb_rol_id1'] = d['hyb_rol_id'] + len(codebook_geneseq)
 
+    logging.info('Merging dicts...')
     d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
     d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
     d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')

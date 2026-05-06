@@ -60,6 +60,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     logging.info(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
 
+    project_id = cp.get( 'project','project_id')
     rescale_factor=cp.getfloat(stage, 'rescale_factor')
     px = cp.getfloat( stage, 'px')
     box_half_width_um = cp.getint( stage, 'box_half_width_um')
@@ -127,24 +128,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
         
         logging.info(f"Total cells: {len(center_x[idx_slice])}")
         logging.info(f"Cells in overlap pairs: {len(np.unique(overlap_cells_id))}")
-        logging.info(f"Fraction of cells in overlaps: {len(np.unique(overlap_cells_id))/len(center_x[idx_slice]):.2%}")
-        
-        #fig, axes = plt.subplots(1, 2, figsize=(14, 7))
-        #is_overlap = np.zeros(len(center_x[idx_slice]), dtype=bool)
-        #is_overlap[np.unique(overlap_cells_id)] = True
-        
-        #axes[0].scatter(center_x[idx_slice][~is_overlap], center_y[idx_slice][~is_overlap], s=0.5, c='yellow', label='non-overlap')
-        #axes[0].scatter(center_x[idx_slice][is_overlap], center_y[idx_slice][is_overlap], s=0.5, c='red', label='overlap')
-        #axes[0].set_title(f'Overlap detection ({is_overlap.sum()} flagged)')
-        #axes[0].axis('image')
-        #axes[0].legend(markerscale=10)
-        
-        #axes[1].hist(overlap_distance, bins=100)
-        #axes[1].set_xlabel('Centroid distance (px)')
-        #axes[1].set_title('Distances of detected overlaps')
-        
-        #plt.tight_layout()
-        #plt.show()
+        logging.info(f"Fraction of cells in overlaps: {len(np.unique(overlap_cells_id))/len(center_x[idx_slice]):.2%}")       
 
         n_cells_slice = int(idx_slice.sum())
         adj = csr_matrix((np.ones(len(overlap_cells_id)), 
@@ -186,6 +170,11 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     logging.info(f"overlap pairs: {id_overlap.sum()}")
     logging.info(f"cells removed: {int((id_to_keep_all==0).sum())}")   
     logging.info(f'OVERLAPPING CELLS REMOVED, {np.sum(id_to_keep_all)} {100*np.sum(id_to_keep_all)/len(center_x)} % cells kept out of {len(center_x)}--PROCESSING FINISHED')
+
+    dfexpmat = pd.DataFrame( expmat.todense() )
+    of = os.path.join( outdir, f'{project_id}.filt_cellsbygenes.tsv')
+    dfexpmat.to_csv(of, sep='\t') 
+    logging.info(f'Wrote cells X genes matrix to {of}')
 
     logging.info(f'Writing output to {outfile}')
     joblib.dump(output_data, outfile)
