@@ -110,6 +110,256 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
         logging.debug(f'handling {tilename}') 
         pos_id = np.array([i])
         logging.debug(f'handling tile id: {tilename} i={i} pos_id = {pos_id} ')
+        d=data_dict_organizer(d,'append', fov=np.full(len(gene_rol[tilename]['gene_id']),i) )
+        d=data_dict_organizer(d,'append', gene_rol_id= np.array(gene_rol[tilename]['gene_id']) )                              
+        d=data_dict_organizer(d,'append', pos_10x_allx=coord[tilename]['lroi10x_x'])
+        d=data_dict_organizer(d,'append', pos_10x_ally=coord[tilename]['lroi10x_y'])
+        d=data_dict_organizer(d,'append', pos_40x_allx=np.array(gene_rol[tilename]['lroi_x']))
+        d=data_dict_organizer(d,'append', pos_40x_ally=np.array(gene_rol[tilename]['lroi_y']))
+        # if len(cellid[folders[i]]['cellid']) else np.array([0]),
+        d=data_dict_organizer(d,'append', cellidall=np.array(cell_id[tilename]['cellid']) + np.array( i*starting_fov_idx * dummy_cell_num))
+        # check this later,does it require -1 or not
+        d=data_dict_organizer(d,'append', sliceidall=np.full(len(gene_rol[tilename]['gene_id']), pos_id + starting_slice_idx)) 
+        d=data_dict_organizer(d,'append', hyb_rol_id=hyb_rol[tilename]['gene_id'])
+        d=data_dict_organizer(d,'append', fov_hyb=np.full(len(hyb_rol[tilename]['gene_id']),i))
+        d=data_dict_organizer(d,'append', pos_10x_allx_hyb=coord[tilename]['lroi10xhyb_x'])
+        d=data_dict_organizer(d,'append', pos_10x_ally_hyb=coord[tilename]['lroi10xhyb_y'])
+        d=data_dict_organizer(d,'append', pos_40x_allx_hyb=hyb_rol[tilename]['lroi_x'])
+        d=data_dict_organizer(d,'append', pos_40x_ally_hyb=hyb_rol[tilename]['lroi_y'])
+        d=data_dict_organizer(d,'append', cellidall_hyb=np.array(cell_id[tilename]['cellidhyb']) + np.array( i * starting_fov_idx * dummy_cell_num))
+        d=data_dict_organizer(d,'append', sliceidall_hyb=np.full(len(hyb_rol[tilename]['gene_id']), pos_id + starting_slice_idx))
+        d=data_dict_organizer(d,'append', cell_list_all=np.array(seg[tilename]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num))
+        d=data_dict_organizer(d,'append', cell_pos_10x_allx=coord[tilename]['cellpos10x_x'])
+        d=data_dict_organizer(d,'append', cell_pos_10x_ally=coord[tilename]['cellpos10x_y'])
+        d=data_dict_organizer(d,'append', cell_pos_40x_allx=seg[tilename]['cent_x'])
+        d=data_dict_organizer(d,'append', cell_pos_40x_ally=seg[tilename]['cent_y'])
+        d=data_dict_organizer(d,'append', fov_cell=np.full(len(seg[tilename]['cell_num']),i))
+        d=data_dict_organizer(d,'append', sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
+
+    logging.debug(f'Done appending. Concatting keys...')
+    d=data_dict_organizer(d,'concat', fov=[])
+    d=data_dict_organizer(d,'concat', gene_rol_id=[])
+    d=data_dict_organizer(d,'concat', pos_10x_allx=[])
+    d=data_dict_organizer(d,'concat', pos_10x_ally=[])
+    d=data_dict_organizer(d,'concat', pos_40x_allx=[])
+    d=data_dict_organizer(d,'concat', pos_40x_ally=[])      
+    d=data_dict_organizer(d,'concat', cellidall=[])
+    d=data_dict_organizer(d,'concat', sliceidall=[])
+    d=data_dict_organizer(d,'concat', hyb_rol_id=[])
+    d=data_dict_organizer(d,'concat', fov_hyb=[])
+    d=data_dict_organizer(d,'concat', pos_10x_allx_hyb=[])
+    d=data_dict_organizer(d,'concat', pos_10x_ally_hyb=[])
+    d=data_dict_organizer(d,'concat', pos_40x_allx_hyb=[])
+    d=data_dict_organizer(d,'concat', pos_40x_ally_hyb=[])
+    d=data_dict_organizer(d,'concat', cellidall_hyb=[])
+    d=data_dict_organizer(d,'concat', sliceidall_hyb=[])
+    d=data_dict_organizer(d,'concat', cell_list_all=[])
+    d=data_dict_organizer(d,'concat', cell_pos_10x_allx=[])
+    d=data_dict_organizer(d,'concat', cell_pos_10x_ally=[])
+    d=data_dict_organizer(d,'concat', cell_pos_40x_allx=[])
+    d=data_dict_organizer(d,'concat', cell_pos_40x_ally=[])
+    d=data_dict_organizer(d,'concat', fov_cell=[])
+    d=data_dict_organizer(d,'concat', sliceidall_cell=[])
+
+    # Original codebook structure:
+    #  codebook_geneseq   
+    #.     [0] -> array len=111   
+    #              -> array ['Rorb'] , ['GCTAGAG']
+    #      [1] -> array len=111
+    #              -> array ['Rorb'], [1,0,0,0,1, ...]  length=28 uint8
+    # 
+
+    codebook_combined = pd.concat([ codebook_geneseq, codebook_hyb], axis=0 )
+    codebook_combined.reset_index(inplace=True, drop=True)
+
+    #
+    # 
+    #
+    cglen = len(codebook_geneseq)
+    hriorig =  d['hyb_rol_id'][0][0][0]
+    #d['hyb_rol_id1'] = d['hyb_rol_id'][0][0] + cglen
+    logging.debug(f'orig hyb_rol_id={hriorig} type={type(hriorig)} cglen={cglen} type={type(cglen)}')
+    d['hyb_rol_id1'] = hriorig + cglen
+
+    d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
+    d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
+    d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')
+    d=merge_gene_hyb_dict(d,'pos_10x_ally','pos_10x_ally_hyb','combined_gene_hyb_pos10x_y')
+    d=merge_gene_hyb_dict(d,'pos_40x_allx','pos_40x_allx_hyb','combined_gene_hyb_pos40x_x')
+    d=merge_gene_hyb_dict(d,'pos_40x_ally','pos_40x_ally_hyb','combined_gene_hyb_pos40x_y')
+    d=merge_gene_hyb_dict(d,'cellidall','cellidall_hyb','combined_gene_hyb_cellidall')
+    d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall') 
+    
+    border_size=np.round(fraction_border * tilesize)
+    pos_id=d['combined_gene_hyb_id']>0 # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
+    pos_inside_border_x=(d['combined_gene_hyb_pos40x_x'] > border_size-1) & (d['combined_gene_hyb_pos40x_x'] < tilesize-border_size+1)
+    pos_inside_border_y=(d['combined_gene_hyb_pos40x_y'] > border_size-1) & (d['combined_gene_hyb_pos40x_y'] < tilesize-border_size+1)
+    filter_id=pos_id & pos_inside_border_x & pos_inside_border_y
+
+    filtered_d={}
+    filtered_d=data_dict_organizer(filtered_d,'initialize', combined_gene_hyb_id=[], combined_gene_hyb_fov=[], 
+                                   combined_gene_hyb_pos10x_x=[], combined_gene_hyb_pos10x_y=[],
+                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],
+                                   combined_gene_hyb_cellidall=[],
+                                   combined_gene_hyb_sliceidall=[])
+
+    filtered_d=data_dict_organizer(filtered_d,'append',
+                                   combined_gene_hyb_id=d['combined_gene_hyb_id'][filter_id],
+                                   combined_gene_hyb_fov=d['combined_gene_hyb_fov'][filter_id],
+                                   combined_gene_hyb_pos10x_x=d['combined_gene_hyb_pos10x_x'][filter_id],
+                                   combined_gene_hyb_pos10x_y=d['combined_gene_hyb_pos10x_y'][filter_id],
+                                   combined_gene_hyb_pos40x_x=d['combined_gene_hyb_pos40x_x'][filter_id],
+                                   combined_gene_hyb_pos40x_y=d['combined_gene_hyb_pos40x_y'][filter_id],
+                                   combined_gene_hyb_cellidall=d['combined_gene_hyb_cellidall'][filter_id],
+                                   combined_gene_hyb_sliceidall=d['combined_gene_hyb_sliceidall'][filter_id])
+    
+    filtered_d=data_dict_organizer(filtered_d,'concat',
+                                   combined_gene_hyb_id=[],combined_gene_hyb_fov=[],
+                                   combined_gene_hyb_pos10x_x=[],combined_gene_hyb_pos10x_y=[],
+                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],
+                                   combined_gene_hyb_cellidall=[],
+                                   combined_gene_hyb_sliceidall=[])
+
+    cells=d['cell_list_all'].copy() # check if copy messed something
+    genes=np.unique(d['combined_gene_hyb_id'])
+    rol_id=d['combined_gene_hyb_id'].copy()
+    rol_cell=d['combined_gene_hyb_cellidall'].copy()
+    v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'], dropna=False)
+    v=v.reindex(index=cells, columns=genes, fill_value=0)
+    exp_m=coo_matrix(v.to_numpy())
+    processed_data={'all_data':d,
+                    'filtered_data':filtered_d,
+                    'expmat': exp_m,
+                    'cells': cells,
+                    'gene_id': genes,
+                    'codebook_combined': codebook_combined}
+    logging.info(f'Writing output to {outfile}')
+    joblib.dump(processed_data, outfile)
+
+    rolonies={'id':filtered_d['combined_gene_hyb_id'],
+              'pos10_x':filtered_d['combined_gene_hyb_pos10x_x'],
+              'pos10_y':filtered_d['combined_gene_hyb_pos10x_y'],
+              'pos40_x':filtered_d['combined_gene_hyb_pos40x_x'],
+              'pos40_y':filtered_d['combined_gene_hyb_pos40x_y'],
+              'slice':filtered_d['combined_gene_hyb_sliceidall'],
+              'genes':codebook_combined,
+              'fov':filtered_d['combined_gene_hyb_fov'],
+              'fov_names':tilename_list}
+
+    neurons={'expmat':exp_m,
+             'id':d['cell_list_all'],
+             'pos10x_x':d['cell_pos_10x_allx'],
+             'pos10x_y':d['cell_pos_10x_ally'],
+             'pos40x_x':d['cell_pos_40x_allx'],
+             'pos40x_y':d['cell_pos_40x_ally'],
+             'slice':d['sliceidall_cell'],
+             'genes':codebook_combined,
+             'fov':d['fov_cell'],
+             'fov_names':tilename_list}
+
+    alldata = {"rolonies":rolonies, "neurons":neurons} 
+    joblib.dump( alldata, os.path.join(outdir, 'alldata.joblib'))
+    logging.info('ALL DATA IS ORGANIZED')
+
+    logging.info(f'Writing out data subsets...')    
+    # Output subsets...
+    # create individual output data files. DFs. Pandas matrix.
+    #
+    of = os.path.join( outdir, f'{project_id}.cellsbygenes.tsv')
+    v.to_csv(of, sep='\t') 
+    logging.info(f'Wrote cells X genes matrix to {of}')
+
+    of = os.path.join(outdir, f'{project_id}.codebook_combined.tsv') 
+    codebook_combined.to_csv(of, sep='\t')
+    logging.info(f'Wrote combined codebook to {of}')
+
+    logging.info(f'Done.')
+
+
+
+def aggregate_data_py_tileindex(infiles, outfiles, stage=None, cp=None):
+    #     cycleset map 
+    #         arity=single
+    #         so inputs will be (flat list of all files from first cycle)
+    #.    inputs: 'basecalls.joblib'.  
+    #             'all_segmentation.joblib'   
+    #             'genehyb.joblib'
+    #
+    # main output : processeddata.joblib
+    #
+    if cp is None:
+        cp = get_default_config()
+
+    if stage is None:
+        stage = 'aggregate-data'
+
+    logging.info(f'infiles={infiles} outfiles={outfiles} stage={stage}')
+
+    # We know arity is single, so we can grab the outfile
+    # primary outfile is processeddata.joblib
+    #  
+    outfile = outfiles[0]
+    (outdir, file) = os.path.split(outfile)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir, exist_ok=True)
+        logging.debug(f'made outdir={outdir}')
+
+    # Get parameters
+    logging.info(f'handling stage={stage} to outdir={outdir}')
+    project_id = cp.get( 'project','project_id')
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    starting_slice_idx = cp.getint( stage, 'starting_slice_idx')
+    starting_fov_idx = cp.getint( stage, 'starting_fov_idx')
+    dummy_cell_num =  cp.getint( stage, 'dummy_cell_num')
+    tilesize = cp.getint( stage, 'tilesize' ) 
+    fraction_border= cp.getfloat( stage, 'fraction_border')
+
+    today=datetime.date.today().strftime('%d%m%Y')
+
+    # We have heterogenous input files, so we need to confirm all are present, and 
+    # figure out which is which. 
+    #   'basecalls.joblib'.  'all_segmentation.joblib'   'genehyb.joblib' ...
+    # return order from select function will be alphabetical by key name.  
+    input_map = {   'cellid'  :  'cell_id.joblib',
+                    'coord'   :  'lroi10x.joblib',
+                    'gene_rol':  'basecalls.joblib',
+                    'hyb_rol' :  'genehyb.joblib',
+                    'seg'     :  'all_segmentation.joblib',
+                    'tforms'  :  'tforms_final.joblib',
+                  }
+    codebook_hyb_file = os.path.join(resource_dir, 'codebook_hyb.tsv')
+    codebook_hyb = pd.read_csv(codebook_hyb_file, sep='\t', index_col=0)
+    codebook_geneseq_file = os.path.join(resource_dir, 'codebook_geneseq.tsv')
+    codebook_geneseq = pd.read_csv(codebook_geneseq_file, sep='\t', index_col=0)
+    
+    (cell_id_file, coord_file, gene_rol_file, hyb_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
+    cell_id = joblib.load(cell_id_file)
+    coord = joblib.load(coord_file)
+    gene_rol=joblib.load(gene_rol_file)
+    seg=joblib.load(seg_file)
+    hyb_rol=joblib.load(hyb_rol_file)
+    tform_final =joblib.load(tforms_file)
+    logging.debug(f'loaded input joblibs.')
+
+    joblib.dump([codebook_hyb.to_numpy() ],os.path.join(outdir, 'hyb_codebook.joblib'))
+    joblib.dump( [ codebook_geneseq.to_numpy() ], os.path.join(outdir, 'codebook.joblib'))
+    #codebook_hyb = joblib.load(os.path.join(outdir, 'hyb_codebook.joblib'))  
+
+    d={}
+    d=data_dict_organizer(d,'initialize',fov=[], gene_rol_id=[],
+                          pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],cellidall=[],sliceidall=[],
+                          hyb_rol_id=[],fov_hyb=[],
+                          pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
+                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],
+                          cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
+                          fov_cell=[],sliceidall_cell=[])
+
+    T={}
+    tilename_list = nsort( list(seg.keys()) )
+    for i, tilename in enumerate( tilename_list) :
+        logging.debug(f'handling {tilename}') 
+        pos_id = np.array([i])
+        logging.debug(f'handling tile id: {tilename} i={i} pos_id = {pos_id} ')
         d = data_dict_organizer(d,'append',
                               fov=np.full(len(gene_rol[tilename]['gene_id']),i), 
                               gene_rol_id=np.array(gene_rol[tilename]['gene_id']),
@@ -137,13 +387,18 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                               fov_cell=np.full(len(seg[tilename]['cell_num']),i),
                               sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
 
-    d=data_dict_organizer(d,'concat',fov=[],gene_rol_id=[],
-                          pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
-                          cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],
-                          pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
-                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],
-                          cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
-                          fov_cell=[],sliceidall_cell=[])
+    #d=data_dict_organizer(d, 'concat', 
+    #                      fov=[],gene_rol_id=[],
+    #                      pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
+    #                      cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],
+    #                      pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
+    #                      cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],
+    #                      cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
+    #                      fov_cell=[],sliceidall_cell=[])
+    #
+    #        d['hyb_rol_id1']=d['hyb_rol_id'] + len(codebook[0])-1
+    #        codebook_comb=[codebook[0],hyb_codebook[0]]
+
 
     codebook_combined = pd.concat([ codebook_geneseq, codebook_hyb], axis=0 )
     codebook_combined.reset_index(inplace=True, drop=True)

@@ -6,7 +6,6 @@ channels:
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
-  - pip
   - tensorflow
   - pandas
   - ipython
@@ -20,5 +19,6 @@ dependencies:
   - python
   - joblib
   - natsort
+  - pip
   - pip:
     - git+https://github.com/jacksonloper/bardensr.git

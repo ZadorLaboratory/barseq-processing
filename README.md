@@ -60,6 +60,7 @@ To run the standard workflows for barseq or geneseq, run the run_workflow.py scr
     -c BC12345.geneseq.conf 
     -O BC12345.run1.out  
     ./BC12345 > run_geneseq.run1.log 2>&1
+    
 ```
 run_workflow.py will get the stages and their order from the configuration file. 
 

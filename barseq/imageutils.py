@@ -36,8 +36,8 @@ def read_image(infile, channels=None):
             new_array = np.ndarray( ( len(channels), np_array.shape[1], np_array.shape[2] ) ) 
             for i, channel in enumerate( channels ):
                 new_array[i] = np_array[channel]
+                logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
         np_array = new_array
-        logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
     return np_array
 
 def write_image(outfile, np_array):

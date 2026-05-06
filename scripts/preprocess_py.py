@@ -42,7 +42,7 @@ def background_cv2_single(image, radius, num_c=4):
     I_filtered=uint16m(I_filtered)
     return I_filtered
 
-def regchannels_ski_single(image, channel_shift, is_affine):
+def regchannels_ski_single(image, channel_shift, is_affine=False):
     '''
     
     '''
@@ -163,12 +163,12 @@ def preprocess_py( infiles, outfiles, stage=None, cp=None):
         logging.debug(f'Do regchannels...')
         # Regchannels
         # Register channels within each image. 
-        IShifted = regchannels_ski_single(image, channel_shift)
+        Ishifted = regchannels_ski_single(image=I, channel_shift=chshift)
         logging.debug(f'Done with regchannels. mode={mode} n_channnels={len(Ishifted)}')
 
         logging.debug(f'Do bleedthrough...')       
-        ICorrected = bleedthrough_np_single(IShifted, chprofile)
-        logging.debug(f'Done bleedthrough. mode={mode} n_channnels={len(ICorrected)}')
+        Icorrected = bleedthrough_np_single(Ishifted, chprofile)
+        logging.debug(f'Done bleedthrough. mode={mode} n_channnels={len(Icorrected)}')
         logging.debug(f'done processing {base}.{ext} ')
         logging.info(f'writing to {outfile}')
         write_image(outfile, Icorrected)
