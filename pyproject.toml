@@ -41,7 +41,7 @@ dependencies = [
 include = ["barseq*"]
 
 [project.scripts]
-process_workflow = barseq.cli:process_workflow" 
+process_workflow = "barseq.cli:process_workflow" 
 
 
 [project.urls]
