@@ -29,7 +29,6 @@ dependencies = [
  	"numpy",
 	"opencv-python", 
 	"pandas",
-	"python",
  	"scikit-image", 
  	"scipy",
 	"tifffile", 
