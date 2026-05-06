@@ -27,7 +27,7 @@ dependencies = [
 	"natsort",
  	"networkx",
  	"numpy",
-	"opencv", 
+	"opencv-python", 
 	"pandas",
 	"python",
  	"scikit-image", 
