@@ -78,13 +78,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     prominence = eval( prominence_str ) 
     thresh = eval( thresh_str )
     logging.debug(f'all_genes_ch={all_genes_ch} thresh={thresh} prominence={prominence}')
-       
-    # load codebook TSV from resource_dir
-    codebook_file = cp.get(stage, 'codebook_file')
-    codebook_channels = cp.get(stage, 'codebook_channels').split(',')
-    cfile = os.path.join(resource_dir, codebook_file)
-    logging.info(f'loading codebook file: {cfile}')
-    
+          
     # Basecall loop.
     # Cycle list, contains 1 or more positions. 
     # TODO: Need to separate by position
@@ -147,7 +141,7 @@ def basecall_hyb_ski_single(infile,
     lroi_y=[]
     id_t=[]
     sig_t=[]
-    mask=np.zeros_like(hyb_2)
+    mask = np.zeros_like(hyb_2)
     for n in range(num_c):
         if n == all_genes_ch:
             mask[n,:,:]=0
@@ -158,7 +152,7 @@ def basecall_hyb_ski_single(infile,
             a_masked = a*a_mask
             a_max = extrema.h_maxima(a_masked,prominence[n])
             label_peaks = label(a_max)
-            m = regionprops(label_peaks,a_masked)
+            m = regionprops(label_peaks, a_masked)
             mask[n,:,:] = uint16m(binary_dilation(a_max))
             [lroi_x, lroi_y, id_t, sig_t] = quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2)
 
@@ -184,18 +178,31 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
     lroi1_y=[]
     id1=[]
     ch_to_gene={0:0,1:1,3:2}  # skip all_genes_ch=2
-    for i,peaks in enumerate(m):
+    for i, peaks in enumerate(m):
         lroi1_x.append(peaks.centroid[0])
         lroi1_y.append(peaks.centroid[1])
         sig1.append(peaks.intensity_max)
-        id1.append(ch_to_gene[np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]])])
-        # id1.append(np.argmax(hyb_2[:,peaks.coords[0][0],peaks.coords[0][1]])+1) # added 1 here to max channel to match codebook 1,2 and 4
+        peaks_s = print_regionprop(peaks)
+        logging.debug(f'hyb_2 = {hyb_2}')
+        logging.debug(f'hyb_2.shape = {hyb_2.shape}')
+        logging.debug(f'\n [{i}] {peaks_s}')
+        #
+        #id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
+        #id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
+        id1.append( np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) +1) # added 1 here to max channel to match codebook 1,2 and 4
     lroi_x.append(lroi1_x)
     lroi_y.append(lroi1_y)
     id_t.append(id1)
     sig_t.append(sig1)
     return(lroi_x,lroi_y,id_t,sig_t)
 
+
+def print_regionprop(prop):
+    s = ''
+    s += f'\n  coords[0][0] = {prop.coords[0][0]}'
+    s += f'\n  coords[0][1] = {prop.coords[0][1]}'
+    s += f'\n  orientation={prop.orientation}'
+    return s
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
