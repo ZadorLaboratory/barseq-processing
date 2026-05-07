@@ -19,6 +19,7 @@ from natsort import natsorted as nsort
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
 
+from scipy import sparse
 from scipy.sparse import coo_matrix
 from scipy.spatial import cKDTree
 from scipy.sparse import csr_matrix
@@ -177,33 +178,43 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     dfexpmat.to_csv(of, sep='\t') 
     logging.info(f'Wrote cells X genes matrix to {of}')
 
-    # --- obs dataframe ---
-    obs = pd.DataFrame( 
-        {   'cell_id': np.asarray( d['id']).ravel() 
-            'pos_x': np.asarray(d['pos10x_x']).ravel(),
-            'pos_y': np.asarray(d['pos10x_y']).ravel(),
-            'slice': np.asarray(d['slice']).ravel(),         
-         } )    
-
-    # --- var dataframe ---
-    genes=[ g[0][0].item() for g in filt_neurons['genes']]
-    genes = np.array(genes)
-
-    var = pd.DataFrame(index=genes)
-    var["gene_symbol"] = genes
-
-    # --- make AnnData ---
-    adata = ad.AnnData(X=dfexpmat, obs=obs, var=var)
-
-    # optional: put spatial coordinates in obsm like Scanpy expects
-    adata.obsm["spatial"] = obs[["pos_x", "pos_y"]].to_numpy()
-
-    aof = os.path.join( outdir, f'{project_id}.filt_neuron.anndata.h5ad')
-    logging.info(f'Writing anndata to {aof}')
-    adata.write_h5ad(aof)
-
     logging.info(f'Writing overall output to {outfile}')
     joblib.dump(output_data, outfile)
+
+    aof = os.path.join( outdir, f'{project_id}.filt_neuron.anndata.h5ad')
+    logging.info(f'Also attemption AnnData output to {aof} ')
+    try: 
+        X = filt_neurons['expmat']
+        if sparse.issparse(X):
+            X = X.tocsr()
+
+        # --- obs dataframe ---
+        obs = pd.DataFrame( 
+            {   'cell_id': np.asarray( filt_neurons['id']).ravel(), 
+                'pos_x': np.asarray(filt_neurons['pos10x_x']).ravel(),
+                'pos_y': np.asarray(filt_neurons['pos10x_y']).ravel(),
+                'slice': np.asarray(filt_neurons['slice']).ravel(),         
+            } )    
+
+        # --- var dataframe ---
+        #genes=[ g[0][0].item() for g in filt_neurons['genes']]
+        genes = list( filt_neurons['genes']['gene'] )
+        genes = np.array(genes)
+
+        var = pd.DataFrame(index=genes)
+        var["gene_symbol"] = genes
+
+        # --- make AnnData ---
+        adata = ad.AnnData(X=X, obs=obs, var=var)
+
+        # optional: put spatial coordinates in obsm like Scanpy expects
+        adata.obsm["spatial"] = obs[["pos_x", "pos_y"]].to_numpy()
+
+        aof = os.path.join( outdir, f'{project_id}.filt_neuron.anndata.h5ad')
+        logging.info(f'Writing anndata to {aof}')
+        adata.write_h5ad(aof)
+    except Exception as e:
+        logging.error(f"Problem outputting AnnData: '{e}'")
 
     logging.info(f'Done.')
 
