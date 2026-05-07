@@ -188,8 +188,8 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
         lroi1_x.append(peaks.centroid[0])
         lroi1_y.append(peaks.centroid[1])
         sig1.append(peaks.intensity_max)
-        # id1.append(ch_to_gene[np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]])])
-        id1.append(np.argmax(hyb_2[:,peaks.coords[0][0],peaks.coords[0][1]])+1) # added 1 here to max channel to match codebook 1,2 and 4
+        id1.append(ch_to_gene[np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]])])
+        # id1.append(np.argmax(hyb_2[:,peaks.coords[0][0],peaks.coords[0][1]])+1) # added 1 here to max channel to match codebook 1,2 and 4
     lroi_x.append(lroi1_x)
     lroi_y.append(lroi1_y)
     id_t.append(id1)
