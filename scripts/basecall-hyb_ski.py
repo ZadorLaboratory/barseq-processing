@@ -81,7 +81,6 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
           
     # Basecall loop.
     # Cycle list, contains 1 or more positions. 
-    # TODO: Need to separate by position
 
     lroi_x_all=[]
     lroi_y_all=[]
@@ -99,11 +98,14 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
         logging.info(f'handling pos_id={pos_id}')
 
         #hyb_raw=tfl.imread(os.path.join(hybseq[0]), key=range(0,num_c,1))
-        hyb_raw=read_image(infile)
+        readchannels = list(range(0,num_c))
+        hyb_raw=read_image(infile, channels=readchannels)
+        # simply renaming hyb_raw, hyb_raw name not used again. 
         hyb_2=hyb_raw
-        # zero-ing all-genes channel (3) = index 2 ?
+        # zero-ing all-genes channel 3 (index 2)
         hyb_2[all_genes_ch,:,:] = 0
         [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind] = basecall_hyb_ski_single( infile,
+                                                                                 outdir=outdir,
                                                                                  num_c=num_c, 
                                                                                  all_genes_ch=all_genes_ch, 
                                                                                  hyb_2=hyb_2,
@@ -116,11 +118,6 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
         id_t_all.append([np.concatenate(id_t_ind) if any(len(x) for x in id_t_ind) else []])
         sig_t_all.append([np.concatenate(sig_t_ind) if any(len(x) for x in sig_t_ind) else []])
 
-        #lroi_x_all.append(lroi_x_ind)
-        #lroi_y_all.append(lroi_y_ind)
-        #id_t_all.append(id_t_ind)
-        #sig_t_all.append(sig_t_ind)
-
     data_dict = {"lroi_x":lroi_x_all, 
                  "lroi_y":lroi_y_all, 
                  "gene_id":id_t_all, 
@@ -130,13 +127,14 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     joblib.dump(data_dict, outfile)
 
 
-def basecall_hyb_ski_single(infile, 
-                        num_c,
-                        all_genes_ch,
-                        hyb_2,
-                        thresh,
-                        prominence                        
-                        ):
+def basecall_hyb_ski_single(infile,
+                            outdir, 
+                            num_c,
+                            all_genes_ch,
+                            hyb_2,
+                            thresh,
+                            prominence                        
+                            ):
     lroi_x=[]
     lroi_y=[]
     id_t=[]
@@ -148,13 +146,20 @@ def basecall_hyb_ski_single(infile,
             continue
         else:
             a = hyb_2[n,:,:].copy()
-            a_mask = a>thresh[n]
-            a_masked = a*a_mask
-            a_max = extrema.h_maxima(a_masked,prominence[n])
+            a_mask = a > thresh[n]
+            a_masked = a * a_mask
+            a_max = extrema.h_maxima(a_masked, prominence[n])
             label_peaks = label(a_max)
             m = regionprops(label_peaks, a_masked)
             mask[n,:,:] = uint16m(binary_dilation(a_max))
             [lroi_x, lroi_y, id_t, sig_t] = quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2)
+
+    (dirpath, base ) = os.path.split(infile)
+    (base,ext) = os.path.splitext(base)
+    ext = ext[1:]
+    of = os.path.join( outdir, f'{base}.mask_hyb.{ext}' )
+    logging.debug(f'Writing mask to {of}')
+    write_image(of, mask)
 
     gene_map = np.zeros(hyb_2.shape[1:], dtype=np.uint8)
     for ch_idx in range(len(lroi_x)):
@@ -163,7 +168,9 @@ def basecall_hyb_ski_single(infile,
             c = int(round(lroi_y[ch_idx][k]))
             gene_map[r, c] = id_t[ch_idx][k] + 1  # +1 so background stays 0
 
-    # tfl.imwrite(os.path.join(pthw, 'basecall_map_hyb.tif'), gene_map, photometric='minisblack')
+    of = os.path.join( outdir, f'{base}.basecall_map_hyb.{ext}' )
+    logging.debug(f'Writing basecall map to {of}')
+    write_image(of, gene_map)
     return(lroi_x, lroi_y, id_t, sig_t)
 
 
@@ -177,7 +184,7 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
     lroi1_x=[]
     lroi1_y=[]
     id1=[]
-    ch_to_gene={0:0,1:1,3:2}  # skip all_genes_ch=2
+    ch_to_gene={0:0, 1:1, 3:2}  # skip all_genes_ch=2
     for i, peaks in enumerate(m):
         lroi1_x.append(peaks.centroid[0])
         lroi1_y.append(peaks.centroid[1])
@@ -186,16 +193,12 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
         logging.debug(f'hyb_2 = {hyb_2}')
         logging.debug(f'hyb_2.shape = {hyb_2.shape}')
         logging.debug(f'\n [{i}] {peaks_s}')
-        #
-        #id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
-        #id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
-        id1.append( np.argmax(hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) +1) # added 1 here to max channel to match codebook 1,2 and 4
+        id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
     lroi_x.append(lroi1_x)
     lroi_y.append(lroi1_y)
     id_t.append(id1)
     sig_t.append(sig1)
-    return(lroi_x,lroi_y,id_t,sig_t)
-
+    return(lroi_x, lroi_y, id_t, sig_t)
 
 def print_regionprop(prop):
     s = ''
