@@ -267,7 +267,8 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                     'expmat': exp_m,
                     'cells': cells,
                     'gene_id': genes,
-                    'codebook_combined': codebook_combined}
+                    'codebook_combined': codebook_combined
+                    }
     logging.info(f'Writing output to {outfile}')
     joblib.dump(processed_data, outfile)
 

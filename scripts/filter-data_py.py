@@ -171,9 +171,9 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     logging.info(f"cross-FOV pairs: {sel_cells_id.sum()}")
     logging.info(f"overlap pairs: {id_overlap.sum()}")
     logging.info(f"cells removed: {int((id_to_keep_all==0).sum())}")   
-    logging.info(f'OVERLAPPING CELLS REMOVED, {np.sum(id_to_keep_all)} {100*np.sum(id_to_keep_all)/len(center_x)} % cells kept out of {len(center_x)}--PROCESSING FINISHED')
+    logging.info(f'OVERLAPPING CELLS REMOVED, {np.sum(id_to_keep_all)} {100 * np.sum(id_to_keep_all)/len(center_x)} % cells kept out of {len(center_x)}--PROCESSING FINISHED')
 
-    dfexpmat = pd.DataFrame( expmat.todense() )
+    dfexpmat = pd.DataFrame( expmat.todense() )   
     of = os.path.join( outdir, f'{project_id}.filt_cellsbygenes.tsv')
     dfexpmat.to_csv(of, sep='\t') 
     logging.info(f'Wrote cells X genes matrix to {of}')
@@ -213,6 +213,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
         aof = os.path.join( outdir, f'{project_id}.filt_neuron.anndata.h5ad')
         logging.info(f'Writing anndata to {aof}')
         adata.write_h5ad(aof)
+
     except Exception as e:
         logging.error(f"Problem outputting AnnData: '{e}'")
 
