@@ -10,6 +10,7 @@ dependencies:
   - matplotlib
   - networkx
   - numpy
+  - openjdk
   - scikit-image
   - scikit-learn
   - scipy
