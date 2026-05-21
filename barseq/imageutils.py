@@ -18,6 +18,29 @@ import imageio.v3 as iio
 import numpy as np
 
 
+def channel_names_index_map(select_channels, image_channels):
+    '''
+
+    Given ordered channel name list and list of desired channels, 
+    return index list to pull from input image. 
+
+    image_channels = ['GFP', 'YFP', 'TxRed', 'Cy5', 'DAPI', 'BF']
+    select_channels = ['GFP', 'YFP', 'TxRed', 'Cy5']
+    ->
+    [0,1,2,3]
+
+    select_channels = ['TxRed', 'GFP', 'YFP', 'Cy5']
+    -> [2,0,1,3]
+    '''
+    idx_list = []
+    for selname in select_channels:
+        try:
+            ch_idx = image_channels.index(selname)
+            idx_list.append(ch_idx)
+        except ValueError as ve:
+            logging.error('Channel name {selname} not in image_channels={image_channels}. Check config. ')
+            raise
+    return idx_list
 
 
 def read_image(infile, channels=None):
@@ -42,14 +65,14 @@ def read_image(infile, channels=None):
         np_array = new_array
     return np_array
 
-def write_image(outfile, np_array):
+def write_image(outfile, np_array, photometric='minisblack'):
     '''
     BARseq standard image interface. 
     Intended to abstract out underlying formats and libraries. 
     image is numpy.ndarray, where shape = (channel, y|height , x|width )    
     '''
-    iio.imwrite( outfile, np_array, photometric='minisblack' )
-    logging.debug(f'wrote image shape={np_array.shape} to {outfile}')
+    iio.imwrite( outfile, np_array, photometric=photometric )
+    logging.debug(f'wrote image shape={np_array.shape} photometric={photometric} to {outfile}')
  
  
 #   
