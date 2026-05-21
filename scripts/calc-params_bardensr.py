@@ -153,6 +153,10 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     #this is the new threshold optimized by targeted fdr value
     logging.info(f'intensity_thresh_refined = {thresh_refined}')
     
+    thresh_refined = float(thresh_refined)
+    noisefloor_ini = float(noisefloor_ini)
+    noisefloor_final = float(noisefloor_final)
+
     param_outputs['intensity_thresh_refined'] = thresh_refined
     param_outputs['noisefloor_ini'] = noisefloor_ini
     param_outputs['noisefloor_final'] = noisefloor_final
