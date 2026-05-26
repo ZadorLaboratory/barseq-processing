@@ -1,24 +1,27 @@
 name: bardensr
 channels:
   - conda-forge
-  - bioconda
   - defaults
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
-  - tensorflow
-  - pandas
-  - ipython
-  - h5py
-  - pyarrow
   - arrow-cpp
-  - keras
-  - numpy
-  - scipy
-  - jupyter
-  - python
+  - h5py
+  - imageio
+  - ipython
   - joblib
+  - jupyter
+  - keras
+  - matplotlib
   - natsort
+  - networkx
+  - numpy==1.26.4
+  - pandas
   - pip
   - pip:
     - git+https://github.com/jacksonloper/bardensr.git
+  - pyarrow
+  - python
+  - scikit-image
+  - scipy
+  - tensorflow

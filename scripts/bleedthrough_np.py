@@ -29,13 +29,20 @@ def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
         
     if stage is None:
         stage = 'bleedthrough'
-    
-    image_types = cp.get('barseq','image_types').split(',')
+
+    # Get parameters for all steps.
+    mode = get_config_list(cp, stage, 'modes')
+    mode = mode[0]
+    output_dtype = cp.get( stage,'output_dtype')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     microscope_profile = cp.get('experiment','microscope_profile')
-    chprofile_file = cp.get(microscope_profile,'channel_profile')
+
+    chprofile_file = cp.get(microscope_profile, f'channel_profile_{mode}')
     chprofile_path = os.path.join(resource_dir, chprofile_file)
     chprofile = load_df(chprofile_path, as_array=True)
+    num_prof_channels = len(chprofile)
+    logging.debug(f'chprofile_file={chprofile_file} num_channels={num_prof_channels}')
+    image_types = cp.get('barseq','image_types').split(',')
     num_channels = len(chprofile)
     logging.debug(f'chprofile_file={chprofile_file} num_channels={num_channels}')
 

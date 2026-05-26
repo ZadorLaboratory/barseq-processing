@@ -69,9 +69,14 @@ def write_image(outfile, np_array, photometric='minisblack'):
     '''
     BARseq standard image interface. 
     Intended to abstract out underlying formats and libraries. 
-    image is numpy.ndarray, where shape = (channel, y|height , x|width )    
+    image is numpy.ndarray, where shape = (channel, y|height , x|width )
+    Assuming tif plugin, photometric = [ 'minisblack' | 'miniswhite'| 'rgb' ]
     '''
+    # iio.v3 syntax. pass args as-is to underlying plugin
     iio.imwrite( outfile, np_array, photometric=photometric )
+    
+    # iio v2 syntax explicitly create plugin_kwargs dict. 
+    #iio.imwrite( outfile, np_array, plugin_kwargs={"photometric": photometric})
     logging.debug(f'wrote image shape={np_array.shape} photometric={photometric} to {outfile}')
  
  

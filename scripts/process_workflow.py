@@ -83,8 +83,9 @@ if __name__ == '__main__':
     cdict = format_config(cp)
     #logging.debug(f'Running with config={args.config}:\n{cdict}')
 
-    indir = os.path.abspath('./')
+    indir = os.path.abspath(os.path.expanduser( cp.get('experiment','input_dir')))
     if args.indir is not None:
+        logging.debug('Input directory overridden on command line.')
         indir = os.path.expanduser( os.path.abspath(args.indir))
     logging.debug(f'indir={indir}')
     

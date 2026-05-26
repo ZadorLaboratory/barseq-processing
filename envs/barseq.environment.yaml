@@ -1,13 +1,12 @@
 name: barseq
 channels:
   - conda-forge
-  - bioconda
   - defaults
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python
-  - anndata
+  - conda-forge::anndata
   - h5py
   - imageio
   - ipython

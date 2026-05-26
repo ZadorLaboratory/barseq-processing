@@ -33,16 +33,18 @@ def regchannels_ski( infiles, outfiles, stage=None, cp=None):
         stage = 'regchannels'
     
     logging.info(f'stage={stage}')
-        
-    microscope_profile = cp.get('experiment','microscope_profile')
-    chshift_file = cp.get(microscope_profile,'channel_shift')
+
+    mode = get_config_list(cp, stage, 'modes')
+    mode = mode[0]
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    microscope_profile = cp.get('experiment','microscope_profile')
+    chshift_file = cp.get(microscope_profile,f'channel_shift_{mode}')
     chshift_path = os.path.join(resource_dir, chshift_file)
     is_affine = cp.getboolean(stage,'is_affine')
-    
     logging.debug(f'chshift_path = {chshift_path} is_affine={is_affine}')
-
     chshift = load_df(chshift_path, as_array=True)
+    n_shift_channels = len(chshift)
+    logging.debug(f'loaded channel shift. len={n_shift_channels} ')
     n_channels = len(chshift)
     logging.debug(f'loaded channel shift. len={len(chshift)} ')
 
