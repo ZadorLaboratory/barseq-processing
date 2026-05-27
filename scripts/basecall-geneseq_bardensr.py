@@ -71,9 +71,8 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
             intensity_thresh = float( data['intensity_thresh_refined'] )
             logging.info(f'Successfully loaded intensity_thresh = {intensity_thresh}')
     else:
-        logging.warning(f'param_file={param_file} does not exist. Pulling from config...')
-        intensity_thresh = cp.getfloat(stage, 'intensity_thresh')
-        logging.warning(f'Failed to load intensity thresh. Pulled from config: {intensity_thresh}')
+        logging.warning(f'param_file={param_file} does not exist. Exitting.')
+        sys.exit(1)
 
     noisefloor_final = cp.getfloat(stage, 'noisefloor_final')
     trim = cp.getint(stage, 'trim')
