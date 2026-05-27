@@ -672,8 +672,163 @@ def run_jobs_local(command_list, n_jobs):
         else:
             logging.info(f'All jobs succeeded.')
 
-
 def make_command_list(file_map, stage, bse, indir, outdir, cp):
+    '''
+
+    CHUNKED version. 
+
+    make command list from file_map
+    create config
+    check for output existence, skipping if all present. 
+    
+    '''
+    cfilename = os.path.join( outdir, 'barseq.conf' )
+    runconfig = write_config(cp, cfilename, timestamp=True)
+
+    # Batch multiple filemaps into single command
+    # Using multiple --infiles --outfiles and --template args if needed.  
+    #
+    n_chunks = cp.getint(stage, 'n_chunks', fallback=1)
+
+    tool = cp.get( stage ,'tool')
+    conda_env = cp.get( tool ,'conda_env')
+    current_env = os.environ['CONDA_DEFAULT_ENV']
+    instage = get_config_none(cp, stage, 'instage')
+    instage_dir = None
+    if instage is not None:
+        instage_dir = cp.get(instage, 'stagedir')
+
+    log_arg = ''
+    log_level = logging.getLogger().getEffectiveLevel()
+    if log_level <= logging.INFO:
+        log_arg = '-v'
+    if log_level <= logging.DEBUG : 
+        log_arg = '-d'
+
+    mode = get_config_list(cp, stage, 'modes' )
+    num_cycles = int(cp.get(stage, 'num_cycles'))
+    outdir = os.path.expanduser( os.path.abspath(outdir) )
+    script_base = cp.get(stage, 'script_base')
+    script_name = f'{script_base}_{tool}.py'
+    script_dir = get_script_dir()
+    script_path = f'{script_dir}/{script_name}'
+    stagedir = cp.get(stage, 'stagedir')
+
+    strip_base = cp.getboolean(stage, 'strip_base')
+    template_mode = get_config_none(cp, stage, 'template_mode')
+    template_source = get_config_none(cp, stage, 'template_source')
+    logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
+
+    chunked_filemaps = [ file_map[i : i + n_chunks] for i in range(0, len(file_map), n_chunks) ]
+
+    # Define template file(s), if requested.
+    template_file_list = None
+    template_stagedir = None 
+    if template_mode is not None:
+        template_stagedir = cp.get(template_source, 'stagedir')
+        # Only tileset currently makes sense for templates. 
+        template_fileset_list = bse.get_stage_files( template_mode, stage=template_source, maptype='tileset' )
+        logging.debug(f'template_stagedir={template_stagedir} template_fileset_list = {template_fileset_list}')
+        chunked_templates = [ template_fileset_list[i :  i + n_chunks] for i in range(0, len(template_fileset_list), n_chunks) ]
+
+    # Create command line(s) for mapping sets
+    command_list = []
+
+    for i, fmap_batch in enumerate( chunked_filemaps):
+        logging.debug(f'handling file group {i}')
+        cmd = []
+        if conda_env != current_env:
+            logging.debug(f'different envs. user conda run...')
+            cmd = ['conda','run',
+                        '-n', conda_env , 
+                        'python', script_path,
+                        log_arg, 
+                        '--config' , runconfig ,                            
+                        ]
+        else:
+            logging.debug(f'same envs needed, run direct...')
+            cmd = ['python', script_path,
+                        log_arg,
+                        '--config' , runconfig, 
+                        ]    
+        cmd.append('--stage')
+        cmd.append(f'{stage}')
+
+        # 
+        for j, fmap in enumerate( fmap_batch ):
+            (input_list, output_list) = fmap
+            logging.debug(f'stage = {stage} file_index={j} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
+            logging.debug(f'input = {input_list} output = {output_list}')
+
+            if template_mode is not None:            
+                cmd.append( f'--template ')
+                if template_source == 'input':
+                    #template_file = os.path.join(indir, template_stagedir, template_fileset_list[i][0])
+                    template_file = os.path.join(indir, template_stagedir, chunked_templates[i][j][0])
+                else:
+                    #template_file = os.path.join(outdir, template_stagedir, template_fileset_list[i][0])
+                    template_file = os.path.join(outdir, template_stagedir, chunked_templates[i][j][0])
+                logging.debug(f'template_file = {template_file}')
+                cmd.append( template_file )            
+            else:
+                logging.debug(f'template_mode={template_mode}, omitting --template')
+
+            # build full paths and check for output. 
+            # build infiles/outfiles command arguments
+            inlist = []
+            outlist = []
+            #if arity == 'parallel':
+            if len(input_list) == len(output_list):
+                logging.debug(f'arity=parallel output_list length={len(output_list)}')
+                for i, fname in enumerate( output_list):
+                    logging.debug(f'handling outfile {outdir}/{stagedir}/{fname}')
+                    outfile = os.path.join(outdir, stagedir, fname)
+                    if not os.path.exists(outfile):
+                        outlist.append( outfile )
+                        rpath = input_list[j]
+                        if instage is None:
+                            infile = os.path.join(indir, rpath)
+                        else:
+                            infile = os.path.join(outdir, instage_dir, rpath)
+                        inlist.append(infile)                        
+                    else:
+                        logging.debug(f'outfile exists, skipping : {outfile}')
+
+            elif (len(output_list) == 1) and (len(input_list) > 1) :
+                logging.debug(f'arity=single output_list length={len(output_list)}')
+                fname = output_list[0]
+                outfile = os.path.join(outdir, stagedir, fname)
+                if not os.path.exists(outfile):
+                    outlist.append( outfile )
+                    for rpath in input_list:
+                        if instage is None:
+                            infile = os.path.join(indir, rpath)
+                        else:
+                            infile = os.path.join(outdir, instage_dir, rpath)
+                        inlist.append(infile)
+            else:
+                logging.warning(f'arity unclear. input_list len={len(input_list)} output_list len={len(output_list)}')                        
+
+            cmd.append( '--infiles ')
+            for fpath in inlist:
+                cmd.append(fpath)
+
+            cmd.append( '--outfiles ')    
+            for fpath in outlist:
+                cmd.append(fpath)
+
+            if len(outlist) > 0:   
+                scmd = ' '.join(cmd)
+                logging.debug(f'Adding command: {scmd}')
+                command_list.append(cmd)
+            else:
+                logging.warning(f'outlist length=0. No output files. Skip command.')
+
+    logging.info(f'Made command list len={len(command_list)}')
+    return command_list
+
+
+def make_command_list_single(file_map, stage, bse, indir, outdir, cp):
     '''
     make command list
     create config

@@ -163,7 +163,7 @@ def preprocess_py( infiles, outfiles, stage=None, cp=None):
         logging.debug(f'Do regchannels...')
         # Regchannels
         # Register channels within each image. 
-        Ishifted = regchannels_ski_single(image=I, channel_shift=chshift)
+        Ishifted = regchannels_ski_single(image=Ibacksub, channel_shift=chshift)
         logging.debug(f'Done with regchannels. mode={mode} n_channnels={len(Ishifted)}')
 
         logging.debug(f'Do bleedthrough...')       

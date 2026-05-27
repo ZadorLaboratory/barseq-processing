@@ -133,6 +133,30 @@ def bd_read_images(infiles, R, C, trim=None, cropf=None ):
     return I
 
 
+def bd_read_image_set(infiles, R, C, trim=None, cropf=None ):
+    '''
+    specialized image handling for bardensr with crop/trim 
+    assumes input is set of multiple cycles images for single tile
+
+    '''
+    I = []
+    #for i in range(1, R+1):
+    for infile in infiles:
+        for j in range(C):
+            I.append( np.expand_dims( read_image( infile, channels=[j]), axis=0))
+    I=np.array(I)
+    if cropf is not None:
+        logging.debug(f'cropping image by: {cropf}')
+        nx = np.size(I,3)
+        ny = np.size(I,2)
+        I = I[ :, :, round(ny*cropf):round(ny*(1-cropf)), round(nx*cropf):round(nx*(1-cropf)) ]
+    elif trim is not None:
+        logging.debug(f'trimming image by: {trim}')
+        I = I[:, :, trim:-trim, trim:-trim]
+    else:
+        logging.debug(f'no mods requests. returning all channels.')
+    return I
+
 def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
     '''
     specialized image handling for bardensr with crop/trim 

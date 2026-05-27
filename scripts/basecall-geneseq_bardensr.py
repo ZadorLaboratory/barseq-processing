@@ -64,13 +64,14 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     
     intensity_thresh = None
     (subdir, base, current_label, current_ext) = parse_rpath(outfile)
-    param_file = os.path.join(subdir, f'{base}.bardensrparams.json')
+    param_file = os.path.join(subdir, f'bardensrparams.json')
     if os.path.exists(param_file):
         with open(param_file, 'r' ) as f:
             data = json.load(f)
             intensity_thresh = float( data['intensity_thresh_refined'] )
             logging.info(f'Successfully loaded intensity_thresh = {intensity_thresh}')
     else:
+        logging.warning(f'param_file={param_file} does not exist. Pulling from config...')
         intensity_thresh = cp.getfloat(stage, 'intensity_thresh')
         logging.warning(f'Failed to load intensity thresh. Pulled from config: {intensity_thresh}')
 
