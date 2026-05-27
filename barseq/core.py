@@ -780,12 +780,12 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
             #if arity == 'parallel':
             if len(input_list) == len(output_list):
                 logging.debug(f'arity=parallel output_list length={len(output_list)}')
-                for i, fname in enumerate( output_list):
+                for k, fname in enumerate( output_list):
                     logging.debug(f'handling outfile {outdir}/{stagedir}/{fname}')
                     outfile = os.path.join(outdir, stagedir, fname)
                     if not os.path.exists(outfile):
                         outlist.append( outfile )
-                        rpath = input_list[j]
+                        rpath = input_list[k]
                         if instage is None:
                             infile = os.path.join(indir, rpath)
                         else:
@@ -826,7 +826,6 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
 
     logging.info(f'Made command list len={len(command_list)}')
     return command_list
-
 
 def make_command_list_single(file_map, stage, bse, indir, outdir, cp):
     '''
