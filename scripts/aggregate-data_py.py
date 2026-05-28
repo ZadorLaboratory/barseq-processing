@@ -663,7 +663,9 @@ def organize_processed_data_notebook(pth,config_pth,is_optseq=0,hyb_codebook_nam
 
     
     cells=d['cell_list_all'].copy() # check if copy messed something
-    genes=np.unique(d['combined_gene_hyb_id'])
+    genes = np.arange(0,len(codebook_comb))
+    # genes=np.unique(d['combined_gene_hyb_id'])
+    
     rol_id=d['combined_gene_hyb_id'].copy()
     rol_cell=d['combined_gene_hyb_cellidall'].copy()
     v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'],dropna=False)
