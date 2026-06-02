@@ -68,23 +68,23 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
 
     model_name = cp.get(stage, 'model_name')
     cell_diameter = cp.getint(stage, 'cell_diameter')
-    use_gpu=torch.cuda.is_available()
+    use_gpu = torch.cuda.is_available()
     logging.info(f'running with model_name={model_name} cell_diam={cell_diameter} use_gpu={use_gpu}')
 
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
     (dirpath, base, infile_label, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
-    cellpose_input_image = prepare_cellpose_input(infiles, outfiles )
-    logging.debug(f'got cellpose input image shape={cellpose_input_image.shape}')
+    cellpose_input_stack = prepare_cellpose_input(infiles, outfiles )
+    logging.debug(f'got cellpose input image shape={cellpose_input_stack.shape}')
 
     model = models.Cellpose( model_type = model_name,
                              gpu = use_gpu)
     channels = [[0,1]]
     logging.info('running cellpose...')
-    masks, flows, styles, diams = model.eval( cellpose_input_image, 
-                                             diameter=cell_diameter, 
-                                             channels=channels )
+    masks, flows, styles, diams = model.eval( cellpose_input_stack, 
+                                              diameter=cell_diameter, 
+                                              channels=channels )
     logging.debug(f'got masks. shape={masks.shape}')
 
     logging.info(f'writing to {outfile}')
@@ -94,10 +94,13 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
 
 def prepare_cellpose_input(infiles, outfiles):
     '''
-                           nuc_ch=5,
-                           num_chyb=5,
-                           num_cgene=4,
-                           other_channels = list(range(0,num_chyb))
+        cyto = hyb[0,1,2,3] + geneseq all channel all cycle composite, 
+        nuclear = hyb[4].
+
+        nuc_ch=5,
+        num_chyb=5,
+        num_cgene=4,
+        other_channels = list(range(0,num_chyb))
     '''
     # We know arity is single, so we can grab the outfile 
     outfile = outfiles[0]
@@ -106,14 +109,13 @@ def prepare_cellpose_input(infiles, outfiles):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')    
 
-
     (odirpath, obase, olabel, oext) = split_path(os.path.abspath(outfile))
     (prefix, subdir) = os.path.split(odirpath)
     logging.debug(f'outdirpath={odirpath} obase={obase} olabel={olabel} subdir={subdir}')
     outfile = os.path.join( outdir, f'{obase}.cp_inp.tif' )
     logging.debug(f'preparing cellpose input to be written to {outfile}')
 
-    hyb_image = read_image(infiles[0], channels=[ 0, 1 , 2 , 3 , 4 ])
+    hyb_image = read_image(infiles[0])
     cp_input_image = np.zeros( [2, hyb_image.shape[1], hyb_image.shape[2]] )
     gene_composite = np.zeros( [ hyb_image.shape[1],hyb_image.shape[2] ] )
     for infile in infiles[1:]:

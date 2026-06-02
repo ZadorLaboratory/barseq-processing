@@ -128,8 +128,6 @@ def regcycle_ski(infiles, outfiles, template=None, stage=None, cp=None ):
         logging.debug(f'done writing {outfile}')
 
 
-
-
     
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
