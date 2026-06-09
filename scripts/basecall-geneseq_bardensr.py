@@ -82,15 +82,20 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
 
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
-    codebook_bases = cp.get(stage, 'codebook_bases').split(',')
+    codebook_bases = get_config_list(cp, stage, 'codebook_bases')
     cfile = os.path.join(resource_dir, codebook_file)
     logging.info(f'loading codebook file: {cfile}')
-    codebook = load_codebook_file(cfile)
+    codebook_df = load_codebook_file(cfile)
     num_channels = len(codebook_bases) 
-    logging.debug(f'loaded codebook TSV:\n{codebook} codebook_bases={codebook_bases}')    
+    logging.debug(f'loaded codebook TSV:\n{codebook_df} codebook_bases={codebook_bases}')    
     
     n_cycles = len(infiles)
-    (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
+    (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook_df, 
+                                                                        codebook_bases=codebook_bases, 
+                                                                        n_cycles=n_cycles)
+    logging.debug(f'R={R} C={C} J={J}')
+    logging.debug(f'codeflat.shape = {codeflat.shape}')
+    logging.debug(f'pos_unused_codes = {pos_unused_codes}')
 
     # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
     logging.debug(f'calculating max_per_RC...')

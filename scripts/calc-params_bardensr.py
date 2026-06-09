@@ -75,10 +75,9 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     cropf = cp.getfloat(stage, 'cropf')
     logging.debug(f'noisefloor_ini={noisefloor_ini} trim={trim} cropf={cropf}')
 
-
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
-    codebook_bases = cp.get(stage, 'codebook_bases').split(',')
+    codebook_bases = get_config_list(cp, stage, 'codebook_bases')
     cfile = os.path.join(resource_dir, codebook_file)
     logging.info(f'loading codebook file: {cfile}')
     codebook = load_codebook_file(cfile)
@@ -88,7 +87,7 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     n_cycles = len(infiles[0])
     logging.info(f'Detected tilesets of {n_cycles} cycles.')
     (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
-    logging.info(f'R={R} C={C} J={J} genes={genes} pos_unused_codes={pos_unused_codes}')
+    logging.info(f'R={R} C={C} J={J} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
     # OUTPUT DICT
     param_outputs = {}
 

@@ -142,6 +142,7 @@ def bd_read_image_set(infiles, R, C, trim=None, cropf=None ):
     I = []
     #for i in range(1, R+1):
     for infile in infiles:
+        # logging.debug(f'reading {infile}')
         for j in range(C):
             I.append( np.expand_dims( read_image( infile, channels=[j]), axis=0))
     I=np.array(I)
