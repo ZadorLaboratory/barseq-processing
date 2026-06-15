@@ -36,10 +36,12 @@ import numpy as np
 
 def denoise_n2v( infiles, outfiles, stage=None, cp=None):
     '''
+    
     def predict(self, img, axes, 
                     resizer=PadAndCropResizer(), 
                     n_tiles=None, 
                     tta=False):
+
     '''
     if cp is None:
         cp = get_default_config()
@@ -51,12 +53,11 @@ def denoise_n2v( infiles, outfiles, stage=None, cp=None):
     basedir = os.path.join(resource_dir, 'n2vmodels')
     image_type = cp.get(stage,'image_type')
     logging.debug(f'this mode is image_type={image_type}')
-    image_channels = get_config_list(cp, image_type, 'channels')
+    image_channels = cp.get(image_type, 'channels').split(',')
     stem_key = f'{image_type}_model_stem'
     channel_key = f'{image_type}_model_channels'
-    
     output_dtype = cp.get(stage,'output_dtype')
-    model_channels = get_config_list(cp, 'n2v', channel_key)   
+    model_channels = cp.get('n2v', channel_key).split(',')   
     model_stem = cp.get('n2v', stem_key)
     do_min_subtraction = get_boolean( cp.get('n2v', 'do_min_subtraction') )
  
@@ -76,18 +77,29 @@ def denoise_n2v( infiles, outfiles, stage=None, cp=None):
     for i, filename in enumerate( infiles ):
         (dirpath, base, label, ext) = split_path(os.path.abspath(filename))
         logging.debug(f'handling {filename}')
+        #imgarray = imageio.imread(filename)
         imgarray = read_image(filename)        
-        pred_image = imgarray
+        pred_image = []
         for j, img in enumerate(imgarray):
             try:
-                logging.debug(f'{base}.{ext}[{j}] shape={img.shape} dtype={img.dtype}')
-                pred_image[j,:,:] = models[j].predict(imgarray[j,:,:], axes='YX')
-            
-            except IndexError:
-                logging.debug(f'ran out of models. image may have more channels than models.')
-
-        pred_image = uint16m(pred_image)
-        logging.debug(f'done denoising {base}.{ext} {len(pred_image)} channels / {len(models)} models.')
+                logging.debug(f'{base}.{ext}[{i}] shape={img.shape} dtype={img.dtype}')
+                pimg = models[j].predict(img, axes='YX')
+                logging.debug(f'got model output: {base}.{ext}[{j}] shape={pimg.shape} dtype={pimg.dtype}')
+                pimg = pimg.astype(output_dtype)
+                if do_min_subtraction:
+                    pimg = pimg - pimg.min()  
+                logging.debug(f'new dtype={pimg.dtype}')
+                pred_image.append(pimg)
+            except:
+                logging.warning(f'ran out of models, appending channel [{j}] unchanged.')
+                pred_image.append(img)
+               
+        logging.debug(f'done predicting {base}.{ext} {len(pred_image)} channels. ')
+        newimage = np.dstack(pred_image)
+        # produces e.g. shape = ( 3200,3200,5)
+        newimage = np.rollaxis(newimage, -1)
+        # produces e.g. shape = ( 5, 3200, 3200)        
+        #tf.imwrite( outfile, newimage)
         outfile = outfiles[i]
         (outdir, file) = os.path.split(outfile)
         if not os.path.exists(outdir):
@@ -95,7 +107,7 @@ def denoise_n2v( infiles, outfiles, stage=None, cp=None):
             logging.debug(f'made outdir={outdir}')
         
         logging.info(f'writing to {outfile}')
-        write_image( outfile , pred_image, photometric='minisblack' )
+        write_image( outfile , newimage )
         logging.debug(f'done writing {outfile} ')
 
 

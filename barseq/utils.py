@@ -400,7 +400,7 @@ class JobRunner(threading.Thread):
 
 
 def uint16m(x):
-    y=np.uint16(np.clip(np.round(x),0,65535))
+    y = np.uint16(np.clip(np.round(x),0,65535))
     return y
 
 def write_config(config, filename, timestamp=True, datestring=None):

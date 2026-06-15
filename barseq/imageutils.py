@@ -78,7 +78,171 @@ def write_image(outfile, np_array, photometric='minisblack'):
     # iio v2 syntax explicitly create plugin_kwargs dict. 
     #iio.imwrite( outfile, np_array, plugin_kwargs={"photometric": photometric})
     logging.debug(f'wrote image shape={np_array.shape} photometric={photometric} to {outfile}')
- 
+
+
+def compare_images( a, b):
+    '''
+    Characterize the differences between two images. 
+    Return True if they are *substantially* the same, False otherwise. 
+    '''
+    MAX_CHANNELS = 10
+    MIN_PIXELS = 100
+    SIM_THRESH = .95 
+
+    images_identical = True
+
+    s = ''
+    # type
+    ta = type(a)
+    tb = type(b)
+    if ta != tb:
+        images_identical = False
+        msg = f'Data type differs: {ta} != {tb}\n'
+        logging.info(msg)
+        s += msg
+        return images_identical, s
+    else:
+        msg = f'Data type same: {ta}\n'
+        s += msg
+        logging.debug(msg)
+    
+    # shape
+    sa = a.shape
+    sb = b.shape
+    if len(sa) != len(sb):
+        images_identical = False
+        msg = f'Shape length differs: {sa} != {sb}\n'
+        logging.info(msg)
+        s += msg
+        return images_identical, s
+    else:
+        msg = f'Same shape length: len({sa}) == len({sb}) -> {len(sa)}\n'
+        s += msg
+        logging.debug(msg) 
+
+    # shape dimension values
+    for i,d in enumerate(sa):
+        da = sa[i]
+        db = sb[i]
+        if da != db:
+            images_identical = False
+            msg = f'shape[{i}] value differs: {da} != {db}\n'
+            logging.info(msg)
+            s += msg
+            return images_identical, s
+    msg = f'Same shape dimension values: {sa}\n'
+    s += msg
+    logging.debug(msg)
+
+
+    # channels, axes sanity check. 
+    if sa[0] > MAX_CHANNELS:
+        images_identical = False
+        msg = f'First dimension too large for channels {sa[0]} > {MAX_CHANNELS}\n'
+        s += msg
+        logging.info(msg)
+        return images_identical, s
+    else:
+        msg = f'First dimension consistent with channels: {sa[0]}\n'
+        s += msg
+        logging.debug(msg)
+    if (sa[1] < MIN_PIXELS ) or (sa[2] < MIN_PIXELS):
+        images_identical = False
+        msg = f'Second or third dimension to small for pixels: {sa[1]} {sa[2]}\n'
+        s += msg
+        logging.info(msg)
+        return images_identical, s
+    else:
+        msg = f'Dimensions 2,3 consistent w/ axes: {sa[1]} x {sa[2]}\n'
+        s += msg
+        logging.debug(msg)
+
+    # if overall sum() is identical, the images are exactly identical. 
+    if a.sum() == b.sum():
+        msg = f'Same full image sum: {int(a.sum())} Images are precisely identical.\n'
+        s += msg
+        logging.info(msg)
+        return images_identical, s
+    else:
+        images_identical = False
+        msg = f'Full sum differs, doing detailed comparison...\n'
+        s += msg
+        logging.info(msg)
+
+    # Compare matrix statistics. min(), max(), mean(), median()
+    # Measure is 90% similar.  
+    # axis = 1 is rows, axis = 0 is columns
+    images_similar = True
+    for chidx in range(0, a.shape[0]):
+        msg = f'checking channel {chidx}...\n'
+        s += msg
+        logging.debug(msg)
+        ia = a[chidx]
+        ib = b[chidx]
+
+        # min()
+        amin = int(ia.min())
+        bmin = int(ib.min())
+        dp = calc_proportion(amin, bmin)
+        if dp >= SIM_THRESH:
+            msg = f'   [{chidx}]: np.min() {dp} similar.\n'
+            s += msg
+            logging.info(msg)
+        else :
+            msg = f'   [{chidx}]: np.min() {dp} NOT similar.\n'
+            s += msg
+            images_similar = False
+
+        # max()
+        amax = int(ia.max())
+        bmax = int(ib.max())
+        dp = calc_proportion(amax, bmax)
+        if dp >= SIM_THRESH:
+            msg = f'   [{chidx}]: np.max() {dp} similar.\n'
+            s += msg
+            logging.info(msg)
+        else :
+            msg = f'   [{chidx}]: np.max() {dp} NOT similar.\n'
+            s += msg
+            images_similar = False
+
+        # mean()
+        amean = int(ia.mean())
+        bmean = int(ib.mean())
+        dp = calc_proportion(amean, bmean)
+        if dp >= SIM_THRESH:
+            msg =f'   [{chidx}]: np.mean() {dp} similar.\n'
+            s += msg
+            logging.info(msg)
+        else :
+            msg = f'   [{chidx}]: np.mean() {dp} similar.\n'
+            images_similar = False
+    # Summary
+    if images_similar:
+        msg = f'Images similar at {SIM_THRESH} level.'
+        s += msg
+        logging.info(msg)
+    else:
+        msg = f'Images NOT similar at {SIM_THRESH} level.'
+        s += msg
+        logging.info(msg)
+    return images_identical, s
+
+
+def calc_proportion(a, b):
+    '''
+        Calc proportion difference between a and b, round to sig figs. 
+    '''
+    a = int(a)
+    b = int(b)
+    if a == b:
+        return 1.0
+    elif (a == 0) or (b == 0):
+        return calc_proportion(a+1, b+1)
+    if a > b:
+        return round(b / a , 3)
+    else:
+        return round( a / b, 3 )
  
 #   
 # Ashlar-specific image handling.

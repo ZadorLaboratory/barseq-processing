@@ -6,6 +6,7 @@
 #
 
 import argparse
+import joblib
 import json
 import logging
 import math
@@ -121,6 +122,10 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
+
+    (odirpath, obase, olabel, oext) = split_path(outfile)
+    of =  os.path.join(odirpath, f'{obase}.codeflat.joblib')
+    joblib.dump(codeflat, of)
 
  
 

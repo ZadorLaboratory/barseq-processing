@@ -158,7 +158,7 @@ def preprocess_py( infiles, outfiles, stage=None, cp=None):
             Ibacksub = background_cv2_single(I, radius)
         else:
             Ibacksub = I       
-        logging.debug(f'Done background. mode={mode} n_channnels={len(Ibacksub)}')
+        logging.debug(f'Done background. mode={mode} n_channels={len(Ibacksub)}')
         
         logging.debug(f'Do regchannels...')
         # Regchannels

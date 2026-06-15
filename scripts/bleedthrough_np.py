@@ -21,7 +21,6 @@ from barseq.imageutils import *
 
 def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
     '''
-
     
     '''
     if cp is None:
@@ -29,8 +28,16 @@ def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
         
     if stage is None:
         stage = 'bleedthrough'
+    logging.debug(f'stage={stage}')
 
     # Get parameters for all steps.
+    image_type = cp.get(stage, 'image_type')
+    output_dtype = cp.get( stage,'output_dtype')
+    channel_names =  get_config_list(cp, image_type, 'channels')
+    select_channels = get_config_list(cp, stage, 'channels')
+    select_indexes = channel_names_index_map(select_channels, channel_names)
+    num_c = len(select_channels)
+
     mode = get_config_list(cp, stage, 'modes')
     mode = mode[0]
     output_dtype = cp.get( stage,'output_dtype')
@@ -56,10 +63,10 @@ def bleedthrough_np( infiles, outfiles, stage=None, cp=None):
         (dirpath, base, label, ext) = split_path(os.path.abspath(infile))
 
         I = read_image(infile)
-        I=I.copy()
-        Icorrected=np.zeros_like(I)
+        I = I.copy()
+        Icorrected = np.zeros_like(I)
         Ishifted2 = np.float64( I[0:num_channels,:,:] )
-        I_rem=I[num_channels:,:,:]
+        I_rem=I[ num_channels: , : , : ]
         A = np.transpose(chprofile)
         B = np.reshape( Ishifted2 , (num_channels, -1), order='F')
         I_solved = np.linalg.solve( A, B ) 
@@ -135,7 +142,8 @@ if __name__ == '__main__':
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
     bleedthrough_np( infiles=args.infiles, 
-                     outfiles=args.outfiles, 
+                     outfiles=args.outfiles,
+                     stage=args.stage, 
                      cp=cp )
     (outdir, file) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')

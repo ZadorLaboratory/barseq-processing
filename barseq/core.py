@@ -349,7 +349,7 @@ class BarseqExperiment():
         @arg maptype    Kind of map to generate.  cycle|position|tileset|filelist  
         
         ''' 
-        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} instage={instage} strip_base={strip_base}')
+        logging.info(f'mode={mode} stage={stage} label={label} ext={ext} arity={arity} maptype={maptype} instage={instage} instage_mode={instage_mode} strip_base={strip_base}')
                        
         if mode is None:
             mode_list = list(self.cdict.keys())
@@ -357,7 +357,7 @@ class BarseqExperiment():
             mode = mode_list
 
         stagedir = self.cp.get(stage, 'stagedir')
-        # instage_mode = get_config_list(self.cp, stage , 'instage_modes')
+        instage_mode = get_config_list(self.cp, stage , 'instage_mode')
        
         logging.info(f"get_stage_files(mode={instage_mode}, stage='{instage}', maptype='{maptype}')")
         infile_set = self.get_stage_files(mode=instage_mode, stage=instage, maptype=maptype)
@@ -439,7 +439,7 @@ class BarseqExperiment():
         I mode is a list, output is still list of lists (no hierarchy)
                
         '''
-        logging.info(f'mode={mode} stage={stage} maptype={maptype}')
+        logging.info(f'get_stage_files( mode={mode}, stage={stage}, maptype={maptype} )')
         outlist = []
      
         # Set stage and modes
@@ -452,6 +452,7 @@ class BarseqExperiment():
             modes = mode
 
         if stage is None:
+            logging.debug(f'stage is None. Using input data.')
             # Use input dataset
             cdict = self.cdict
             pdict = self.pdict
@@ -616,7 +617,7 @@ def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
     instage_dir = None
     if instage is not None:
         instage_dir = cp.get(instage, 'stagedir')
-    instage_mode = get_config_list(cp, stage, 'instage_modes')
+    instage_mode = get_config_list(cp, stage, 'instage_mode')
     label = get_config_none(cp, stage, 'label')
     ext = get_config_none(cp, stage, 'ext')
     maptype = cp.get(stage, 'maptype')

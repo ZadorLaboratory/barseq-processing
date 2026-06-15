@@ -5,6 +5,7 @@
 # 
 import argparse
 import itertools
+import joblib
 import json
 import logging
 import math
@@ -16,14 +17,14 @@ import datetime as dt
 
 from configparser import ConfigParser
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 import matplotlib.pylab as plt
 import numpy as np
 
 import bardensr
 import bardensr.plotting
+
+gitpath=os.path.expanduser("~/git/barseq-processing")
+sys.path.append(gitpath)
 
 from barseq.core import *
 from barseq.utils import *
@@ -48,7 +49,7 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     if stage is None:
         stage = 'calc-params'
 
-    # We know arity is globally single, so we can grab the outfile from the first set.  
+    # We know arity is GLOBALLY single, so we can grab the outfile from the first set.  
     outfile = outfiles[0][0]
     (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
@@ -87,7 +88,10 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     n_cycles = len(infiles[0])
     logging.info(f'Detected tilesets of {n_cycles} cycles.')
     (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
-    logging.info(f'R={R} C={C} J={J} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
+    logging.info(f'R={R} C={C} J={J} codeflat.shape={codeflat.shape} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
+
+
+        
     # OUTPUT DICT
     param_outputs = {}
 
@@ -159,6 +163,10 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     with open(outfile, 'w' ) as f:
         json.dump(param_outputs, f)
     logging.info(f'wrote params to {outfile}')
+
+    of = os.path.join(outdir, 'codeflat.calc-params.joblib')
+    joblib.dump(codeflat, of)
+
     return param_outputs
 
     

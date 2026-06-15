@@ -24,29 +24,37 @@ from barseq.imageutils import *
 
 def regchannels_ski( infiles, outfiles, stage=None, cp=None):
     '''
+    Align channels within image with each other. 
        
     ''' 
     if cp is None:
         cp = get_default_config()
 
     if stage is None:
-        stage = 'regchannels'
+        stage = 'regchannels-geneseq'
     
     logging.info(f'stage={stage}')
 
+    image_type = cp.get(stage, 'image_type')
+    output_dtype = cp.get( stage,'output_dtype')
+    channel_names =  get_config_list(cp, image_type, 'channels')
+    select_channels = get_config_list(cp, stage, 'channels')
+    select_indexes = channel_names_index_map(select_channels, channel_names)
+    num_c = len(select_channels)
+
     mode = get_config_list(cp, stage, 'modes')
     mode = mode[0]
+
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
-    microscope_profile = cp.get('experiment','microscope_profile')
-    chshift_file = cp.get(microscope_profile,f'channel_shift_{mode}')
+    microscope_profile = cp.get('experiment', 'microscope_profile')
+    chshift_file = cp.get(microscope_profile, f'channel_shift_{mode}')
     chshift_path = os.path.join(resource_dir, chshift_file)
-    is_affine = cp.getboolean(stage,'is_affine')
+    is_affine = cp.getboolean(stage, 'is_affine')
     logging.debug(f'chshift_path = {chshift_path} is_affine={is_affine}')
+
     chshift = load_df(chshift_path, as_array=True)
     n_shift_channels = len(chshift)
-    logging.debug(f'loaded channel shift. len={n_shift_channels} ')
-    n_channels = len(chshift)
-    logging.debug(f'loaded channel shift. len={len(chshift)} ')
+    logging.debug(f'channel_shift loaded. len={n_shift_channels} chshift.shape[0] = {chshift.shape[0]}\n{chshift}\n ')
 
     for i, infile in enumerate(infiles):
         outfile = outfiles[i]
@@ -59,28 +67,28 @@ def regchannels_ski( infiles, outfiles, stage=None, cp=None):
         (dirpath, base, label, ext) = split_path(os.path.abspath(infile))
                 
         I = read_image(infile)
-        I=I.copy()
-        Ishifted=np.zeros_like(I)
-        I_rem=I[n_channels:,:,:]
-        I=I[0:n_channels,:,:]
+        I = I.copy()
+        Ishifted = np.zeros_like(I)
+        I_rem = I[n_shift_channels: , : , : ]
+        I = I[0:n_shift_channels , : , : ]
         for i in range(chshift.shape[0]):
             if is_affine:
                 # refine this later on-ng
                 tform=chshift[i] 
             else:
                 # remember this takes -shifts-ng  
-                tform=ski.transform.SimilarityTransform(translation=-chshift[i,:])              
-            It=ski.transform.warp(np.squeeze(I[i,:,:]), 
-                                      tform, 
-                                      preserve_range=True, 
-                                      output_shape=(I.shape[1],I.shape[2]))
-            Ishifted[i,:,:]=np.expand_dims(It,0)
-        Ishifted[n_channels:,:,:]=I_rem    
-        Ishifted=uint16m(Ishifted)
+                tform = ski.transform.SimilarityTransform( translation = -chshift[i,:])              
+            It = ski.transform.warp(np.squeeze( I[i,:,:]), 
+                                                tform, 
+                                                preserve_range=True, 
+                                                output_shape=(I.shape[1] , I.shape[2]))
+            Ishifted[ i , : , :] = np.expand_dims(It, 0)
+        Ishifted[ n_shift_channels: , : , : ] = I_rem    
+        Ishifted = uint16m(Ishifted)
         
         logging.debug(f'done processing {base}.{ext} ')
         logging.info(f'writing to {outfile}')
-        write_image(outfile, Ishifted)
+        write_image(outfile, Ishifted, photometric='minisblack')
         logging.debug(f'done writing {outfile}')
 
 
