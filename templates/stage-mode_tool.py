@@ -28,13 +28,14 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def stage_function(infile):
+def stage_function(infile, select_channels):
     '''
-
-
+    Implement algorithmic-level operations, no I/O. 
     '''
-    return infile
-
+    # Read image all channels. 
+    im = read_image(infile)
+    # perform operations, possibly only on subset of channels...
+    return im
 
 
 def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
