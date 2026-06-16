@@ -10,11 +10,15 @@
 #
 #
 import argparse
+import joblib
+import json
 import logging
 import os
 import sys
 
 import datetime as dt
+from natsort import natsorted as nsort 
+
 from configparser import ConfigParser
 
 gitpath=os.path.expanduser("~/git/barseq-processing")
@@ -23,6 +27,15 @@ sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
+
+def stage_function(infile):
+    '''
+
+
+    '''
+    return infile
+
+
 
 def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
     '''
@@ -43,7 +56,31 @@ def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
     if stage is None:
         stage = 'calc-params'
 
+
     arity = cp.get(stage, 'arity')
+
+    # For image-handling stages, we determine channels to act upon.
+    # By default, we want to pass through any un-selected channels 
+    # unchanged to the output.  
+    image_type = cp.get(stage, 'image_type')
+    output_dtype = cp.get( stage,'output_dtype')
+    channel_names =  get_config_list(cp, image_type, 'channels')
+    select_channels = get_config_list(cp, stage, 'channels')
+    select_indexes = channel_names_index_map(select_channels, channel_names)
+    num_c = len(select_channels)
+
+    # For specialized, stage-specific configuration lookup, we may need mode, 
+    # resource directory, and filename construction information, e.g. 
+    #  
+    mode = get_config_list(cp, stage, 'modes')
+    mode = mode[0]
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    microscope_profile = cp.get('experiment','microscope_profile')
+    # config_file = cp.get(microscope_profile, f'config_file_{mode}')
+    # config_file_path = os.path.join(resource_dir, config_file)
+    # stage_config = load_df(config_file_path, as_array=True)
+    # logging.debug(f'config_file_path={config_file_path}')
+    logging.debug(f'resource_dir = {resource_dir} microscope_profile = {microscope_profile}')
 
     # If there is a need to aggregate/combine info from multiple chunks, 
     # set up global data structures here. 
@@ -64,7 +101,7 @@ def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
         if arity == 'single':
             outfile = outfilelist[0]
             (outdir, file) = os.path.split(outfile)
-        else:
+        elif arity == 'parallele':
             outdir = os.path.split(outfilelist[0])
 
         # Always ensure/create output directory
@@ -74,16 +111,20 @@ def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
 
         # Gather configuration and log. 
         logging.info(f'handling stage={stage} to outdir={outdir}')
-        resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
         logging.info(f'handling {len(infilelist)} input files e.g. {infilelist[0]} ')
         (dirpath, base, label, ext) = split_path(os.path.abspath(infilelist[0]))
         (prefix, subdir) = os.path.split(dirpath)
         logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
 
         # Handle this input/output map...
+        output = stage_function(infile)
 
-        # Write output. 
-
+        # Write output. If an image, e.g., but could be other formats... 
+        write_image(outfile, output)
+        
+        # with open(outfile, 'w' ) as f:
+        #   json.dump(output, f)
+        # logging.info(f'wrote json to {outfile}')  
 
 
 if __name__ == '__main__':
