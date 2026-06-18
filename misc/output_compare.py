@@ -61,43 +61,37 @@ def do_compare_output(outdir1, outdir2):
                 fname = f'n2vgeneseq0{gcycle}.tif'
                 for tilename in TILENAMES:
                     file1 = f'{outdir1}/processed/{tilename}/{pbs_prefix}{fname}'
+                    rel1 = os.path.relpath(file1)
                     file2 = f'{outdir2}/{bsp_prefix}/geneseq0{gcycle}/{tilename}.tif'
+                    rel2 = os.path.relpath(file2)
                     logging.info(f'comparing {file1} and {file2}')
-                    ident, msg = do_compare_images(file1, file2)
+                    ident, msg, min_sim = do_compare_images(file1, file2)
                     if ident:
-                        print( f' {tilename}/{pbs_prefix}{fname} == {bsp_prefix}/geneseq0{gcycle}/{tilename}.tif' )
+                        print( f' {rel1} == {rel2}' )
                     else:
                         identical = False
-                        print( f' {tilename}/{pbs_prefix}{fname} != {bsp_prefix}/geneseq0{gcycle}/{tilename}.tif' )
+                        print( f' {rel1} != {rel2} min_sim = {min_sim}' )
             
             for hcycle in list(range(1, N_HYB_CYCLES + 1)):
                 fname = f'n2vhyb0{hcycle}.tif'
                 for tilename in TILENAMES:
                     file1 = f'{outdir1}/processed/{tilename}/{pbs_prefix}{fname}'
+                    rel1 = os.path.relpath(file1)
                     file2 = f'{outdir2}/{bsp_prefix}/hyb0{hcycle}/{tilename}.tif'
+                    rel2 = os.path.relpath(file2)
                     logging.info(f'comparing {file1} and {file2}')
-                    ident, msg = do_compare_images(file1, file2)
+                    ident, msg, min_sim = do_compare_images(file1, file2)
                     if ident:
-                        print( f' {tilename}/{pbs_prefix}{fname} == {bsp_prefix}/hyb0{hcycle}/{tilename}.tif' )
+                        print( f' {rel1} == {rel2}' )
                     else:
                         identical = False
-                        print( f' {tilename}/{pbs_prefix}{fname} != {bsp_prefix}/hyb0{hcycle}/{tilename}.tif' )
+                        print( f' {rel1} != {rel2} min_sim = {min_sim}' )
         else:
             print(f'outputs have diverged. Exitting.')
             sys.exit(1)
 
-
-
-
-
     return identical
 
-
-def do_compare_images(infile1, infile2):
-    a = read_image(infile1)
-    b = read_image(infile2)
-    identical, msg = compare_images(a,b)
-    return identical, msg
 
 def get_image_info(infiles):
     '''

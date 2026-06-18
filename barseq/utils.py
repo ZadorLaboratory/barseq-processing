@@ -543,8 +543,8 @@ def make_codebook_object(codebook_df, codebook_bases=['G','T','A','C'], n_cycles
 
     '''
     num_channels = len(codebook_bases)
-    genes = np.reshape(  np.array( codebook_df['gene'],  dtype='<U8'), (np.size(codebook_df,0), -1) )
-    pos_unused_codes=np.where(np.char.startswith(genes,'unused'))
+    genes = np.array( list( codebook_df['gene'] ),  dtype='<U8') 
+    pos_unused_codes=np.where(np.char.startswith( genes, 'unused'))
     err_codes=genes[pos_unused_codes]
      
     codebook_char = np.zeros((len(codebook_df), n_cycles), dtype=str)

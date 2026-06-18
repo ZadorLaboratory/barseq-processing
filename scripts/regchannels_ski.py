@@ -70,6 +70,7 @@ def regchannels_ski( infiles, outfiles, stage=None, cp=None):
         I = I.copy()
         Ishifted = np.zeros_like(I)
         I_rem = I[n_shift_channels: , : , : ]
+        logging.debug(f'I_rem.shape = {I_rem.shape}')
         I = I[0:n_shift_channels , : , : ]
         for i in range(chshift.shape[0]):
             if is_affine:

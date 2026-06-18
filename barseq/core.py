@@ -683,13 +683,15 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
     check for output existence, skipping if all present. 
     
     '''
+    logging.info(f'making command list. stage={stage}')
     cfilename = os.path.join( outdir, 'barseq.conf' )
     runconfig = write_config(cp, cfilename, timestamp=True)
 
     # Batch multiple filemaps into single command
     # Using multiple --infiles --outfiles and --template args if needed.  
-    #
-    n_chunks = cp.getint(stage, 'n_chunks', fallback=1)
+    # By default, one map per process, do all processes. 
+    chunk_size = cp.getint(stage, 'chunk_size', fallback=1)
+    n_chunks = cp.getint(stage, 'n_chunks', fallback=99999)
 
     tool = cp.get( stage ,'tool')
     conda_env = cp.get( tool ,'conda_env')
@@ -720,7 +722,9 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
     template_source = get_config_none(cp, stage, 'template_source')
     logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
 
-    chunked_filemaps = [ file_map[i : i + n_chunks] for i in range(0, len(file_map), n_chunks) ]
+    chunked_filemaps = [ file_map[i : i + chunk_size] for i in range(0, len(file_map), chunk_size) ]
+    chunked_filemaps = chunked_filemaps[0:n_chunks]
+    logging.debug(f'chunked_filemaps = {chunked_filemaps}')
 
     # Define template file(s), if requested.
     template_file_list = None
@@ -730,7 +734,9 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
         # Only tileset currently makes sense for templates. 
         template_fileset_list = bse.get_stage_files( template_mode, stage=template_source, maptype='tileset' )
         logging.debug(f'template_stagedir={template_stagedir} template_fileset_list = {template_fileset_list}')
-        chunked_templates = [ template_fileset_list[i :  i + n_chunks] for i in range(0, len(template_fileset_list), n_chunks) ]
+        chunked_templates = [ template_fileset_list[i :  i + chunk_size] for i in range(0, len(template_fileset_list), chunk_size) ]
+        chunked_templates = chunked_templates[0:n_chunks]
+        logging.debug(f'chunked_templates = {chunked_templates}')
 
     # Create command line(s) for mapping sets
     command_list = []

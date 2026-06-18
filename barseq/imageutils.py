@@ -80,8 +80,19 @@ def write_image(outfile, np_array, photometric='minisblack'):
     logging.debug(f'wrote image shape={np_array.shape} photometric={photometric} to {outfile}')
 
 
+def do_compare_images(infile1, infile2):
+    '''
+    Filename input. 
+    '''
+    a = read_image(infile1)
+    b = read_image(infile2)
+    images_identical, s , min_similarity = compare_images(a,b)
+    return images_identical, s , min_similarity
+
+
 def compare_images( a, b):
     '''
+    Direct image array input.
     Characterize the differences between two images. 
     Return True if they are *substantially* the same, False otherwise. 
     '''
@@ -90,6 +101,7 @@ def compare_images( a, b):
     SIM_THRESH = .95 
 
     images_identical = True
+    min_similarity = 1.0
 
     s = ''
     # type
@@ -100,7 +112,7 @@ def compare_images( a, b):
         msg = f'Data type differs: {ta} != {tb}\n'
         logging.info(msg)
         s += msg
-        return images_identical, s
+        return images_identical, s , min_similarity
     else:
         msg = f'Data type same: {ta}\n'
         s += msg
@@ -114,7 +126,7 @@ def compare_images( a, b):
         msg = f'Shape length differs: {sa} != {sb}\n'
         logging.info(msg)
         s += msg
-        return images_identical, s
+        return images_identical, s , min_similarity
     else:
         msg = f'Same shape length: len({sa}) == len({sb}) -> {len(sa)}\n'
         s += msg
@@ -129,7 +141,7 @@ def compare_images( a, b):
             msg = f'shape[{i}] value differs: {da} != {db}\n'
             logging.info(msg)
             s += msg
-            return images_identical, s
+            return images_identical, s , min_similarity
     msg = f'Same shape dimension values: {sa}\n'
     s += msg
     logging.debug(msg)
@@ -141,7 +153,7 @@ def compare_images( a, b):
         msg = f'First dimension too large for channels {sa[0]} > {MAX_CHANNELS}\n'
         s += msg
         logging.info(msg)
-        return images_identical, s
+        return images_identical, s , min_similarity
     else:
         msg = f'First dimension consistent with channels: {sa[0]}\n'
         s += msg
@@ -151,7 +163,7 @@ def compare_images( a, b):
         msg = f'Second or third dimension to small for pixels: {sa[1]} {sa[2]}\n'
         s += msg
         logging.info(msg)
-        return images_identical, s
+        return images_identical, s , min_similarity
     else:
         msg = f'Dimensions 2,3 consistent w/ axes: {sa[1]} x {sa[2]}\n'
         s += msg
@@ -162,10 +174,13 @@ def compare_images( a, b):
         msg = f'Same full image sum: {int(a.sum())} Images are precisely identical.\n'
         s += msg
         logging.info(msg)
-        return images_identical, s
+        return images_identical, s , min_similarity
     else:
+        dp = calc_proportion(a.sum(), b.sum())
+        if dp < min_similarity:
+            min_similarity = dp
         images_identical = False
-        msg = f'Full sum differs, doing detailed comparison...\n'
+        msg = f'np.sum() {dp} similar-> detailed comparison...\n'
         s += msg
         logging.info(msg)
 
@@ -184,6 +199,8 @@ def compare_images( a, b):
         amin = int(ia.min())
         bmin = int(ib.min())
         dp = calc_proportion(amin, bmin)
+        if dp < min_similarity:
+            min_similarity = dp
         if dp >= SIM_THRESH:
             msg = f'   [{chidx}]: np.min() {dp} similar.\n'
             s += msg
@@ -197,6 +214,9 @@ def compare_images( a, b):
         amax = int(ia.max())
         bmax = int(ib.max())
         dp = calc_proportion(amax, bmax)
+        if dp < min_similarity:
+            min_similarity = dp
+
         if dp >= SIM_THRESH:
             msg = f'   [{chidx}]: np.max() {dp} similar.\n'
             s += msg
@@ -210,6 +230,9 @@ def compare_images( a, b):
         amean = int(ia.mean())
         bmean = int(ib.mean())
         dp = calc_proportion(amean, bmean)
+        if dp < min_similarity:
+            min_similarity = dp
+
         if dp >= SIM_THRESH:
             msg =f'   [{chidx}]: np.mean() {dp} similar.\n'
             s += msg
@@ -219,14 +242,15 @@ def compare_images( a, b):
             images_similar = False
     # Summary
     if images_similar:
-        msg = f'Images similar at {SIM_THRESH} level.'
+        msg = f'Images similar at {SIM_THRESH} level. min_similarity={min_similarity}'
         s += msg
         logging.info(msg)
     else:
-        msg = f'Images NOT similar at {SIM_THRESH} level.'
+        msg = f'Images NOT similar at {SIM_THRESH} level. min_similarity={min_similarity}'
         s += msg
         logging.info(msg)
-    return images_identical, s
+
+    return images_identical, s , min_similarity
 
 
 def calc_proportion(a, b):

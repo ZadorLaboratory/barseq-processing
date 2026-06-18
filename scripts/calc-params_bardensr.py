@@ -57,6 +57,7 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
         logging.debug(f'made outdir={outdir}')
 
     logging.info(f'handling stage={stage} to outdir={outdir}')
+    logging.debug(f'infiles = {infiles}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     image_type = cp.get(stage, 'image_type')
     image_channels = cp.get(image_type, 'channels').split(',')
@@ -79,9 +80,9 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
     codebook_bases = get_config_list(cp, stage, 'codebook_bases')
-    cfile = os.path.join(resource_dir, codebook_file)
-    logging.info(f'loading codebook file: {cfile}')
-    codebook = load_codebook_file(cfile)
+    cbfile = os.path.join(resource_dir, codebook_file)
+    logging.info(f'loading codebook file: {cbfile}')
+    codebook = load_codebook_file(cbfile)
     num_channels = len(codebook_bases) 
     logging.debug(f'loaded codebook TSV:\n{codebook} codebook_bases={codebook_bases}')    
     
@@ -89,15 +90,12 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     logging.info(f'Detected tilesets of {n_cycles} cycles.')
     (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
     logging.info(f'R={R} C={C} J={J} codeflat.shape={codeflat.shape} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
-
-
         
     # OUTPUT DICT
     param_outputs = {}
 
     # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
     logging.debug(f'calculating max_per_RC...')
-    # max_per_RC=[ bd_read_image_single(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
     max_per_RC = [ bd_read_image_set(tileset, R, C, cropf=cropf).max(axis=(1,2,3)) for tileset in infiles ] 
     # Expected to be 28 values. channels * cycles. 
     # first max(), then median of those max() per cycle. 

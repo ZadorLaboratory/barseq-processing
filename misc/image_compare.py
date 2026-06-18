@@ -16,11 +16,7 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-def do_compare_images(infile1, infile2):
-    a = read_image(infile1)
-    b = read_image(infile2)
-    c = compare_images(a,b)
-    return c
+
 
 def get_image_info(infiles):
     '''
@@ -73,5 +69,6 @@ if __name__ == '__main__':
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)   
 
-    ident, msg = do_compare_images(args.infile1, args.infile2)
+    ident, msg, min_similarity = do_compare_images(args.infile1, args.infile2)
+    print(f'min similarity={min_similarity}')
     print(msg)

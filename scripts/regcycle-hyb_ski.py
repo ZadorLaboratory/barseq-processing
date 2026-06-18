@@ -40,6 +40,8 @@ def regcycle_hyb_ski(infiles, outfiles, template=None, stage=None, cp=None ):
     if stage is None:
         stage = 'regcycle-hyb'
 
+    # dapi_shift=[], dapi_ch_num=5, num_c_hyb=6, num_c=4, is_affine=0, radius=31, ch_i=2
+    # 
     image_type = cp.get(stage, 'image_type')
     channel_names =  get_config_list(cp, image_type, 'channels')
     reg_channels = get_config_list(cp, stage, 'reg_channels')
@@ -58,20 +60,8 @@ def regcycle_hyb_ski(infiles, outfiles, template=None, stage=None, cp=None ):
     logging.debug(f'select_channels={select_channels} select_indexes={select_indexes}') 
     logging.debug(f'template_select_channels={template_select_channels} template_select_indexes={template_select_indexes}')
 
-    upsample_factor=cp.getint(stage, 'upsample_factor')
+    upsample_factor = cp.getint(stage, 'upsample_factor')
     logging.debug(f'upsample_factor={upsample_factor}')
-
-    # We know output is singleton
-    outfile = outfiles[0]
-    (outdir, file) = os.path.split(outfile)
-    if not os.path.exists(outdir):
-        os.makedirs(outdir, exist_ok=True)
-        logging.debug(f'made outdir={outdir}')
-    logging.info(f'Handling {infiles} -> {outfile}')
-    (dirpath, base, label, ext) = split_path(os.path.abspath(infiles[0]))
-
-    # We know input is singleton
-    infile = infiles[0]
 
     # Determine template(fixed) file name
     if template is None:
@@ -84,41 +74,55 @@ def regcycle_hyb_ski(infiles, outfiles, template=None, stage=None, cp=None ):
     # Make template_sum_norm of template (fixed) file. i.e. geneseq01
     logging.debug(f'Reading template file: {template_file} all channels. ')
     template_image = read_image( template_file, template_select_indexes)
+    template_sum = np.double(np.sum( template_image, axis=0))
+    template_sum_norm = np.divide(template_sum, np.max(template_sum, axis=None))
 
-    template_sum=np.double(np.sum( template_image, axis=0))
-    template_sum_norm=np.divide(template_sum, np.max(template_sum, axis=None))
+    #template=tfl.imread(ref_cycle_im[reg_cycle],key=range(0,num_c,1))    
+    #template_sum=np.double(np.sum(template,axis=0))
+    #template_sum_norm=np.divide(template_sum,np.max(template_sum,axis=None))
+
     fixed=template_sum_norm.copy()
     logging.debug(f'fixed (template) file shape={fixed.shape}')
+    fixed=np.uint8(np.clip( fixed * 255, 0, 255))
 
-    logging.debug(f'Reading moving file: {infile} ')
-    hyb_orig = read_image( infile , select_indexes )  
-    
-    moving_hyb=hyb_orig[reg_indexes,:,:]
-    moving_input = moving_hyb.copy()
-    moving=np.squeeze(moving_input,axis=0)
-    moving_norm=np.divide(moving,np.max(moving,axis=None))
-    moving=moving_norm
 
-    moving=np.uint8(np.clip(moving*255,0,255))
-    fixed=np.uint8(np.clip(fixed*255,0,255))
+    for i, infile in enumerate( infiles ):
+        outfile = outfiles[i]
+        (outdir, file) = os.path.split(outfile)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir, exist_ok=True)
+            logging.debug(f'made outdir={outdir}')
+        logging.info(f'Handling {infile} -> {outfile}')
+        (dirpath, base, label, ext) = split_path(os.path.abspath(infile))
 
-    hmatched_moving = match_histograms(moving, fixed)
-    shift_values,_,_ = pcc(fixed, hmatched_moving, upsample_factor=upsample_factor)
-    tform_hyb=skimage.transform.SimilarityTransform( translation=(-shift_values[1], -shift_values[0]))
+        logging.debug(f'Reading moving file: {infile} ')
+        # moving original = Ibcksub_shifted_btcorr
+        # moving input = moving_hyb 
+        moving_orig = read_image( infile )  
+        
+        moving_input=moving_orig[reg_indexes, : , :] 
+        moving_input = moving_input.copy()
+        moving_squeezed=np.squeeze(moving_input, axis=0)
+        moving_norm=np.divide(moving_squeezed, np.max(moving_squeezed,axis=None) )
+        moving=np.uint8( np.clip( moving_norm * 255,0,255))
+        
+        hmatched_moving = match_histograms(moving, fixed)
+        shift_values,_,_ = pcc(fixed, hmatched_moving, upsample_factor=upsample_factor)
+        tform=skimage.transform.SimilarityTransform( translation=(-shift_values[1], -shift_values[0]))
 
-    Ih_aligned=np.zeros_like(hyb_orig)
-    for i in range(hyb_orig.shape[0]):
-        Ih_aligned[i,:,:] = skimage.transform.warp( np.squeeze(hyb_orig[i,:,:]), 
-                                                    tform_hyb, 
-                                                    preserve_range=True, 
-                                                    output_shape=(  template_sum_norm.shape[0], 
-                                                                    template_sum_norm.shape[1])
-                                                  )
-    logging.debug(f'done processing {base}.{ext} ')
-    logging.info(f'writing to {outfile}')
-    write_image(outfile, Ih_aligned)
-    logging.debug(f'done writing {outfile}')
-
+        I_aligned=np.zeros_like(moving_orig)
+        for i in range(moving_orig.shape[0]):
+            I_aligned[i,:,:] = skimage.transform.warp( np.squeeze( moving_orig[i,:,:]), 
+                                                        tform, 
+                                                        preserve_range=True, 
+                                                        output_shape=(  template_sum_norm.shape[0], 
+                                                                        template_sum_norm.shape[1])
+                                                    )
+        
+        logging.debug(f'done processing {base}.{ext} ')
+        logging.info(f'writing to {outfile}')
+        write_image(outfile, I_aligned)
+        logging.debug(f'done writing {outfile}')
 
 
 # Notebook code
@@ -128,6 +132,11 @@ def align_hyb_to_gene( moving_hyb, template_sum_norm, Ibcksub_shifted_btcorr ):
     Given two images from one tile--hyb and gene--aligns hyb to geneseq
     Returns aligned image and transformation matrix
     """
+    # Ibcksub_shifted_btcorre is bleedthrough output. 
+    moving_hyb=Ibcksub_shifted_btcorr[ch[i],:,:]
+    [Ihyb_aligned,tform_hyb]=align_hyb_to_gene( moving_hyb, template_sum_norm, Ibcksub_shifted_btcorr)
+
+
     moving=moving_hyb.copy()
     moving=np.squeeze(moving,axis=0)
     moving_norm=np.divide(moving, np.max(moving,axis=None))

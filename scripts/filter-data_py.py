@@ -174,6 +174,9 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     logging.info(f'OVERLAPPING CELLS REMOVED, {np.sum(id_to_keep_all)} {100 * np.sum(id_to_keep_all)/len(center_x)} % cells kept out of {len(center_x)}--PROCESSING FINISHED')
 
     dfexpmat = pd.DataFrame( expmat.todense() )   
+    #logging.info( f"genes = {list(filt_neurons['genes']['gene'])}")
+    gcols = [ g.lower() for g in list(filt_neurons['genes']['gene']) ]
+    dfexpmat.columns = gcols
     of = os.path.join( outdir, f'{project_id}.filt_cellsbygenes.tsv')
     dfexpmat.to_csv(of, sep='\t') 
     logging.info(f'Wrote cells X genes matrix to {of}')
