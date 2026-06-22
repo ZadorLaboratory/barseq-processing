@@ -17,7 +17,6 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-
 def get_image_info(infiles):
     '''
     

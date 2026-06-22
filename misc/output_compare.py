@@ -42,7 +42,7 @@ BSP_PREFIXES = ['denoised',
                 'regchannels',
                 'bleedthrough',
                 'regcycle'
-                    ]
+                ]
 
 
 def do_compare_output(outdir1, outdir2):
@@ -54,6 +54,7 @@ def do_compare_output(outdir1, outdir2):
     outdir2 = os.path.abspath(outdir2)
 
     identical = True
+    # Handle preprocessing
     for i, pbs_prefix in enumerate(PBS_PREFIXES):
         if identical:
             bsp_prefix = BSP_PREFIXES[i]
@@ -89,6 +90,38 @@ def do_compare_output(outdir1, outdir2):
         else:
             print(f'outputs have diverged. Exitting.')
             sys.exit(1)
+
+    # Handle segmentation. 
+    # processed/<tile>/aligned/cell_mask_cyto3.tif
+    #   vs
+    # segment/hyb/<tile>.cp_mask_cyto3.tif 
+    for hcycle in list(range(1, N_HYB_CYCLES + 1)):
+        for tilename in TILENAMES:
+            file1 = f'{outdir1}/processed/{tilename}/aligned/cell_inp2.tif'
+            rel1 = os.path.relpath(file1)
+            file2 = f'{outdir2}/segment/hyb/{tilename}.cellpose_input.tif'
+            rel2 = os.path.relpath(file2)
+            logging.info(f'comparing {file1} and {file2}')
+            ident, msg, min_sim = do_compare_images(file1, file2)
+            if ident:
+                print( f' {rel1} == {rel2}' )
+            else:
+                identical = False
+                print( f' {rel1} != {rel2} min_sim = {min_sim}' )
+
+    for hcycle in list(range(1, N_HYB_CYCLES + 1)):
+        for tilename in TILENAMES:
+            file1 = f'{outdir1}/processed/{tilename}/aligned/cell_mask_cyto3.tif'
+            rel1 = os.path.relpath(file1)
+            file2 = f'{outdir2}/segment/hyb/{tilename}.cp_mask_cyto3.tif'
+            rel2 = os.path.relpath(file2)
+            logging.info(f'comparing {file1} and {file2}')
+            ident, msg, min_sim = do_compare_images(file1, file2)
+            if ident:
+                print( f' {rel1} == {rel2}' )
+            else:
+                identical = False
+                print( f' {rel1} != {rel2} min_sim = {min_sim}' )
 
     return identical
 

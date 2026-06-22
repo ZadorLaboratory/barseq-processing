@@ -36,16 +36,31 @@ from skimage.util import img_as_float
 gitpath=os.path.expanduser("~/git/barseq-processing")
 sys.path.append(gitpath)
  
-#from barseq.core import *
+from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
 def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     '''
     take in infiles of same tile through multiple cycles, 
+    by convention hyb then geneseq. 
     create imagestack, 
     run cellpose
-      
+
+    Input, e.g.
+        
+        (['hyb01/MAX_Pos1_000_000.tif',
+        'geneseq01/MAX_Pos1_000_000.tif',
+        'geneseq02/MAX_Pos1_000_000.tif',
+        'geneseq03/MAX_Pos1_000_000.tif',
+        'geneseq04/MAX_Pos1_000_000.tif',
+        'geneseq05/MAX_Pos1_000_000.tif',
+        'geneseq06/MAX_Pos1_000_000.tif',
+        'geneseq07/MAX_Pos1_000_000.tif'],
+        --> 
+        ['hyb/MAX_Pos1_000_000.cp_mask_cyto3.tif'])
+
+
     '''
     if cp is None:
         cp = get_default_config()
@@ -66,6 +81,7 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     image_channels = cp.get(image_type, 'channels').split(',')
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
+
     model_name = cp.get(stage, 'model_name')
     cell_diameter = cp.getint(stage, 'cell_diameter')
     use_gpu = torch.cuda.is_available()
@@ -75,9 +91,12 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     (dirpath, base, infile_label, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
-    cellpose_input_stack = prepare_cellpose_input(infiles, outfiles )
+    
+    logging.info('Preparing input image stack...')
+    cellpose_input_stack = prepare_cellpose_input(infiles, outfiles, stage=stage, cp=cp )
     logging.debug(f'got cellpose input image shape={cellpose_input_stack.shape}')
 
+    logging.info('Running cellpose')
     model = models.Cellpose( model_type = model_name,
                              gpu = use_gpu)
     channels = [[0,1]]
@@ -92,7 +111,7 @@ def segment_cellpose( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'done writing {outfile}')    
 
 
-def prepare_cellpose_input(infiles, outfiles):
+def prepare_cellpose_input(infiles, outfiles, stage=None, cp=None):
     '''
         cyto = hyb[0,1,2,3] + geneseq all channel all cycle composite, 
         nuclear = hyb[4].
@@ -102,7 +121,25 @@ def prepare_cellpose_input(infiles, outfiles):
         num_cgene=4,
         other_channels = list(range(0,num_chyb))
     '''
-    # We know arity is single, so we can grab the outfile 
+
+    if cp is None:
+        cp = get_default_config()
+
+    if stage is None:
+        stage = 'segment'        
+
+    num_cycles_hyb = cp.getint( stage, 'num_cycles_hyb') 
+    num_cycles_geneseq = cp.getint(stage, 'num_cycles_geneseq')
+
+    # For segmentation, we have the most complex input
+    # multiple modes/cycles but would like to abstract channel names...
+    instage = cp.get(stage, 'instage')
+    instage_mode = get_config_list(cp, stage, 'instage_mode')
+
+    mode = get_config_list(cp, stage, 'modes')
+
+    # We know arity is single, so we can grab the outfile to build cellpose_input 
+    # intermediate filename.  
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
@@ -112,19 +149,54 @@ def prepare_cellpose_input(infiles, outfiles):
     (odirpath, obase, olabel, oext) = split_path(os.path.abspath(outfile))
     (prefix, subdir) = os.path.split(odirpath)
     logging.debug(f'outdirpath={odirpath} obase={obase} olabel={olabel} subdir={subdir}')
-    outfile = os.path.join( outdir, f'{obase}.cp_inp.tif' )
+    outfile = os.path.join( outdir, f'{obase}.cellpose_input.tif' )
     logging.debug(f'preparing cellpose input to be written to {outfile}')
 
-    hyb_image = read_image(infiles[0])
+    channel_names_hyb =  get_config_list(cp, 'hyb', 'channels')
+    channel_names_geneseq = get_config_list(cp, 'geneseq', 'channels')
+
+    select_channels_hyb = get_config_list(cp, stage, 'select_channels_hyb')
+    select_indexes_hyb = channel_names_index_map(select_channels_hyb, channel_names_hyb)
+
+    select_channels_geneseq =  get_config_list(cp, stage, 'select_channels_geneseq')
+    select_indexes_geneseq = channel_names_index_map(select_channels_geneseq, channel_names_geneseq)
+
+    allgenes_channel_hyb = get_config_list(cp, stage, 'allgenes_channel_hyb')
+    allgenes_indexes_hyb = channel_names_index_map(allgenes_channel_hyb, channel_names_hyb)
+
+    nuclear_channel_hyb = get_config_list(cp, stage, 'nuclear_channel_hyb')
+    nuclear_indexes_hyb = channel_names_index_map(nuclear_channel_hyb, channel_names_hyb)
+
+    cyto_channel_geneseq = get_config_list(cp, stage, 'cyto_channel_geneseq')
+    cyto_indexes_geneseq = channel_names_index_map(cyto_channel_geneseq, channel_names_geneseq )
+
+    cyto_channel_hyb = get_config_list(cp, stage, 'cyto_channel_hyb')
+    cyto_indexes_hyb = channel_names_index_map(cyto_channel_hyb, channel_names_hyb )
+
+    # Not needed now, but preparing for multi-cycle hyb...
+    hyb_files = infiles[0:num_cycles_hyb]
+    geneseq_files = infiles[num_cycles_hyb:num_cycles_geneseq + num_cycles_hyb]
+    logging.debug(f'hyb_files = {hyb_files} geneseq_files = {geneseq_files}')
+
+    hyb_file = hyb_files[0]
+    hyb_image = read_image(hyb_file)
+
     cp_input_image = np.zeros( [2, hyb_image.shape[1], hyb_image.shape[2]] )
-    gene_composite = np.zeros( [ hyb_image.shape[1],hyb_image.shape[2] ] )
-    for infile in infiles[1:]:
-        gene_image = read_image(infile, channels=[0, 1, 2, 3] )
-        gene_composite = gene_composite + np.sum( gene_image, axis=0 )
-    nuclear_image = hyb_image[4]
-    cyto_image = np.sum( hyb_image[0:3], axis=0 ) + gene_composite 
+    geneseq_composite = np.zeros( [ hyb_image.shape[1], hyb_image.shape[2] ] )
+
+    for geneseq_file in geneseq_files:
+        geneseq_image = read_image(geneseq_file, channels=cyto_indexes_geneseq  )
+        geneseq_composite = geneseq_composite + np.sum( geneseq_image, axis=0 )
+    
+    nuclear_image = hyb_image[ nuclear_indexes_hyb ]
+    nuclear_image = np.squeeze(nuclear_image)
+    
+    cyto_image = np.sum( hyb_image[cyto_indexes_hyb ], axis=0 ) + geneseq_composite 
+    
     cp_input_image[0,:,:]=uint16m(cyto_image)
     cp_input_image[1,:,:]=uint16m(nuclear_image)
+    cp_input_image = uint16m(cp_input_image)
+
     logging.debug(f'made cellpose input image. shape={cp_input_image.shape}')
     logging.debug(f'writing intermediate cellpose input to {outfile} ...')
     write_image(outfile, cp_input_image)

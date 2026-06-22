@@ -18,6 +18,10 @@ import imageio.v3 as iio
 import numpy as np
 
 
+MAX_CHANNELS = 10
+MIN_PIXELS = 100
+SIM_THRESH = .95 
+
 def channel_names_index_map(select_channels, image_channels):
     '''
 
@@ -61,7 +65,7 @@ def read_image(infile, channels=None):
             new_array = np.ndarray( ( len(channels), np_array.shape[1], np_array.shape[2] ) ) 
             for i, channel in enumerate( channels ):
                 new_array[i] = np_array[channel]
-                logging.debug(f'reading channel idx={channel} shape={np_array.shape}')
+                logging.debug(f'reading channel idx={channel}')
         np_array = new_array
     return np_array
 
@@ -89,6 +93,63 @@ def do_compare_images(infile1, infile2):
     images_identical, s , min_similarity = compare_images(a,b)
     return images_identical, s , min_similarity
 
+def compare_image_matrix(im1, im2, chidx=0):
+
+    s = ''
+    images_identical = True
+    images_similar = True
+    min_similarity = 1.0
+
+    # min()
+    amin = int(im1.min())
+    bmin = int(im2.min())
+    dp = calc_proportion(amin, bmin)
+    if dp < min_similarity:
+        min_similarity = dp
+    if dp >= SIM_THRESH:
+        msg = f'   [{chidx}]: np.min() {dp} similar.\n'
+        s += msg
+        logging.info(msg)
+    else :
+        msg = f'   [{chidx}]: np.min() {dp} NOT similar.\n'
+        s += msg
+        images_similar = False
+
+    # max()
+    amax = int(im1.max())
+    bmax = int(im2.max())
+    dp = calc_proportion(amax, bmax)
+    if dp < min_similarity:
+        min_similarity = dp
+
+    if dp >= SIM_THRESH:
+        msg = f'   [{chidx}]: np.max() {dp} similar.\n'
+        s += msg
+        logging.info(msg)
+    else :
+        msg = f'   [{chidx}]: np.max() {dp} NOT similar.\n'
+        s += msg
+        images_similar = False
+
+    # mean()
+    amean = int(im1.mean())
+    bmean = int(im2.mean())
+    dp = calc_proportion(amean, bmean)
+    if dp < min_similarity:
+        min_similarity = dp
+
+    if dp >= SIM_THRESH:
+        msg =f'   [{chidx}]: np.mean() {dp} similar.\n'
+        s += msg
+        logging.info(msg)
+    else :
+        msg = f'   [{chidx}]: np.mean() {dp} NOT similar.\n'
+        images_similar = False
+        s += msg
+        logging.info(msg)
+
+    return images_similar, s, min_similarity
+
 
 def compare_images( a, b):
     '''
@@ -96,9 +157,6 @@ def compare_images( a, b):
     Characterize the differences between two images. 
     Return True if they are *substantially* the same, False otherwise. 
     '''
-    MAX_CHANNELS = 10
-    MIN_PIXELS = 100
-    SIM_THRESH = .95 
 
     images_identical = True
     min_similarity = 1.0
@@ -146,28 +204,55 @@ def compare_images( a, b):
     s += msg
     logging.debug(msg)
 
-
     # channels, axes sanity check. 
-    if sa[0] > MAX_CHANNELS:
-        images_identical = False
-        msg = f'First dimension too large for channels {sa[0]} > {MAX_CHANNELS}\n'
-        s += msg
-        logging.info(msg)
-        return images_identical, s , min_similarity
-    else:
-        msg = f'First dimension consistent with channels: {sa[0]}\n'
-        s += msg
-        logging.debug(msg)
-    if (sa[1] < MIN_PIXELS ) or (sa[2] < MIN_PIXELS):
-        images_identical = False
-        msg = f'Second or third dimension to small for pixels: {sa[1]} {sa[2]}\n'
-        s += msg
-        logging.info(msg)
-        return images_identical, s , min_similarity
-    else:
-        msg = f'Dimensions 2,3 consistent w/ axes: {sa[1]} x {sa[2]}\n'
-        s += msg
-        logging.debug(msg)
+    if len(sa) == 3: 
+        if sa[0] > MAX_CHANNELS:
+            images_identical = False
+            msg = f'First dimension too large for channels {sa[0]} > {MAX_CHANNELS}\n'
+            s += msg
+            logging.info(msg)
+            return images_identical, s , min_similarity
+        else:
+            msg = f'First dimension consistent with channels: {sa[0]}\n'
+            s += msg
+            logging.debug(msg)
+        if (sa[1] < MIN_PIXELS ) or (sa[2] < MIN_PIXELS):
+            images_identical = False
+            msg = f'Second or third dimension to small for pixels: {sa[1]} {sa[2]}\n'
+            s += msg
+            logging.info(msg)
+            return images_identical, s , min_similarity
+        else:
+            msg = f'Dimensions 2,3 consistent w/ axes: {sa[1]} x {sa[2]}\n'
+            s += msg
+            logging.debug(msg)
+
+        # Compare matrix statistics. min(), max(), mean(), median()
+        # Measure is 90% similar.  
+        # axis = 1 is rows, axis = 0 is columns
+        images_similar = True
+        for chidx in range(0, a.shape[0]):
+            msg = f'checking channel {chidx}...\n'
+            s += msg
+            logging.debug(msg)
+            ia = a[chidx]
+            ib = b[chidx]
+
+            images_similar, s , min_similarity = compare_image_matrix(ia, ib, chidx)
+
+    elif len(sa) == 2:
+        if (sa[0] < MIN_PIXELS ) or (sa[0] < MIN_PIXELS):
+            images_identical = False
+            msg = f'First and second dimension to small for pixels: {sa[0]} {sa[1]}\n'
+            s += msg
+            logging.info(msg)
+            return images_identical, s , min_similarity 
+        else:
+            msg = f'Dimensions 1,2 consistent w/ axes: {sa[0]} x {sa[1]}\n'
+            s += msg
+            logging.debug(msg)                   
+
+        images_similar, s , min_similarity = compare_image_matrix(a, b)
 
     # if overall sum() is identical, the images are exactly identical. 
     if a.sum() == b.sum():
@@ -184,62 +269,9 @@ def compare_images( a, b):
         s += msg
         logging.info(msg)
 
-    # Compare matrix statistics. min(), max(), mean(), median()
-    # Measure is 90% similar.  
-    # axis = 1 is rows, axis = 0 is columns
-    images_similar = True
-    for chidx in range(0, a.shape[0]):
-        msg = f'checking channel {chidx}...\n'
-        s += msg
-        logging.debug(msg)
-        ia = a[chidx]
-        ib = b[chidx]
 
-        # min()
-        amin = int(ia.min())
-        bmin = int(ib.min())
-        dp = calc_proportion(amin, bmin)
-        if dp < min_similarity:
-            min_similarity = dp
-        if dp >= SIM_THRESH:
-            msg = f'   [{chidx}]: np.min() {dp} similar.\n'
-            s += msg
-            logging.info(msg)
-        else :
-            msg = f'   [{chidx}]: np.min() {dp} NOT similar.\n'
-            s += msg
-            images_similar = False
 
-        # max()
-        amax = int(ia.max())
-        bmax = int(ib.max())
-        dp = calc_proportion(amax, bmax)
-        if dp < min_similarity:
-            min_similarity = dp
 
-        if dp >= SIM_THRESH:
-            msg = f'   [{chidx}]: np.max() {dp} similar.\n'
-            s += msg
-            logging.info(msg)
-        else :
-            msg = f'   [{chidx}]: np.max() {dp} NOT similar.\n'
-            s += msg
-            images_similar = False
-
-        # mean()
-        amean = int(ia.mean())
-        bmean = int(ib.mean())
-        dp = calc_proportion(amean, bmean)
-        if dp < min_similarity:
-            min_similarity = dp
-
-        if dp >= SIM_THRESH:
-            msg =f'   [{chidx}]: np.mean() {dp} similar.\n'
-            s += msg
-            logging.info(msg)
-        else :
-            msg = f'   [{chidx}]: np.mean() {dp} similar.\n'
-            images_similar = False
     # Summary
     if images_similar:
         msg = f'Images similar at {SIM_THRESH} level. min_similarity={min_similarity}'
