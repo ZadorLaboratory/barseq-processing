@@ -625,3 +625,20 @@ def make_codebook_object_old(codebook_df, codebook_bases=['G','T','A','C'], n_cy
     logging.debug(f' R={R} C={C} J={j} pos_unused_codes={pos_unused_codes}')
     codeflat=np.reshape(cb,( -1, J))
     return (codeflat, R, C, J, genes, pos_unused_codes)
+
+
+def calc_proportion(a, b):
+    '''
+        Calc proportion difference between a and b, round to sig figs. 
+    '''
+    a = int(a)
+    b = int(b)
+    if a == b:
+        return 1.0
+    elif (a == 0) or (b == 0):
+        return calc_proportion(a+1, b+1)
+    if a > b:
+        return round(b / a , 3)
+    else:
+        return round( a / b, 3 )
+ 

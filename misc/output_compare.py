@@ -3,6 +3,7 @@
 # Compare MATLAB/Pybarseq output to Python pipeline output. 
 #  
 import argparse
+import json
 import logging
 import os
 import pprint
@@ -123,8 +124,55 @@ def do_compare_output(outdir1, outdir2):
                 identical = False
                 print( f' {rel1} != {rel2} min_sim = {min_sim}' )
 
-    return identical
+    # Check bardensr threshold
+    file1 =  f'{outdir1}/processed/thresh_refined.txt'
+    file2 =  f'{outdir2}/basecall/geneseq/bardensrparams.json'
 
+    with open(file1, 'r') as f:
+        sval = f.read()
+        tval1 = float(sval)
+
+    with open(file2, 'r') as f:
+        data = json.load(f)
+        tval2 = data['intensity_thresh_refined']
+    
+    dp = calc_proportion(tval1, tval2)
+    print(f'bardensr threshold similarity = {dp}') 
+    
+    # Check bardensr spot calling.
+    min_sim = 1.0 
+    for tilename in TILENAMES:
+        file1 = f'{outdir1}/processed/{tilename}/aligned/bardensrresult.csv'
+        rel1 = os.path.relpath(file1)
+        file2 = f'{outdir2}/basecall/geneseq/{tilename}.bardensrresult.csv'
+        rel2 = os.path.relpath(file2)
+        logging.info(f'comparing {file1} and {file2}')
+        f1df = pd.read_csv(rel1)
+        f2df = pd.read_csv(rel2)
+        dp = calc_proportion(len(f1df),len(f2df) )
+        print(f'{tilename} : pbs = {len(f1df)} bpw ={len(f2df)} similarity = {dp}')
+        if dp < min_sim:
+            min_sim = dp
+    print(f'bardensr results. min_similarity = {min_sim}')
+    
+    # Handle final genes x cells. 
+    filt_neuron_x_file = f'{outdir1}/processed/filt_neuron_x.tsv'
+    df1 = pd.read_csv(filt_neuron_x_file, sep='\t', index_col=0)
+
+    fcbg_file = f'{outdir2}/aggregated/hyb/YWT011357_4T.filt_cellsbygenes.tsv'
+    df2 = pd.read_csv(fcbg_file, sep='\t', index_col=0)
+
+    df1vals = list(df1.sum())
+    df2vals = list(df2.sum())
+    data = {
+        'pbs' :  df1vals ,
+        'bpw' :  df2vals  
+    }
+    df = pd.DataFrame(data)
+    spearman_single = df['pbs'].corr(df['bpw'], method='spearman')
+    print(f'spearman rank correlation cells x genes: {spearman_single:.3f}')
+
+    return identical
 
 def get_image_info(infiles):
     '''
