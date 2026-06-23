@@ -28,19 +28,18 @@ def background_cv2_single(image, radius, num_c=4):
     '''
     
     '''
+       
     I=image.copy()
     I_filtered=np.zeros_like(I)
-    # save any extra channels. 
     I_rem=I[num_c:,:,:]
     I=I[0:num_c,:,:]
-    k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
+    k=cv2.getStructuringElement( cv2.MORPH_ELLIPSE, (radius,radius))
     for i in range(len(I)):
-        bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel= k)
-        I_filtered[i,:,:]=I[i,:,:]-np.expand_dims(bck,0)
-    # restore extra channel(s)
+        bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel = k)
+        I_filtered[i,:,:] = I[i,:,:] - np.expand_dims(bck,0)
+    
     I_filtered[num_c:,:,:]=I_rem    
     I_filtered=uint16m(I_filtered)
-    return I_filtered
 
 def regchannels_ski_single(image, channel_shift, is_affine=False):
     '''
@@ -91,31 +90,7 @@ def bleedthrough_np_single(image, chprofile):
 def preprocess_py( infiles, outfiles, stage=None, cp=None):
     '''
     Perform background, regchannels, and bleedthrough correction.
-    
-    hyb denoised    = 6 channels
-    geneseq denoised = 5 channels. 
-    [geneseq]
-    channels=G,T,A,C,BF
-
-    [hyb]
-    channels=GFP,YFP,TxRed,Cy5,DAPI,BF
-       
-    num_initial_c=5,
-    num_later_c=4
-    num_c=4
-
-    num_c_hyb=5
-
-    geneseq: 
-    hyb: num_c=num_c_hyb
-
-    preprocess():
-    process_geneseq_cycle(  num_initial_c=num_initial_c,
-                            num_later_c=num_later_c,
-                            num_c=num_c)
-    process_hyb_cycle(      num_c=num_c_hyb,
-                            is_affine=is_affine)
-    
+   
     '''
     if cp is None:
         cp = get_default_config()
@@ -125,11 +100,16 @@ def preprocess_py( infiles, outfiles, stage=None, cp=None):
     # Get parameters for all steps.
     mode = get_config_list(cp, stage, 'modes')
     mode = mode[0]
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    microscope_profile = cp.get('experiment','microscope_profile')
+
+    # background params
     radius = int(cp.get('cv2','radius'))
     output_dtype = cp.get( stage,'output_dtype')
     logging.debug(f'output_dtype={output_dtype} radius = {radius} ')
-    resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
-    microscope_profile = cp.get('experiment','microscope_profile')
+
+
+    # regchannel params
     chshift_file = cp.get(microscope_profile,f'channel_shift_{mode}')
     chshift_path = os.path.join(resource_dir, chshift_file)
     is_affine = cp.getboolean(stage,'is_affine')
@@ -137,6 +117,8 @@ def preprocess_py( infiles, outfiles, stage=None, cp=None):
     chshift = load_df(chshift_path, as_array=True)
     n_shift_channels = len(chshift)
     logging.debug(f'loaded channel shift. len={n_shift_channels} ')
+
+    # bleedthrough params
     chprofile_file = cp.get(microscope_profile, f'channel_profile_{mode}')
     chprofile_path = os.path.join(resource_dir, chprofile_file)
     chprofile = load_df(chprofile_path, as_array=True)

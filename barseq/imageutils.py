@@ -17,6 +17,7 @@ from tifffile import imread, imwrite, TiffFile, TiffWriter
 import imageio.v3 as iio
 import numpy as np
 
+from barseq.utils import *
 
 MAX_CHANNELS = 10
 MIN_PIXELS = 100
@@ -284,22 +285,6 @@ def compare_images( a, b):
 
     return images_identical, s , min_similarity
 
-
-def calc_proportion(a, b):
-    '''
-        Calc proportion difference between a and b, round to sig figs. 
-    '''
-    a = int(a)
-    b = int(b)
-    if a == b:
-        return 1.0
-    elif (a == 0) or (b == 0):
-        return calc_proportion(a+1, b+1)
-    if a > b:
-        return round(b / a , 3)
-    else:
-        return round( a / b, 3 )
- 
 #   
 # Ashlar-specific image handling.
 #

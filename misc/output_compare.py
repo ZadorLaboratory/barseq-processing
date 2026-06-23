@@ -137,7 +137,7 @@ def do_compare_output(outdir1, outdir2):
         tval2 = data['intensity_thresh_refined']
     
     dp = calc_proportion(tval1, tval2)
-    print(f'bardensr threshold similarity = {dp}') 
+    print(f'bardensr threshold pbs={tval1} bpw={tval2} similarity = {dp}') 
     
     # Check bardensr spot calling.
     min_sim = 1.0 
@@ -170,6 +170,7 @@ def do_compare_output(outdir1, outdir2):
     }
     df = pd.DataFrame(data)
     spearman_single = df['pbs'].corr(df['bpw'], method='spearman')
+    print(f'cells found: pbs = {len(df1)} bpw = {len(df2)}')
     print(f'spearman rank correlation cells x genes: {spearman_single:.3f}')
 
     return identical
