@@ -47,11 +47,10 @@ def regcycle_ski(infiles, outfiles, template=None, stage=None, cp=None ):
     subsample_rate = int(cp.get(stage,'subsample_rate'))
     resize_factor = int(cp.get(stage,'resize_factor'))
     block_size = int(cp.get(stage,'block_size')) 
-    do_coarse = get_boolean( cp.get(stage, 'do_coarse') )
+    do_coarse = cp.getboolean(stage, 'do_coarse')
     num_channels = int(cp.get(stage,'num_channels'))
     logging.info(f' stage={stage} template={template}')
-    logging.debug(f'num_channels={num_channels} do_coarse={do_coarse} block_size={block_size}')
-    logging.debug(f'resize_factor={resize_factor} subsample_rate={subsample_rate}')
+    logging.debug(f'resize_factor={resize_factor} subsample_rate={subsample_rate} do_coarse={do_coarse} block_size={block_size}')
 
     if template is None:
         fixed_file = infiles[0]
@@ -213,7 +212,7 @@ if __name__ == '__main__':
     cp = ConfigParser()
     cp.read(args.config)
     cdict = format_config(cp)
-    logging.debug(f'Running with config={args.config}:\n{cdict}')
+    #logging.debug(f'Running with config={args.config}:\n{cdict}')
 
     (outdir, file) = os.path.split(args.outfiles[0])
           
