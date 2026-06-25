@@ -119,7 +119,8 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'estimated_density et = {et}')
     spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
     spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
-    spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim            
+    spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim
+    logging.info(f'In {obase} found {len(spots)} spots.')            
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
 

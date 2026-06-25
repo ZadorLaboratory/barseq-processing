@@ -102,7 +102,7 @@ def stage_mode_tool( infiles, outfiles, template=None, stage=None, cp=None ):
         if arity == 'single':
             outfile = outfilelist[0]
             (outdir, file) = os.path.split(outfile)
-        elif arity == 'parallele':
+        elif arity == 'parallel':
             outdir = os.path.split(outfilelist[0])
 
         # Always ensure/create output directory
