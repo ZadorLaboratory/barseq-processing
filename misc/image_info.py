@@ -30,7 +30,8 @@ def get_image_info(infiles):
             chi = infile_image[i]
             shp = chi.shape
             dtp = str( chi.dtype )
-            print(f'    [{i}] {shp} {dtp}')
+            csum = chi.sum()
+            print(f'    [{i}] {shp} sum={csum} {dtp}')
           
 
 if __name__ == '__main__':

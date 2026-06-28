@@ -156,8 +156,8 @@ def do_compare_output(outdir1, outdir2):
     print(f'bardensr results. min_similarity = {min_sim}')
     
     # Handle final genes x cells. 
-    filt_neuron_x_file = f'{outdir1}/processed/filt_neuron_x.tsv'
-    df1 = pd.read_csv(filt_neuron_x_file, sep='\t', index_col=0)
+    pbscbg_file = f'{outdir1}/processed/filt_cellsbygenes.tsv'
+    df1 = pd.read_csv(pbscbg_file, sep='\t', index_col=0)
 
     fcbg_file = f'{outdir2}/aggregated/hyb/YWT011357_4T.filt_cellsbygenes.tsv'
     df2 = pd.read_csv(fcbg_file, sep='\t', index_col=0)

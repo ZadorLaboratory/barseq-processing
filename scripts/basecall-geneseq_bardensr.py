@@ -120,12 +120,12 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
     spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
     spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim
+    (odirpath, obase, olabel, oext) = split_path(outfile)
     logging.info(f'In {obase} found {len(spots)} spots.')            
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
 
-    (odirpath, obase, olabel, oext) = split_path(outfile)
-    of =  os.path.join(odirpath, f'{obase}.codeflat.joblib')
+    of = os.path.join(odirpath, f'{obase}.codeflat.joblib')
     joblib.dump(codeflat, of)
 
  

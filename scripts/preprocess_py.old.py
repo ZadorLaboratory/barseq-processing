@@ -28,6 +28,7 @@ def background_cv2_single(image, radius, num_c=4):
     '''
     
     '''
+       
     I=image.copy()
     I_filtered=np.zeros_like(I)
     I_rem=I[num_c:,:,:]
@@ -39,39 +40,33 @@ def background_cv2_single(image, radius, num_c=4):
     
     I_filtered[num_c:,:,:]=I_rem    
     I_filtered=uint16m(I_filtered)
-    return I_filtered
-
 
 def regchannels_ski_single(image, channel_shift, is_affine=False):
     '''
     
     '''
-    n_shift_channels = len(channel_shift)
+    n_channels = len(channel_shift)
     I=image.copy()
-    Ishifted = np.zeros_like(I)
+    Ishifted=np.zeros_like(I)
     # Save extra channel(s)
-    I_rem = I[n_shift_channels: , : , : ]
-    logging.debug(f'I_rem.shape = {I_rem.shape}')
-    I = I[0:n_shift_channels , : , : ]
+    I_rem=I[n_channels:,:,:]
+    I=I[0:n_channels,:,:]
     for i in range(channel_shift.shape[0]):
         if is_affine:
             # refine this later on-ng
             tform=channel_shift[i] 
         else:
             # remember this takes -shifts-ng  
-            tform = ski.transform.SimilarityTransform( translation = -channel_shift[i,:])              
-        It = ski.transform.warp(np.squeeze( I[i,:,:]), 
-                                            tform, 
-                                            preserve_range=True, 
-                                            output_shape=(I.shape[1] , I.shape[2]))
-        Ishifted[ i , : , :] = np.expand_dims(It, 0)
+            tform=ski.transform.SimilarityTransform(translation = -channel_shift[i,:])              
+        It=ski.transform.warp(np.squeeze(I[i,:,:]), 
+                                    tform, 
+                                    preserve_range=True, 
+                                    output_shape=(I.shape[1],I.shape[2]))
+        Ishifted[i,:,:]=np.expand_dims(It,0)
     # Put back extra channel(s)
-    Ishifted[ n_shift_channels: , : , : ] = I_rem    
-    Ishifted = uint16m(Ishifted)
+    Ishifted[n_channels:,:,:]=I_rem    
+    Ishifted=uint16m(Ishifted)
     return Ishifted
-
-
-
 
 def bleedthrough_np_single(image, chprofile):
 
