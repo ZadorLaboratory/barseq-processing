@@ -649,7 +649,7 @@ def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
     n_cmds = 0
     command_list = make_command_list( file_map, stage=stage, bse=bse, indir=indir, outdir=outdir, cp=cp)
     n_cmds = len(command_list)
-    logging.info(f'created {n_cmds} commands for mode={mode}')
+    logging.info(f'created {n_cmds} commands stage={stage} mode={mode}')
     
     if n_cmds > 0:
         run_jobs_local(command_list, n_jobs)
@@ -675,9 +675,7 @@ def run_jobs_local(command_list, n_jobs):
 
 def make_command_list(file_map, stage, bse, indir, outdir, cp):
     '''
-
     CHUNKED version. 
-
     make command list from file_map
     create config
     check for output existence, skipping if all present. 
@@ -724,6 +722,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
 
     chunked_filemaps = [ file_map[i : i + chunk_size] for i in range(0, len(file_map), chunk_size) ]
     chunked_filemaps = chunked_filemaps[0:n_chunks]
+    
     logging.debug(f'chunked_filemaps = {chunked_filemaps}')
 
     # Define template file(s), if requested.
@@ -740,9 +739,10 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
 
     # Create command line(s) for mapping sets
     command_list = []
-
+    n_outfiles = 0
     for i, fmap_batch in enumerate( chunked_filemaps):
         logging.debug(f'handling file group {i}')
+        n_outfiles = 0
         cmd = []
         if conda_env != current_env:
             logging.debug(f'different envs. user conda run...')
@@ -792,6 +792,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
                     outfile = os.path.join(outdir, stagedir, fname)
                     if not os.path.exists(outfile):
                         outlist.append( outfile )
+                        n_outfiles += 1
                         rpath = input_list[k]
                         if instage is None:
                             infile = os.path.join(indir, rpath)
@@ -807,6 +808,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
                 outfile = os.path.join(outdir, stagedir, fname)
                 if not os.path.exists(outfile):
                     outlist.append( outfile )
+                    n_outfiles += 1
                     for rpath in input_list:
                         if instage is None:
                             infile = os.path.join(indir, rpath)
@@ -823,13 +825,14 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
             cmd.append( '--outfiles ')    
             for fpath in outlist:
                 cmd.append(fpath)
-        # XXXXX should this be here, or indented? for chunked batches?????
-        if len(outlist) > 0:   
+        
+        if n_outfiles > 0:   
             scmd = ' '.join(cmd)
             logging.debug(f'Adding command: {scmd}')
             command_list.append(cmd)
         else:
             logging.warning(f'outlist length=0. No output files. Skip command.')
+        n_outfiles = 0
 
     logging.info(f'Made command list len={len(command_list)}')
     return command_list
