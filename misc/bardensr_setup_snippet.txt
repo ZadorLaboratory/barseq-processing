@@ -1,0 +1,183 @@
+# For barseq-processing
+
+cp = ConfigParser()
+cfile = 'YWT011357.geneseq.conf'
+cp.read(cfile)
+stage = 'calc-params'
+
+resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+image_type = cp.get(stage, 'image_type')
+image_channels = cp.get(image_type, 'channels').split(',')
+noisefloor_ini = cp.getfloat( stage, 'noisefloor_ini')
+noisefloor_final = cp.getfloat(stage, 'noisefloor_final')
+fdrthresh = cp.getfloat( stage, 'fdrthresh')
+trim = cp.getint(stage, 'trim')
+cropf = cp.getfloat(stage, 'cropf')
+codebook_file = cp.get(stage, 'codebook_file')
+
+codebook_file = cp.get(stage, 'codebook_file')
+codebook_bases = get_config_list(cp, stage, 'codebook_bases')
+cbfile = os.path.join(resource_dir, codebook_file)
+logging.info(f'loading codebook file: {cbfile}')
+codebook_df = load_codebook_file(cbfile)
+num_channels = len(codebook_bases)
+
+tileset = [ '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos1_000_000.tif',
+        '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos1_000_000.tif' ]
+
+
+infiles = [['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos1_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos1_000_000.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos1_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos1_000_001.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos1_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos1_001_000.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos1_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos1_001_001.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos2_000_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos2_000_000.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos2_000_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos2_000_001.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos2_001_000.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos2_001_000.tif'],
+ ['/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq01/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq02/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq03/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq04/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq05/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq06/MAX_Pos2_001_001.tif',
+  '/Users/hover/project/barseq/process_workflow/YWT011357_4T.23.out/regcycle/geneseq07/MAX_Pos2_001_001.tif']]
+
+
+
+
+
+
+  # For pybarseq-hover
+
+import glob
+import os
+import shutil
+import sys
+import time
+
+from joblib import dump, load, parallel, delayed
+
+import cv2
+import bardensr
+
+import matplotlib.pyplot as plt
+from natsort import natsorted as nsort
+import numpy as np
+import pandas as pd
+import tifffile as tfl
+
+import scipy.io
+from scipy import sparse
+from scipy.linalg import solve
+from scipy.signal import convolve2d , correlate2d, fftconvolve
+from scipy.ndimage import shift
+
+import skimage
+from skimage import color, io , img_as_float, img_as_uint
+from skimage.util import view_as_blocks, img_as_float 
+from skimage.morphology import disk
+from skimage.filters import median, difference_of_gaussians
+from skimage.registration import phase_cross_correlation as pcc
+from skimage.exposure import match_histograms
+from skimage.measure import label,regionprops_table
+from skimage.morphology import extrema
+from skimage.exposure import rescale_intensity
+from skimage.transform import rescale
+from skimage.segmentation import expand_labels
+from skimage.metrics import normalized_mutual_information as nmi
+
+
+pth='/Users/hover/project/barseq/pybarseq-hover/YWT011357_4T'
+pth_fiji = r'/Users/hover/Applications/Fiji.app' 
+config_pth = '/Users/hover/project/barseq/pybarseq-hover/config'
+basedir = '/Users/hover/project/barseq/pybarseq-hover/n2vmodels'
+stitch_tool = 'ASHLAR'
+
+chshift_filename_geneseq='chshift20x-NIKON-18-May-2025_py.mat'#'chshift20x-20220218.mat'#
+chprofile_filename_geneseq='chprofilegene20x-NIKON-20-May-2025.mat'#'chprofile20x-50-30-20-40-20220218.mat'#
+
+chshift_filename_bcseq='chshift20x-NIKON-18-May-2025_py.mat'#'chshift20x-20220218.mat'#
+chprofile_filename_bcseq='chprofilegene20x-NIKON-20-May-2025.mat'#'chprofile20x-50-30-20-40-20220218.mat'#
+
+chshift_filename_hyb='chshifthyb20x-NIKON-18May25_py.mat'#'chshifthyb_alder.mat'#
+chprofile_filename_hyb='chprofile20x-hyb-50-30-20-40-20220218.mat'#'chprofilehyb_alder'#
+
+hyb_thresh=[25,25,30,20] #nikon [50,60,40,30] #
+hyb_prom= [20,20,30,10]# nikon [50,10,40,10] #
+
+
+def get_folders(pth):
+    """
+    Universal function:
+    Scans the processed directory to get total tiles (folders),names, positions and x and y grid points 
+    """
+    dr=nsort(glob.glob(os.path.join(pth,'processed','MAX*')))
+    folder=[]
+    xp=[]
+    yp=[]
+    pos=[]
+    for i,j in enumerate(dr):
+        folder.append(str(j).split('/')[-1])
+        temp=str(j).split('/')[-1].split('_')
+        pos.append(temp[1])
+        xp.append(int(temp[2])+1)
+        yp.append(int(temp[3])+1)
+    return folder,pos,xp,yp
+
+def image_reader_trimmed(pthb,trim,R,C):
+    """
+    Helper function for basecalling function for geneseq:
+    Returns a border trimmed in xy image stack (with cycles and channels intact)
+    """
+    I=[]
+    for i in range(1,R+1):
+        for j in range(C):
+            I.append(np.expand_dims(tfl.imread(os.path.join(pthb,'alignedn2vgeneseq'+'%0.2d'%i+'.tif'),key=j),axis=0))
+    I=np.array(I)
+    return(I[:,:,trim:-trim,trim:-trim])

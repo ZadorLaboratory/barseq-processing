@@ -75,20 +75,20 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     fdrthresh = cp.getfloat( stage, 'fdrthresh')
     trim = cp.getint(stage, 'trim')
     cropf = cp.getfloat(stage, 'cropf')
-    logging.debug(f'noisefloor_ini={noisefloor_ini} trim={trim} cropf={cropf}')
+    logging.debug(f'noisefloor_ini={noisefloor_ini} noisefloor_final={noisefloor_final} trim={trim} cropf={cropf}')
 
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
     codebook_bases = get_config_list(cp, stage, 'codebook_bases')
     cbfile = os.path.join(resource_dir, codebook_file)
     logging.info(f'loading codebook file: {cbfile}')
-    codebook = load_codebook_file(cbfile)
+    codebook_df = load_codebook_file(cbfile)
     num_channels = len(codebook_bases) 
-    logging.debug(f'loaded codebook TSV:\n{codebook} codebook_bases={codebook_bases}')    
+    logging.debug(f'loaded codebook TSV:\n{codebook_df} codebook_bases={codebook_bases}')    
     
     n_cycles = len(infiles[0])
     logging.info(f'Detected tilesets of {n_cycles} cycles.')
-    (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook, codebook_bases, n_cycles=n_cycles)
+    (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook_df, codebook_bases, n_cycles=n_cycles)
     logging.info(f'R={R} C={C} J={J} codeflat.shape={codeflat.shape} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
         
     # OUTPUT DICT
@@ -110,7 +110,7 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     err_max=[]
     evidence_tensors=[]
     for tileset in infiles:
-        logging.debug(f'spot_calling.estimate_density_singleshot. file={file} R={R} C={C} trim={trim} noisefloor_ini = {noisefloor_ini}')
+        logging.debug(f'spot_calling.estimate_density_singleshot. R={R} C={C} trim={trim} noisefloor_ini = {noisefloor_ini}')
         trimmed = bd_read_image_set(tileset, R, C, trim=trim)
         img_norm = trimmed / median_max[:, None, None, None]
         et = bardensr.spot_calling.estimate_density_singleshot( img_norm , codeflat, noisefloor_ini )
@@ -129,7 +129,7 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
         cropped = bd_read_image_set(tileset, R, C, cropf=cropf)
         img_norm = cropped / median_max[:, None, None, None]
         et=bardensr.spot_calling.estimate_density_singleshot( img_norm , codeflat, noisefloor_final)
-        for thresh1 in np.linspace( thresh-0.1, thresh+0.1, 10):
+        for thresh1 in np.linspace( thresh - 0.1, thresh + 0.1, 10):
             spots = bardensr.spot_calling.find_peaks(et, thresh1, use_tqdm_notebook=False)
             logging.info(f'For base={base} found {len(spots)} spots.')          
             err_c=0
@@ -155,7 +155,11 @@ def calc_params_bardensr( infiles, outfiles, stage=None, cp=None):
     param_outputs['intensity_thresh_refined'] = thresh_refined
     param_outputs['noisefloor_ini'] = noisefloor_ini
     param_outputs['noisefloor_final'] = noisefloor_final
-    logging.info(f"threshold {thresh_refined} with noise floor {noisefloor_final}")
+    param_outputs['trim'] = trim
+    param_outputs['cropf'] = cropf
+    median_max_list  = list(median_max) 
+    param_outputs['median_max'] = median_max_list
+    logging.info(f"threshold={thresh_refined} with noisefloor_final = {noisefloor_final}")
     logging.info(f"param_outputs= {param_outputs} {len(infiles)} input tilesets. ")
     
     with open(outfile, 'w' ) as f:

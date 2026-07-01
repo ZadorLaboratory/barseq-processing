@@ -57,6 +57,11 @@ def handle_child(obj, level=0):
         elif type(obj) == numpy.float64 :
             print(f'{IND*level}{obj}')
 
+        elif type(obj) == numpy.ndarray :
+            print(f' numpy.ndarray: shape={obj.shape}')
+        else:
+            print(f'unhandled type: {type(obj)}')
+
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)

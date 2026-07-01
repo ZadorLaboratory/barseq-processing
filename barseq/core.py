@@ -823,13 +823,13 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
             cmd.append( '--outfiles ')    
             for fpath in outlist:
                 cmd.append(fpath)
-
-            if len(outlist) > 0:   
-                scmd = ' '.join(cmd)
-                logging.debug(f'Adding command: {scmd}')
-                command_list.append(cmd)
-            else:
-                logging.warning(f'outlist length=0. No output files. Skip command.')
+        # XXXXX should this be here, or indented? for chunked batches?????
+        if len(outlist) > 0:   
+            scmd = ' '.join(cmd)
+            logging.debug(f'Adding command: {scmd}')
+            command_list.append(cmd)
+        else:
+            logging.warning(f'outlist length=0. No output files. Skip command.')
 
     logging.info(f'Made command list len={len(command_list)}')
     return command_list

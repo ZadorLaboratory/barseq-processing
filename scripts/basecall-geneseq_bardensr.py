@@ -70,56 +70,49 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
         with open(param_file, 'r' ) as f:
             data = json.load(f)
             intensity_thresh = float( data['intensity_thresh_refined'] )
-            logging.info(f'Successfully loaded intensity_thresh = {intensity_thresh}')
+            noisefloor_final = float( data['noisefloor_final'])
+            trim = int( data['trim'])
+            cropf = float( data['cropf'])
+            median_max_list = data['median_max']
+            median_max_list = [ np.float64(x) for x in median_max_list ]
+            median_max = np.array(median_max_list)
+            logging.debug(f'type(median_max) = {type(median_max)} type(median_max[0])= {type(median_max[0])} ')
+            logging.info(f'Successfully loaded intensity_thresh = {intensity_thresh} median_max = {median_max}')
     else:
         logging.warning(f'param_file={param_file} does not exist. Exitting.')
         sys.exit(1)
-
-    noisefloor_final = cp.getfloat(stage, 'noisefloor_final')
-    trim = cp.getint(stage, 'trim')
-    cropf = cp.getfloat(stage, 'cropf')
-    #logging.debug(f'noisefloor_final={noisefloor_final} intensity_thresh={intensity_thresh} trim={trim} cropf={cropf}')
     logging.debug(f'noisefloor_final={noisefloor_final} trim={trim} cropf={cropf}')
 
     # load codebook TSV from resource_dir
     codebook_file = cp.get(stage, 'codebook_file')
     codebook_bases = get_config_list(cp, stage, 'codebook_bases')
-    cfile = os.path.join(resource_dir, codebook_file)
-    logging.info(f'loading codebook file: {cfile}')
-    codebook_df = load_codebook_file(cfile)
+    cbfile = os.path.join(resource_dir, codebook_file)
+    logging.info(f'loading codebook file: {cbfile}')
+    codebook_df = load_codebook_file(cbfile)
     num_channels = len(codebook_bases) 
     logging.debug(f'loaded codebook TSV:\n{codebook_df} codebook_bases={codebook_bases}')    
     
     n_cycles = len(infiles)
+    logging.info(f'Detected tilesets of {n_cycles} cycles.')
     (codeflat, R, C, J, genes, pos_unused_codes) = make_codebook_object(codebook_df, 
-                                                                        codebook_bases=codebook_bases, 
+                                                                        codebook_bases, 
                                                                         n_cycles=n_cycles)
-    logging.debug(f'R={R} C={C} J={J}')
-    logging.debug(f'codeflat.shape = {codeflat.shape}')
-    logging.debug(f'pos_unused_codes = {pos_unused_codes}')
+    logging.info(f'R={R} C={C} J={J} codeflat.shape={codeflat.shape} len(genes)={len(genes)} pos_unused_codes={pos_unused_codes}')
 
-    # CALCULATING MAX OF EACH CYCLE AND EACH CHANNEL ACROSS ALL CONTROL FOVS
-    logging.debug(f'calculating max_per_RC...')
-    max_per_RC=[ bd_read_image_single(infile, R, C, cropf=cropf).max(axis=(1,2,3)) for infile in infiles ]
-    #max_per_RC=bd_read_images(infiles, R, C, cropf=cropf).max(axis=(1,2,3)) 
-    #logging.debug(f'max_per_RC len={len(max_per_RC)} item len={len(max_per_RC[0])}')
-
-    # Expected to be 28 values. channels * cycles. 
-    # first max(), then median of those max() per cycle. 
-    s = pprint.pformat(max_per_RC, indent=4)
-    logging.debug(f'max per RC = {s}')
-    median_max=np.median(max_per_RC, axis=0)
-    logging.debug(f'median_max=\n{median_max}')
-    #s = pprint.pformat(median_max, indent=4)
-    #logging.debug(f'median_max = {s}')
-
-    img_norm = bd_read_images(infiles, R, C, trim=trim ) / median_max[ :, None, None, None]
-    logging.debug(f'img_norm shape={img_norm.shape}\ncodeflat={codeflat}\nnoisefloor_final={noisefloor_final}')
-    et = bardensr.spot_calling.estimate_density_singleshot( img_norm, codeflat, noisefloor_final)
-    logging.debug(f'estimated_density et = {et}')
+    img_stack_trimmed = bd_read_images(infiles, R, C, trim=trim )
+    logging.debug(f'img_stack_trimmed.shape = {img_stack_trimmed.shape} img_stack_trimmed.sum() = {img_stack_trimmed.sum()}')
+    img_norm = img_stack_trimmed / median_max[ :, None, None, None]
+    
+    logging.debug(f'img_norm.shape={img_norm.shape} img_norm.sum()={img_norm.sum()} codeflat={codeflat} noisefloor_final={noisefloor_final}')
+    et = bardensr.spot_calling.estimate_density_singleshot( img_norm, 
+                                                            codeflat, 
+                                                            noisefloor_final)
+    logging.debug(f'estimated_density sum = {et.sum()} intensity_thresh={intensity_thresh}')
+    
     spots = bardensr.spot_calling.find_peaks( et, intensity_thresh, use_tqdm_notebook=False)
     spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
     spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim
+
     (odirpath, obase, olabel, oext) = split_path(outfile)
     logging.info(f'In {obase} found {len(spots)} spots.')            
     spots.to_csv(outfile, index=False)   
@@ -127,7 +120,6 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
 
     of = os.path.join(odirpath, f'{obase}.codeflat.joblib')
     joblib.dump(codeflat, of)
-
  
 
 if __name__ == '__main__':
