@@ -92,7 +92,7 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
         [x,y]=apply_transform(tform, gene_rol[tilename]['lroi_y'], gene_rol[tilename]['lroi_x'])
         t['lroi10x_x']=x
         t['lroi10x_y']=y
-        [x,y]=apply_transform(tform, hyb_rol[tilename]['lroi_y'][0],hyb_rol[tilename]['lroi_x'][0]) 
+        [x,y]=apply_transform(tform, hyb_rol[tilename]['lroi_y'],hyb_rol[tilename]['lroi_x']) 
         t['lroi10xhyb_x']=x
         t['lroi10xhyb_y']=y
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 

@@ -3,6 +3,7 @@
 # Compare MATLAB/Pybarseq output to Python pipeline output. 
 #  
 import argparse
+import joblib
 import json
 import logging
 import os
@@ -188,6 +189,39 @@ def do_compare_output(outdir1, outdir2):
         if min_sim < hyb_sim:
             min_sim = hyb_sim
     print(f'basecall basecall_map_hyb results. min_similarity = {hyb_sim}\n')
+
+
+    # Compare genehyb.joblib...
+    print(f'Comparing genehyb.joblib entries...') 
+    co1 = joblib.load(f'{outdir1}/processed/genehyb.joblib')
+    co2 = joblib.load(f'{outdir2}/merge/hyb/genehyb.joblib')
+    logging.info(f'comparing genehyb info...')
+  
+    for i, tilename in enumerate( TILENAMES ):
+        for label in ['lroi_x','lroi_y','gene_id','signal']:
+            t1 = co1[label][i][0]
+            #for j in range(0,3):
+                # t2 = co2[tilename][label][j]
+                # print(f'[{tilename}][{label}]\t:\tpbs={len(t1)}\tbpw[{j}]={len(t2)}')
+            t2 = co2[tilename][label]
+            print(f'[{tilename}][{label}]\t:\tpbs={len(t1)}\tbpw={len(t2)}')
+        print(f'\n')
+    print(f'\n')
+
+
+    # Compare cell_id.
+    print(f'Comparing cell_id.joblib entries...') 
+    co1 = joblib.load(f'{outdir1}/processed/cell_id.joblib')
+    co2 = joblib.load(f'{outdir2}/merge/hyb/cell_id.joblib')
+    logging.info(f'comparing cell_id info...')
+    for tilename in TILENAMES:
+        t1 = co1[tilename]
+        t2 = co2[tilename]
+        for label in ['cellid','cellidhyb']:
+            c1 = t1[label]
+            c2 = t2[label]
+            print(f'[{tilename}][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}')
+    print(f'\n')
 
 
     # Handle final genes x cells. 

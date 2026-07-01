@@ -137,18 +137,27 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     of = os.path.join( outdir, f'{base}.basecall_map_hyb.{ext}' )
     logging.debug(f'Writing basecall map to {of}')
     write_image(of, gene_map)
-    #return(lroi_x, lroi_y, id_t, sig_t)
-
-    logging.debug(f'got result: lroi_x={len(lroi_x)}, lroi_y={len(lroi_y)}, id_t={len(id_t)}, sig_t={len(sig_t)} ')
-
+    
+    # Flatten and convert to numpy arrays...
+    lroi_x = flat_np_list(lroi_x)
+    lroi_y = flat_np_list(lroi_y)
+    id_t = flat_np_list(id_t)
+    sig_t = flat_np_list(sig_t)
+    
     data_dict = {"lroi_x":  lroi_x, 
                  "lroi_y": lroi_y, 
                  "gene_id": id_t, 
                  "signal": sig_t}
+    logging.debug(f'got result: lroi_x={len(lroi_x)}, lroi_y={len(lroi_y)}, id_t={len(id_t)}, sig_t={len(sig_t)} ')
 
     # Write out joblib
     logging.info(f'Writing results to {outfile}')
     joblib.dump(data_dict, outfile)
+
+
+def flat_np_list(xss):
+    flat_list = [ x for xs in xss for x in xs ]
+    return np.array(flat_list)
 
 
 def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
@@ -168,9 +177,9 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
         lroi1_y.append(peaks.centroid[1])
         sig1.append(peaks.intensity_max)
         peaks_s = print_regionprop(peaks)
-        #logging.debug(f'hyb_2 = {hyb_2}')
-        logging.debug(f'hyb_2.shape = {hyb_2.shape}')
-        logging.debug(f'\n [{i}] {peaks_s}')
+        # logging.debug(f'hyb_2 = {hyb_2}')
+        # logging.debug(f'hyb_2.shape = {hyb_2.shape}')
+        # logging.debug(f'\n [{i}] {peaks_s}')
         id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
     lroi_x.append(lroi1_x)
     lroi_y.append(lroi1_y)
