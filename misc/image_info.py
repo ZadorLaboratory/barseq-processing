@@ -24,14 +24,18 @@ def get_image_info(infiles):
         logging.debug(f'handling {infile}')
         infile_image = read_image(infile)
         #logging.debug(f'{infile_image}')
-        n_channels = len(infile_image)
-        print(f'{infile}: {n_channels} channels.')
-        for i in range(n_channels):
-            chi = infile_image[i]
-            shp = chi.shape
-            dtp = str( chi.dtype )
-            csum = chi.sum()
-            print(f'    [{i}] {shp} sum={csum} {dtp}')
+        if len(infile_image.shape) == 2:
+            print(f'{infile}: Flat image. {infile_image.shape} sum={infile_image.sum()}')
+
+        elif len(infile_image.shape) >= 3:
+            n_channels = len(infile_image)
+            print(f'{infile}: {n_channels} channels.')
+            for i in range(n_channels):
+                chi = infile_image[i]
+                shp = chi.shape
+                dtp = str( chi.dtype )
+                csum = chi.sum()
+                print(f'    [{i}] {shp} sum={csum} {dtp}')
           
 
 if __name__ == '__main__':

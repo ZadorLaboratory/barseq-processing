@@ -137,9 +137,9 @@ def do_compare_output(outdir1, outdir2):
         tval2 = data['intensity_thresh_refined']
     
     dp = calc_proportion(tval1, tval2)
-    print(f'bardensr threshold pbs={tval1} bpw={tval2} similarity = {dp}') 
+    print(f'\nbardensr threshold pbs={tval1} bpw={tval2} similarity = {dp}') 
     
-    # Check bardensr spot calling.
+    # Check bardensr geneseq spot calling.
     min_sim = 1.0 
     for tilename in TILENAMES:
         file1 = f'{outdir1}/processed/{tilename}/aligned/bardensrresult.csv'
@@ -153,8 +153,43 @@ def do_compare_output(outdir1, outdir2):
         print(f'{tilename} : pbs = {len(f1df)} bpw ={len(f2df)} similarity = {dp}')
         if dp < min_sim:
             min_sim = dp
-    print(f'bardensr results. min_similarity = {min_sim}')
+    print(f'bardensr results. min_similarity = {min_sim}\n')
     
+    # Compare hyb basecalling. 
+    hyb_sim = 1.0
+    for tilename in TILENAMES:
+        file1 = f'{outdir1}/processed/{tilename}/aligned/mask_hyb.tif'
+        rel1 = os.path.relpath(file1)
+        file2 = f'{outdir2}/basecall/hyb/{tilename}.mask_hyb.tif'
+        rel2 = os.path.relpath(file2)
+        logging.info(f'comparing {file1} and {file2}')
+        ident, msg, min_sim = do_compare_images(file1, file2)
+        if ident:
+            print( f' {rel1} == {rel2}' )
+        else:
+            identical = False
+            print( f' {rel1} != {rel2} min_sim = {min_sim}' )
+        if min_sim < hyb_sim:
+            min_sim = hyb_sim
+    print(f'basecall mask_hyb results. min_similarity = {hyb_sim}\n')
+
+    for tilename in TILENAMES:
+        file1 = f'{outdir1}/processed/{tilename}/aligned/basecall_map_hyb.tif'
+        rel1 = os.path.relpath(file1)
+        file2 = f'{outdir2}/basecall/hyb/{tilename}.basecall_map_hyb.tif'
+        rel2 = os.path.relpath(file2)
+        logging.info(f'comparing {file1} and {file2}')
+        ident, msg, min_sim = do_compare_images(file1, file2)
+        if ident:
+            print( f' {rel1} == {rel2}' )
+        else:
+            identical = False
+            print( f' {rel1} != {rel2} min_sim = {min_sim}' )
+        if min_sim < hyb_sim:
+            min_sim = hyb_sim
+    print(f'basecall basecall_map_hyb results. min_similarity = {hyb_sim}\n')
+
+
     # Handle final genes x cells. 
     pbscbg_file = f'{outdir1}/processed/filt_cellsbygenes.tsv'
     df1 = pd.read_csv(pbscbg_file, sep='\t', index_col=0)

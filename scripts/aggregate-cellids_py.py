@@ -85,8 +85,10 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
         mask=seg[tilename]['dilated_labels']
         coord_xg=gene_rol[tilename]['lroi_x']
         coord_yg=gene_rol[tilename]['lroi_y']
-        coord_xh=hyb_rol[tilename]['lroi_x'][0][0]
-        coord_yh=hyb_rol[tilename]['lroi_y'][0][0]
+        # coord_xh=hyb_rol[tilename]['lroi_x'][0][0]
+        # coord_yh=hyb_rol[tilename]['lroi_y'][0][0]
+        coord_xh=hyb_rol[tilename]['lroi_x'][0]
+        coord_yh=hyb_rol[tilename]['lroi_y'][0]
         t['cellid']= assign_rolony_to_cell(mask, coord_xg, coord_yg)
         t['cellidhyb']= assign_rolony_to_cell(mask, coord_xh, coord_yh)
         T[tilename]=t

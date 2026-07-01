@@ -741,6 +741,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
     command_list = []
     n_outfiles = 0
     for i, fmap_batch in enumerate( chunked_filemaps):
+        # All sub-maps will be run by a single command/process. 
         logging.debug(f'handling file group {i}')
         n_outfiles = 0
         cmd = []
@@ -763,6 +764,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
 
         # 
         for j, fmap in enumerate( fmap_batch ):
+            # All sub-maps will be given separate --template --infiles and --outfiles args. 
             (input_list, output_list) = fmap
             logging.debug(f'stage = {stage} file_index={j} n_input={len(input_list)} n_output={len(output_list)} num_cycles={num_cycles}')
             logging.debug(f'input = {input_list} output = {output_list}')

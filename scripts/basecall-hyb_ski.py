@@ -21,7 +21,7 @@ import numpy as np
 
 from skimage import color
 from skimage.exposure import rescale_intensity
-from skimage.measure import label, regionprops
+from skimage.measure import label, regionprops, regionprops_table
 from skimage.morphology import extrema, binary_dilation
 from skimage.util import img_as_float
 
@@ -34,7 +34,7 @@ from barseq.imageutils import *
 
 def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     '''
-    take in all tiles for 1 cycle           
+    Handle single tile. For current hyb, should be single infile. 
     '''
     if cp is None:
         cp = get_default_config()
@@ -48,6 +48,9 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
+
+    # We know input is single, so we can grab the infile 
+    infile = infiles[0]
 
     # Get parameters
     logging.info(f'handling stage={stage} to outdir={outdir}')
@@ -63,7 +66,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
 
     # Stage-specific tool params
-    all_genes_ch=cp.getint(stage, 'all_genes_ch')    
+    all_genes_ch = cp.getint(stage, 'all_genes_ch')    
     thresh_str = cp.get( stage,'thresh')    
     relaxed = cp.getboolean( stage, 'relaxed')
     no_deconv = cp.getboolean( stage, 'no_deconv')
@@ -78,63 +81,23 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     prominence = eval( prominence_str ) 
     thresh = eval( thresh_str )
     logging.debug(f'all_genes_ch={all_genes_ch} thresh={thresh} prominence={prominence}')
-          
-    # Basecall loop.
-    # Cycle list, contains 1 or more positions. 
 
-    lroi_x_all=[]
-    lroi_y_all=[]
-    id_t_all=[]
-    sig_t_all=[]
+    (dirpath, base ) = os.path.split(infile)
+    m = re.search(position_regex, base)
+    if m is not None:
+        pos_id = m.group(1)
+    else:
+        logging.error(f'Unable to extract position index from file base: {base}')
+        sys.exit(2)
+    logging.info(f'handling pos_id={pos_id}')
 
-    for infile in infiles:
-        (dirpath, base ) = os.path.split(infile)
-        m = re.search(position_regex, base)
-        if m is not None:
-            pos_id = m.group(1)
-        else:
-            logging.error(f'Unable to extract position index from file base: {base}')
-            sys.exit(2)
-        logging.info(f'handling pos_id={pos_id}')
-
-        #hyb_raw=tfl.imread(os.path.join(hybseq[0]), key=range(0,num_c,1))
-        readchannels = list(range(0,num_c))
-        hyb_raw=read_image(infile, channels=readchannels)
-        # simply renaming hyb_raw, hyb_raw name not used again. 
-        hyb_2=hyb_raw
-        # zero-ing all-genes channel 3 (index 2)
-        hyb_2[all_genes_ch,:,:] = 0
-        [lroi_x_ind, lroi_y_ind, id_t_ind, sig_t_ind] = basecall_hyb_ski_single( infile,
-                                                                                 outdir=outdir,
-                                                                                 num_c=num_c, 
-                                                                                 all_genes_ch=all_genes_ch, 
-                                                                                 hyb_2=hyb_2,
-                                                                                 thresh=thresh,
-                                                                                 prominence=prominence)
-        logging.debug(f'got result: lroi_x_ind={lroi_x_ind}, lroi_y_ind={lroi_y_ind}, id_t_ind={id_t_ind}, sig_t_ind={sig_t_ind} ')
-
-        lroi_x_all.append([np.concatenate(lroi_x_ind) if any(len(x) for x in lroi_x_ind) else []])
-        lroi_y_all.append([np.concatenate(lroi_y_ind) if any(len(x) for x in lroi_y_ind) else []])
-        id_t_all.append([np.concatenate(id_t_ind) if any(len(x) for x in id_t_ind) else []])
-        sig_t_all.append([np.concatenate(sig_t_ind) if any(len(x) for x in sig_t_ind) else []])
-
-    data_dict = {"lroi_x":lroi_x_all, 
-                 "lroi_y":lroi_y_all, 
-                 "gene_id":id_t_all, 
-                 "signal":sig_t_all}
-
-    logging.info(f'Writing results to {outfile}')
-    joblib.dump(data_dict, outfile)
-
-
-def basecall_hyb_ski_single(infile,
-                            outdir, 
-                            num_c,
-                            all_genes_ch,
-                            hyb_2,
-                            thresh,
-                            prominence                        
-                            ):
+    #hyb_raw=tfl.imread(os.path.join(hybseq[0]), key=range(0,num_c,1))
+    readchannels = list(range(0,num_c))
+    hyb_2=read_image(infile, channels=readchannels)
+    # zero-ing all-genes channel 3 (index 2)
+    hyb_2[all_genes_ch,:,:] = 0  
+    logging.debug(f'basecalling {infile} hyb_2.shape = {hyb_2.shape} all_genes_ch = {all_genes_ch} thresh={thresh} prominence={prominence}')
+    
     lroi_x=[]
     lroi_y=[]
     id_t=[]
@@ -142,7 +105,7 @@ def basecall_hyb_ski_single(infile,
     mask = np.zeros_like(hyb_2)
     for n in range(num_c):
         if n == all_genes_ch:
-            mask[n,:,:]=0
+            mask[n, :, :] = 0
             continue
         else:
             a = hyb_2[n,:,:].copy()
@@ -151,9 +114,11 @@ def basecall_hyb_ski_single(infile,
             a_max = extrema.h_maxima(a_masked, prominence[n])
             label_peaks = label(a_max)
             m = regionprops(label_peaks, a_masked)
+            # m_t = regionprops_table(label_peaks, a_masked)
             mask[n,:,:] = uint16m(binary_dilation(a_max))
-            [lroi_x, lroi_y, id_t, sig_t] = quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2)
+            [lroi_x, lroi_y, id_t, sig_t] = quantify_peaks( lroi_x, lroi_y, id_t, sig_t, m, hyb_2)
 
+    # Write mask_hyb image. 
     (dirpath, base ) = os.path.split(infile)
     (base,ext) = os.path.splitext(base)
     ext = ext[1:]
@@ -168,16 +133,29 @@ def basecall_hyb_ski_single(infile,
             c = int(round(lroi_y[ch_idx][k]))
             gene_map[r, c] = id_t[ch_idx][k] + 1  # +1 so background stays 0
 
+    # Write out gene map. 
     of = os.path.join( outdir, f'{base}.basecall_map_hyb.{ext}' )
     logging.debug(f'Writing basecall map to {of}')
     write_image(of, gene_map)
-    return(lroi_x, lroi_y, id_t, sig_t)
+    #return(lroi_x, lroi_y, id_t, sig_t)
+
+    logging.debug(f'got result: lroi_x={len(lroi_x)}, lroi_y={len(lroi_y)}, id_t={len(id_t)}, sig_t={len(sig_t)} ')
+
+    data_dict = {"lroi_x":  lroi_x, 
+                 "lroi_y": lroi_y, 
+                 "gene_id": id_t, 
+                 "signal": sig_t}
+
+    # Write out joblib
+    logging.info(f'Writing results to {outfile}')
+    joblib.dump(data_dict, outfile)
 
 
 def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
     """
     Basecalling function:
-    1. Based on the regionprops results per tile, this function creates hyb basecalling output and decodes the gene
+    1. Based on the regionprops results per tile, this function creates hyb basecalling output and 
+       decodes the gene
     2. Returns the basecall output to the calling function
     """ 
     sig1=[]
@@ -190,7 +168,7 @@ def quantify_peaks(lroi_x, lroi_y, id_t, sig_t, m, hyb_2):
         lroi1_y.append(peaks.centroid[1])
         sig1.append(peaks.intensity_max)
         peaks_s = print_regionprop(peaks)
-        logging.debug(f'hyb_2 = {hyb_2}')
+        #logging.debug(f'hyb_2 = {hyb_2}')
         logging.debug(f'hyb_2.shape = {hyb_2.shape}')
         logging.debug(f'\n [{i}] {peaks_s}')
         id1.append( ch_to_gene[ np.argmax( hyb_2[:, peaks.coords[0][0], peaks.coords[0][1]]) ])
