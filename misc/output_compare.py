@@ -259,12 +259,33 @@ def do_compare_output(outdir1, outdir2):
     # 'combined_gene_hyb_cellidall', 'combined_gene_hyb_sliceidall'])
 
 
+    # Compares lroi10x.joblib
+    print(f'\nComparing lroi10x.joblib entry lengths/sums...') 
+    # ['all_data', 'filtered_data', 'expmat', 'cells', 'gene_id', 'codebook_combined'] 
+    
+    lx1 = joblib.load(f'{outdir1}/processed/lroi10x.joblib')
+    lx2 = joblib.load(f'{outdir2}/merge/hyb/lroi10x.joblib')    
+    for tilename in TILENAMES:
+        t1 = lx1[tilename]
+        t2 = lx2[tilename]
+        for label in ['lroi10x_x', 'lroi10x_y', 'lroi10xhyb_x', 'lroi10xhyb_y', 'cellpos10x_x', 'cellpos10x_y']:
+            c1 = t1[label]
+            c2 = t2[label]
+            print( f"lroix[{tilename}][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}" )
+            print( f"lroix[{tilename}][{label}] sum():\tpbs={c1.sum()}\tbpw={c2.sum()}" )
+    print(f'\n')
+
+
+
+    # Compare filt_neurons.joblib
+
+
 
 
 
 
     # Handle final genes x cells. 
-    print('\nComparing final cellsxgenes matrices...')
+    print('\nComparing final cells x genes matrices...')
     pbscbg_file = f'{outdir1}/processed/filt_cellsbygenes.tsv'
     df1 = pd.read_csv(pbscbg_file, sep='\t', index_col=0)
 
@@ -282,9 +303,8 @@ def do_compare_output(outdir1, outdir2):
     print(f'Cells found: pbs = {len(df1)} bpw = {len(df2)}')
     if len(df1) != len(df2):
         identical = False
-    print(f'pbs top 10: {list( df1.sum().sort_values(ascending = False).index )[0:10]}')
-    print(f'bpw top 10: {list( df2.sum().sort_values(ascending = False).index )[0:10]}')
-    
+    print(f'pbs top 15: {list( df1.sum().sort_values(ascending = False).index )[0:15]}')
+    print(f'bpw top 15: {list( df2.sum().sort_values(ascending = False).index )[0:15]}')
     print(f'Spearman rank correlation cells x genes: {spearman_single:.3f}')
     return identical
 
@@ -343,6 +363,6 @@ if __name__ == '__main__':
 
     identical = do_compare_output(args.outdir1, args.outdir2)
     if identical:
-        print('Output trees are identical. ')
+        print('\nOutput trees are identical. ')
     else:
-        print('Output trees differ. ')
+        print('\nOutput trees differ. ')
