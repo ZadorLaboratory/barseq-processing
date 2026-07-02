@@ -192,7 +192,7 @@ def do_compare_output(outdir1, outdir2):
 
 
     # Compare genehyb.joblib...
-    print(f'Comparing genehyb.joblib entries...') 
+    print(f'Comparing genehyb.joblib entry lengths...') 
     co1 = joblib.load(f'{outdir1}/processed/genehyb.joblib')
     co2 = joblib.load(f'{outdir2}/merge/hyb/genehyb.joblib')
     logging.info(f'comparing genehyb info...')
@@ -210,7 +210,7 @@ def do_compare_output(outdir1, outdir2):
 
 
     # Compare cell_id.
-    print(f'Comparing cell_id.joblib entries...') 
+    print(f'Comparing cell_id.joblib entry lengths...') 
     co1 = joblib.load(f'{outdir1}/processed/cell_id.joblib')
     co2 = joblib.load(f'{outdir2}/merge/hyb/cell_id.joblib')
     logging.info(f'comparing cell_id info...')
@@ -223,8 +223,48 @@ def do_compare_output(outdir1, outdir2):
             print(f'[{tilename}][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}')
     print(f'\n')
 
+    # Compare processeddata.joblib
+    print(f'Comparing processeddata.joblib entry lengths/sums...') 
+    # ['all_data', 'filtered_data', 'expmat', 'cells', 'gene_id', 'codebook_combined'] 
+    
+    pd1 = joblib.load(f'{outdir1}/processed/processeddata.joblib')
+    pd2 = joblib.load(f'{outdir2}/aggregated/hyb/processeddata.joblib')
+    print(f'processeddata[cells]\t:\tpbs={len(pd1['cells'])}\tbpw={len(pd2['cells'])}')
+    print(f'processeddata[gene_id]\t:\tpbs={len(pd1['gene_id'])}\tbpw={len(pd2['gene_id'])}')
+    
+    ad1 = pd1['all_data']
+    ad2 = pd2['all_data']
+    for label in ['cellidall' , 'sliceidall' , 'cellidall_hyb', 'sliceidall_hyb'  ]:
+        print( f"processeddata[all_data][{label}]\t:\tpbs={len(ad1[label])}\tbpw={len(ad2[label])}" )
+        print( f"processeddata[all_data][{label}] sum():\tpbs={ad1[label].sum()}\tbpw={ad2[label].sum()}" )
+
+
+    fd1 = pd1['filtered_data']
+    fd2 = pd2['filtered_data']
+    for label in ['combined_gene_hyb_id', 'combined_gene_hyb_fov', 'combined_gene_hyb_cellidall', 'combined_gene_hyb_sliceidall' ]:
+        print( f"processeddata[filtered_data][{label}]\t:\tpbs={len(fd1[label])}\tbpw={len(fd2[label])}" )
+        print( f"processeddata[filtered_data][{label}] sum():\tpbs={fd1[label].sum()}\tbpw={fd2[label].sum()}" )
+
+    # ['fov', 'gene_rol_id', 'pos_10x_allx', 'pos_10x_ally', 'pos_40x_allx', 'pos_40x_ally', 
+    # 'cellidall', 'sliceidall', 'hyb_rol_id', 'fov_hyb', 
+    # 'pos_10x_allx_hyb', 'pos_10x_ally_hyb', 
+    # 'pos_40x_allx_hyb', 'pos_40x_ally_hyb', 
+    # 'cellidall_hyb', 'sliceidall_hyb', 'cell_list_all', 
+    # 'cell_pos_10x_allx', 'cell_pos_10x_ally', 
+    # 'cell_pos_40x_allx', 'cell_pos_40x_ally', 
+    # 'fov_cell', 'sliceidall_cell', 'hyb_rol_id1', 
+    # 'combined_gene_hyb_id', 'combined_gene_hyb_fov', 
+    # 'combined_gene_hyb_pos10x_x', 'combined_gene_hyb_pos10x_y', 
+    # 'combined_gene_hyb_pos40x_x', 'combined_gene_hyb_pos40x_y', 
+    # 'combined_gene_hyb_cellidall', 'combined_gene_hyb_sliceidall'])
+
+
+
+
+
 
     # Handle final genes x cells. 
+    print('\nComparing final cellsxgenes matrices...')
     pbscbg_file = f'{outdir1}/processed/filt_cellsbygenes.tsv'
     df1 = pd.read_csv(pbscbg_file, sep='\t', index_col=0)
 
@@ -239,10 +279,16 @@ def do_compare_output(outdir1, outdir2):
     }
     df = pd.DataFrame(data)
     spearman_single = df['pbs'].corr(df['bpw'], method='spearman')
-    print(f'cells found: pbs = {len(df1)} bpw = {len(df2)}')
-    print(f'spearman rank correlation cells x genes: {spearman_single:.3f}')
-
+    print(f'Cells found: pbs = {len(df1)} bpw = {len(df2)}')
+    if len(df1) != len(df2):
+        identical = False
+    print(f'pbs top 10: {list( df1.sum().sort_values(ascending = False).index )[0:10]}')
+    print(f'bpw top 10: {list( df2.sum().sort_values(ascending = False).index )[0:10]}')
+    
+    print(f'Spearman rank correlation cells x genes: {spearman_single:.3f}')
     return identical
+
+
 
 def get_image_info(infiles):
     '''
