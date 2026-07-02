@@ -235,7 +235,7 @@ def do_compare_output(outdir1, outdir2):
                 # print(f'p1tn = {p1tn} pos={pos} keys = {t1[pos].keys()}') 
                 p1 = t1[pos][p1tn]['position'] 
                 p2 = t2[pos][tilename]['position']
-                print(f'[{pos}][{tilename}]\t:\tpbs={p1}\tbpw={p2}')
+                print(f'{tfn}[{pos}][{tilename}]\t:\tpbs={p1}\tbpw={p2}')
         print(f'\n')
 
     # handle tforms_final.joblib
@@ -247,7 +247,7 @@ def do_compare_output(outdir1, outdir2):
     for tilename in TILENAMES:
         p1 = t1[tilename] 
         p2 = t2[tilename]
-        print(f'[[{tilename}].params.sum() \t:\tpbs={p1.params.sum()}\tbpw={p2.params.sum()}')
+        print(f'tforms_final[[{tilename}].params.sum() \t:\tpbs={p1.params.sum()}\tbpw={p2.params.sum()}')
     print(f'\n')
 
 
