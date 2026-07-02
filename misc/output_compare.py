@@ -32,6 +32,20 @@ TILENAMES = [
         'MAX_Pos2_001_001'
 ]
 
+POSITIONS = ['Pos1','Pos2']
+
+POS_TILENAMES = { 'Pos1' :  ['MAX_Pos1_000_000',
+                            'MAX_Pos1_000_001',
+                            'MAX_Pos1_001_000',
+                            'MAX_Pos1_001_001'] ,
+                 'Pos2' :  ['MAX_Pos2_000_000',
+                            'MAX_Pos2_000_001',
+                            'MAX_Pos2_001_000',
+                            'MAX_Pos2_001_001']
+                }
+
+
+
 PBS_PREFIXES = ['original/',
                 'backsub/backsub',
                 'chalign/chalign',
@@ -125,6 +139,22 @@ def do_compare_output(outdir1, outdir2):
                 identical = False
                 print( f' {rel1} != {rel2} min_sim = {min_sim}' )
 
+
+    # Check all_segmentation.joblib
+    print(f'\nComparing all_segmentation.joblib entry lengths/sums...') 
+    as1 = joblib.load(f'{outdir1}/processed/all_segmentation.joblib')
+    as2 = joblib.load(f'{outdir2}/merge/hyb/all_segmentation.joblib')    
+    for tilename in TILENAMES:
+        s1 = as1[tilename]
+        s2 = as2[tilename]
+        # dict_keys(['original_labels', 'dilated_labels', 'cell_num', 'cent_x', 'cent_y'])
+        for label in ['original_labels', 'dilated_labels', 'cell_num', 'cent_x', 'cent_y']:
+            c1 = s1[label]
+            c2 = s2[label]
+            print( f"all_segmentation[{tilename}][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}" )
+            print( f"all_segmentation[{tilename}][{label}] sum():\tpbs={c1.sum()}\tbpw={c2.sum()}" )   
+    print(f'\n')    
+
     # Check bardensr threshold
     file1 =  f'{outdir1}/processed/thresh_refined.txt'
     file2 =  f'{outdir2}/basecall/geneseq/bardensrparams.json'
@@ -191,6 +221,36 @@ def do_compare_output(outdir1, outdir2):
     print(f'basecall basecall_map_hyb results. min_similarity = {hyb_sim}\n')
 
 
+    # Compare tforms_original, tforms_rescaled0p5, tforms_final
+    print(f'Comparing tformsX.joblibs...') 
+    for tfn in [  'tforms_original.joblib', 'tforms_rescaled0p5.joblib' ]:
+        t1 = joblib.load(f'{outdir1}/processed/{tfn}')
+        t2 = joblib.load(f'{outdir2}/merge/hyb/{tfn}')
+        # print(f'Comparing {tfn} t1.keys={t1.keys()} t2.keys={t2.keys()}...')
+        print(f'Comparing {tfn}')
+        for pos in POSITIONS:
+            for tilename in POS_TILENAMES[pos]:
+                # print(f'Comparing pos={pos} tilename {tilename}')
+                p1tn = f'{tilename}.tif'
+                # print(f'p1tn = {p1tn} pos={pos} keys = {t1[pos].keys()}') 
+                p1 = t1[pos][p1tn]['position'] 
+                p2 = t2[pos][tilename]['position']
+                print(f'[{pos}][{tilename}]\t:\tpbs={p1}\tbpw={p2}')
+        print(f'\n')
+
+    # handle tforms_final.joblib
+    t1 = joblib.load(f'{outdir1}/processed/tforms_final.joblib')
+    t2 = joblib.load(f'{outdir2}/merge/hyb/tforms_final.joblib')
+    # print(f'Comparing tforms_final.joblib t1.keys={t1.keys()} t2.keys={t2.keys()}...')
+    print(f'Comparing ')
+    print(f'Comparing tforms_final.joblib...')
+    for tilename in TILENAMES:
+        p1 = t1[tilename] 
+        p2 = t2[tilename]
+        print(f'[[{tilename}].params.sum() \t:\tpbs={p1.params.sum()}\tbpw={p2.params.sum()}')
+    print(f'\n')
+
+
     # Compare genehyb.joblib...
     print(f'Comparing genehyb.joblib entry lengths...') 
     co1 = joblib.load(f'{outdir1}/processed/genehyb.joblib')
@@ -205,6 +265,7 @@ def do_compare_output(outdir1, outdir2):
                 # print(f'[{tilename}][{label}]\t:\tpbs={len(t1)}\tbpw[{j}]={len(t2)}')
             t2 = co2[tilename][label]
             print(f'[{tilename}][{label}]\t:\tpbs={len(t1)}\tbpw={len(t2)}')
+            print(f'[{tilename}][{label}] sum()\t:\tpbs={t1.sum()}\tbpw={t2.sum()}')
         print(f'\n')
     print(f'\n')
 
@@ -221,6 +282,7 @@ def do_compare_output(outdir1, outdir2):
             c1 = t1[label]
             c2 = t2[label]
             print(f'[{tilename}][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}')
+            print(f'[{tilename}][{label}] sum() \t:\tpbs={c1.sum()}\tbpw={c2.sum()}')
     print(f'\n')
 
     # Compare processeddata.joblib
@@ -245,18 +307,32 @@ def do_compare_output(outdir1, outdir2):
         print( f"processeddata[filtered_data][{label}]\t:\tpbs={len(fd1[label])}\tbpw={len(fd2[label])}" )
         print( f"processeddata[filtered_data][{label}] sum():\tpbs={fd1[label].sum()}\tbpw={fd2[label].sum()}" )
 
-    # ['fov', 'gene_rol_id', 'pos_10x_allx', 'pos_10x_ally', 'pos_40x_allx', 'pos_40x_ally', 
-    # 'cellidall', 'sliceidall', 'hyb_rol_id', 'fov_hyb', 
-    # 'pos_10x_allx_hyb', 'pos_10x_ally_hyb', 
-    # 'pos_40x_allx_hyb', 'pos_40x_ally_hyb', 
-    # 'cellidall_hyb', 'sliceidall_hyb', 'cell_list_all', 
-    # 'cell_pos_10x_allx', 'cell_pos_10x_ally', 
-    # 'cell_pos_40x_allx', 'cell_pos_40x_ally', 
-    # 'fov_cell', 'sliceidall_cell', 'hyb_rol_id1', 
-    # 'combined_gene_hyb_id', 'combined_gene_hyb_fov', 
-    # 'combined_gene_hyb_pos10x_x', 'combined_gene_hyb_pos10x_y', 
-    # 'combined_gene_hyb_pos40x_x', 'combined_gene_hyb_pos40x_y', 
-    # 'combined_gene_hyb_cellidall', 'combined_gene_hyb_sliceidall'])
+    # Compare alldata.joblib
+    print(f'Comparing alldata.joblib entry lengths...') 
+    ad1 = joblib.load(f'{outdir1}/processed/alldata.joblib')
+    ad2 = joblib.load(f'{outdir2}/aggregated/hyb/alldata.joblib')
+    logging.info(f'comparing alldata info...')
+    r1 = ad1['rolonies']
+    r2 = ad2['rolonies']    
+    # ['id', 'pos10_x', 'pos10_y', 'pos40_x', 'pos40_y', 'slice', 'genes', 'fov', 'fov_names']
+    for label in ['id', 'pos10_x', 'pos10_y', 'pos40_x', 'pos40_y', 'slice', 'fov',]:
+        print( f"alldata[rolonies][{label}]\t:\tpbs={len(r1[label])}\tbpw={len(r2[label])}" )
+        print( f"alldata[rolonies][{label}] sum():\tpbs={r1[label].sum()}\tbpw={r2[label].sum()}" )        
+
+    n1 = ad1['neurons']
+    n2 = ad2['neurons']
+    # ['expmat', 'id', 'pos10x_x', 'pos10x_y', 'pos40x_x', 'pos40x_y', 'slice', 'genes', 'fov', 'fov_names']
+    for label in ['id', 'pos10x_x', 'pos10x_y', 'pos40x_x', 'pos40x_y', 'slice', 'fov' ]:
+        print( f"alldata[neurons][{label}]\t:\tpbs={len(n1[label])}\tbpw={len(n2[label])}" )
+        print( f"alldata[neurons][{label}] sum():\tpbs={n1[label].sum()}\tbpw={n2[label].sum()}" )
+
+    emo1 = ad1['neurons']['expmat']
+    emo2 = ad2['neurons']['expmat']
+    print(f"alldata[neurons][expmat].shape \t:\tpbs={emo1.shape}\tbpw={emo2.shape}" )
+    print(f"alldata[neurons][expmat].sum() \t:\tpbs={emo1.sum()}\tbpw={emo2.sum()}" )
+    print(f"alldata[neurons][expmat].getnnz() \t:\tpbs={emo1.getnnz()}\tbpw={emo2.getnnz()}" )
+
+    print(f'\n')
 
 
     # Compares lroi10x.joblib
@@ -275,13 +351,24 @@ def do_compare_output(outdir1, outdir2):
             print( f"lroix[{tilename}][{label}] sum():\tpbs={c1.sum()}\tbpw={c2.sum()}" )
     print(f'\n')
 
-
-
     # Compare filt_neurons.joblib
-
-
-
-
+    print(f'\nComparing filt_neurons.joblib entry lengths/sums...') 
+    
+    fn1 = joblib.load(f'{outdir1}/processed/filt_neurons.joblib')
+    fn2 = joblib.load(f'{outdir2}/aggregated/hyb/filt_neurons.joblib')    
+    s1 = fn1['filt_neurons']
+    s2 = fn2['filt_neurons']
+    # ['expmat', 'id', 'pos10x_x', 'pos10x_y', 'pos40x_x', 'pos40x_y', 'slice', 'genes', 'fov', 'fov_names']
+    for label in ['id', 'pos10x_x', 'pos10x_y', 'pos40x_x', 'pos40x_y', 'slice','fov']:
+        c1 = s1[label]
+        c2 = s2[label]
+        print( f"filt_neurons[filt_neurons][{label}]\t:\tpbs={len(c1)}\tbpw={len(c2)}" )
+        print( f"filt_neurons[filt_neurons][{label}] sum():\tpbs={c1.sum()}\tbpw={c2.sum()}" )
+    s1 = fn1['removecells_all']
+    s2 = fn2['removecells_all']    
+    print( f"filt_neurons[removecells_all]\t:\tpbs={len(s1)}\tbpw={len(s2)}" )
+    print( f"filt_neurons[removecells_all] sum():\tpbs={s2.sum()}\tbpw={s2.sum()}" )    
+    print(f'\n')
 
 
     # Handle final genes x cells. 
@@ -303,9 +390,11 @@ def do_compare_output(outdir1, outdir2):
     print(f'Cells found: pbs = {len(df1)} bpw = {len(df2)}')
     if len(df1) != len(df2):
         identical = False
-    print(f'pbs top 15: {list( df1.sum().sort_values(ascending = False).index )[0:15]}')
-    print(f'bpw top 15: {list( df2.sum().sort_values(ascending = False).index )[0:15]}')
-    print(f'Spearman rank correlation cells x genes: {spearman_single:.3f}')
+    #print(f'pbs top 15: {list( df1.sum().sort_values(ascending = False).index )[0:15]}')
+    #print(f'bpw top 15: {list( df2.sum().sort_values(ascending = False).index )[0:15]}')
+    print(f'pbs top 20:\n{df1.sum().sort_values(ascending = False)[:20]}')
+    print(f'bpw top 20:\n{df2.sum().sort_values(ascending = False)[:20]}\n')
+    print(f'Spearman rank correlation cells x genes: {spearman_single:.4f}\n')
     return identical
 
 
