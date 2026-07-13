@@ -16,6 +16,7 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
+
 def get_image_info(infiles):
     '''
     
@@ -24,18 +25,13 @@ def get_image_info(infiles):
         logging.debug(f'handling {infile}')
         infile_image = read_image(infile)
         #logging.debug(f'{infile_image}')
-        if len(infile_image.shape) == 2:
-            print(f'{infile}: Flat image. {infile_image.shape} sum={infile_image.sum()}')
-
-        elif len(infile_image.shape) >= 3:
-            n_channels = len(infile_image)
-            print(f'{infile}: {n_channels} channels.')
-            for i in range(n_channels):
-                chi = infile_image[i]
-                shp = chi.shape
-                dtp = str( chi.dtype )
-                csum = chi.sum()
-                print(f'    [{i}] {shp} sum={csum} {dtp}')
+        n_channels = len(infile_image)
+        print(f'{infile}: {n_channels} channels.')
+        for i in range(n_channels):
+            chi = infile_image[i]
+            shp = chi.shape
+            dtp = str( chi.dtype )
+            print(f'    [{i}] {shp} {dtp}')
           
 
 if __name__ == '__main__':
@@ -55,12 +51,15 @@ if __name__ == '__main__':
                         dest='verbose', 
                         help='verbose logging')
 
-    parser.add_argument('infiles' ,
-                        metavar='infiles', 
+    parser.add_argument('infile1' ,
+                        metavar='infile1', 
                         type=str,
-                        nargs='+',
-                        default=None, 
                         help='Image files. ')     
+
+    parser.add_argument('infile2' ,
+                        metavar='infile2', 
+                        type=str, 
+                        help='Image files. ')
 
     args= parser.parse_args()
     
@@ -69,4 +68,6 @@ if __name__ == '__main__':
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)   
 
-    get_image_info(args.infiles)
+    ident, msg, min_similarity = do_compare_images(args.infile1, args.infile2)
+    print(f'min similarity={min_similarity}')
+    print(msg)

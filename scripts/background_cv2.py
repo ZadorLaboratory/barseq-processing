@@ -18,22 +18,26 @@ from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
-
 def background_cv2( infiles, outfiles, stage=None, cp=None):
     '''
+    Subtracts background from select_channels of input images. 
+    Remainder channels are added back unchanged. 
 
     '''
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'background'
+        stage = 'background-geneseq'
             
-    image_types = cp.get('barseq','image_types').split(',')
+    image_type = cp.get(stage,'image_type')
     radius = int(cp.get('cv2','radius'))
     output_dtype = cp.get( stage,'output_dtype')
-    num_channels = 4
+    channel_names =  get_config_list(cp, image_type, 'channels')
+    select_channels = get_config_list(cp, stage, 'channels')
+    select_indexes = channel_names_index_map(select_channels, channel_names)
+    num_c = len(select_channels)
 
-    logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_channels}')
+    logging.debug(f'output_dtype={output_dtype} radius = {radius} num_channels={num_c} select_channels = {select_channels}')
 
     for i, infile in enumerate(infiles):
         outfile = outfiles[i]
@@ -48,21 +52,20 @@ def background_cv2( infiles, outfiles, stage=None, cp=None):
         I = read_image( infile)        
         I=I.copy()
         I_filtered=np.zeros_like(I)
-        I_rem=I[num_channels:,:,:]
-        I=I[ 0:num_channels , : , : ]
-        k=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius,radius))
+        I_rem=I[num_c:,:,:]
+        I=I[0:num_c,:,:]
+        k=cv2.getStructuringElement( cv2.MORPH_ELLIPSE, (radius,radius))
         for i in range(len(I)):
             bck=cv2.morphologyEx(I[i,:,:], cv2.MORPH_OPEN, kernel = k)
-            I_filtered[i,:,:]=I[i,:,:]-np.expand_dims(bck,0)
+            I_filtered[i,:,:] = I[i,:,:] - np.expand_dims(bck,0)
         
-        I_filtered[num_channels:,:,:]=I_rem    
+        I_filtered[num_c:,:,:]=I_rem    
         I_filtered=uint16m(I_filtered)
 
         logging.debug(f'done processing {base}.{ext} ')
         logging.info(f'writing to {outfile}')
-        write_image( outfile, I_filtered )
+        write_image( outfile, I_filtered, photometric = 'minisblack' )
         logging.debug(f'done writing {outfile}')
-
 
     
 if __name__ == '__main__':

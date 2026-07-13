@@ -156,18 +156,18 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                               # check this later,does it require -1 or not
                               sliceidall = np.full(len(gene_rol[tilename]['gene_id']) , pos_id + starting_slice_idx ),  
                               
-                              hyb_rol_id = hyb_rol[tilename]['gene_id'][0][0],
+                              hyb_rol_id = hyb_rol[tilename]['gene_id'],
 
                               # possible mismatch? nested list in our hyb_rol vs. notebook?
-                              fov_hyb = np.full(len( hyb_rol[tilename]['gene_id'][0][0] ),i),
+                              fov_hyb = np.full(len( hyb_rol[tilename]['gene_id'] ),i),
                               
                               pos_10x_allx_hyb = coord[tilename]['lroi10xhyb_x'],
                               pos_10x_ally_hyb = coord[tilename]['lroi10xhyb_y'],
-                              pos_40x_allx_hyb = hyb_rol[tilename]['lroi_x'][0][0],
-                              pos_40x_ally_hyb = hyb_rol[tilename]['lroi_y'][0][0],
+                              pos_40x_allx_hyb = hyb_rol[tilename]['lroi_x'],
+                              pos_40x_ally_hyb = hyb_rol[tilename]['lroi_y'],
 
                               cellidall_hyb = np.array(cell_id[tilename]['cellidhyb']) + np.array(i * starting_fov_idx * dummy_cell_num ),
-                              sliceidall_hyb = np.full(len(hyb_rol[tilename]['gene_id'][0][0]), pos_id + starting_slice_idx ),
+                              sliceidall_hyb = np.full(len(hyb_rol[tilename]['gene_id']), pos_id + starting_slice_idx ),
                               cell_list_all=np.array(seg[tilename]['cell_num']) + np.array(i * starting_fov_idx * dummy_cell_num ),
                               
                               cell_pos_10x_allx=coord[tilename]['cellpos10x_x'],
@@ -663,7 +663,9 @@ def organize_processed_data_notebook(pth,config_pth,is_optseq=0,hyb_codebook_nam
 
     
     cells=d['cell_list_all'].copy() # check if copy messed something
-    genes=np.unique(d['combined_gene_hyb_id'])
+    genes = np.arange(0,len(codebook_comb))
+    # genes=np.unique(d['combined_gene_hyb_id'])
+    
     rol_id=d['combined_gene_hyb_id'].copy()
     rol_cell=d['combined_gene_hyb_cellidall'].copy()
     v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'],dropna=False)
