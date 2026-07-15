@@ -2,8 +2,6 @@ name: bardensr
 channels:
   - conda-forge
   - defaults
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
 dependencies:
   - arrow-cpp
   - h5py

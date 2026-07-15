@@ -2,8 +2,6 @@ name: barseq
 channels:
   - conda-forge
   - defaults
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python
   - conda-forge::anndata
