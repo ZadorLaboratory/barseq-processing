@@ -2,8 +2,6 @@ name: ashlar
 channels:
   - conda-forge
   - defaults
-  - https://repo.anaconda.com/pkgs/main
-  - https://repo.anaconda.com/pkgs/r
 dependencies:
   - python=3.12.10
   - matplotlib
