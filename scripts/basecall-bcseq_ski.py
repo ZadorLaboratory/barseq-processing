@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Do basecalling on batches of images.
-# used for hyb
+# used for bcseq
 
 import argparse
 import logging
@@ -32,11 +32,10 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 
-def basecall_ski( infiles, outfiles, stage=None, cp=None):
+def basecall_bcseq_ski( infiles, outfiles, stage=None, cp=None):
     '''
     take in infiles of same tile through multiple cycles, 
     create imagestack, 
-    load codebook, 
       
     '''
     if cp is None:
@@ -64,6 +63,14 @@ def basecall_ski( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
 
 
+
+
+
+
+
+
+
+
 # NOTEBOOK CODE
 
 def basecall_barcodes_rolony(pth,relaxed=0,thresh=[30,30,30,30],prominence=[30,30,30,30],num_cycles=15,num_c=4):
@@ -80,7 +87,7 @@ def basecall_barcodes_rolony(pth,relaxed=0,thresh=[30,30,30,30],prominence=[30,3
         I=[]
         for i in range(num_cycles):
             I.append(tfl.imread(os.path.join(pthw,'alignedregn2vbcseq'+str("%0.2d"%(i+1))+'.tif'),key=range(0,4,1)))
-        [lroi_x,lroi_y,id_t,sig_t,score_t,seq_t]=basecall_bc_one_image(pthw,num_c,I,thresh,prominence)
+        [lroi_x,lroi_y,id_t,sig_t,score_t,seq_t]=basecall_bc_one_image(pthw, num_c, I, thresh, prominence)
         lroi_x_all.append(lroi_x[0])
         lroi_y_all.append(lroi_y[0])
         id_t_all.append(id_t[0])
@@ -193,6 +200,47 @@ def basecall_bc_soma_all(pth,num_ch=4,mname='dil_cell_mask_cyto3.tif',fname='ali
     dump({"bc_label":bc_label_all,"bc_sig_all_channels":bc_sig_all_channels_all,"bc_sig":bc_sig_all," bc_id": bc_id_all,"bc_score":bc_score_all,"bc_seq":bc_seq_all},os.path.join(pth,'processed','all_bccells_intensity.joblib'))
 
 
+def basecall_bc_soma_one_image(pth,folder,num_ch=4,mname='dil_cell_mask_cyto3.tif', fname='alignedregn2vbcseq'):
+    # NUCLEAR PROFILE BASED BACKGROUND SUBTRACTION NOT DONE
+    gene_map=np.array(list("GTAC"))   
+    mask=tfl.imread(os.path.join(pth,'processed',folder,'aligned',mname))
+    bc_label_cycles=[]
+    bc_sig_all_channels_cycles=[]
+    bc_sig_cycles=[]
+    bc_id_cycles=[]
+    bc_score_cycles=[]
+    bc_seq_cycles=[]
+    if np.max(mask[:])>0:
+        for i in range(num_cycles):
+            bc_label=[]
+            bc_sig_all_channels=[]
+            bc_sig=[]
+            bc_id=[]
+            bc_score=[]
+            bc_seq=[]
+            I=np.transpose(tfl.imread(os.path.join(pth,'processed',folder,'aligned',fname+str("%0.2d"%(i+1))+'.tif'),key=range(0,num_ch,1)), axes=(1,2,0))
+            cell_data=regionprops_table(mask,I,properties=('label','intensity_mean'))
+            bc_label=cell_data['label']
+            bc_sig_all_channels=[cell_data['intensity_mean-0'],cell_data['intensity_mean-1'],cell_data['intensity_mean-2'],cell_data['intensity_mean-3']] # [channel][cells]
+            bc_sig=np.max(np.array(bc_sig_all_channels),axis=0)
+            bc_id=np.argmax(np.array(bc_sig_all_channels),axis=0)
+            bc_score=bc_sig/np.sqrt(np.sum(np.square(bc_sig_all_channels),axis=0))
+            bc_score[np.isnan(bc_score)]=0.5
+            bc_seq=gene_map[bc_id]
+        
+            bc_label_cycles=bc_label
+            bc_sig_all_channels_cycles.append(bc_sig_all_channels)
+            bc_sig_cycles.append(bc_sig)
+            bc_id_cycles.append(bc_id)
+            bc_score_cycles.append(bc_score)
+            bc_seq_cycles.append(bc_seq)
+            
+    dump({"bc_label":bc_label_cycles,"bc_sig_all_channels":bc_sig_all_channels_cycles,"bc_sig":bc_sig_cycles," bc_id": bc_id_cycles,"bc_score":bc_score_cycles,"bc_seq":bc_seq_cycles},os.path.join(pth,'processed',folder,'aligned','bc-somas.joblib'))
+    
+    return bc_label_cycles,bc_sig_all_channels_cycles,bc_sig_cycles,bc_id_cycles,bc_score_cycles,bc_seq_cycles
+
+
+
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -259,7 +307,7 @@ if __name__ == '__main__':
           
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    basecall_ski( infiles=args.infiles, 
+    basecall_bcseq_ski( infiles=args.infiles, 
                        outfiles=args.outfiles,
                        stage=args.stage,  
                        cp=cp )

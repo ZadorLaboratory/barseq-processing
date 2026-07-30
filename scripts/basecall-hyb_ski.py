@@ -94,6 +94,11 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     #hyb_raw=tfl.imread(os.path.join(hybseq[0]), key=range(0,num_c,1))
     readchannels = list(range(0,num_c))
     hyb_2=read_image(infile, channels=readchannels)
+    
+    # Handle case of 1-channel image. 
+    if len(hyb_2.shape) == 2:
+        hyb_2 = np.expand_dims(hyb_2, axis=0)
+
     # zero-ing all-genes channel 3 (index 2)
     hyb_2[all_genes_ch,:,:] = 0  
     logging.debug(f'basecalling {infile} hyb_2.shape = {hyb_2.shape} all_genes_ch = {all_genes_ch} thresh={thresh} prominence={prominence}')
