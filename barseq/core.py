@@ -652,8 +652,24 @@ def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
     logging.info(f'created {n_cmds} commands stage={stage} mode={mode}')
     
     if n_cmds > 0:
+        log_commands(command_list, outdir, cp)
         run_jobs_local(command_list, n_jobs)
     logging.info(f'done with stage={stage}...')
+
+
+def log_commands(command_list, outdir, cp):
+    '''
+    Log usable command lines, one per line, to file...
+    project/project_id.commands.txt
+
+    '''
+    proj_id = cp.get('project','project_id')
+    outfile = os.path.join(outdir, f'{proj_id}.commands.txt')
+    logging.debug(f'writing commands to {outfile}')
+    with open(outfile, 'a') as fh:
+        for arg_list in command_list:
+            cmd = ' '.join(arg_list)
+            fh.write(f'{cmd}\n')
 
 
 def run_jobs_local(command_list, n_jobs):
