@@ -113,7 +113,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     codebook_hyb = pd.read_csv(codebook_hyb_path, sep='\t', index_col=0)
     
     codebook_geneseq_file = cp.get(stage, 'codebook_geneseq_file')
-    codebook_geneseq_path = os.path.join(resource_dir, 'codebook_geneseq.tsv')
+    codebook_geneseq_path = os.path.join(resource_dir, codebook_geneseq_file)
     codebook_geneseq = pd.read_csv(codebook_geneseq_path, sep='\t', index_col=0)
     
     (cell_id_file, coord_file, gene_rol_file, hyb_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
