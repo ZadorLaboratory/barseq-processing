@@ -53,9 +53,10 @@ cp ~/git/barseq-processing/resource/*  ~/project/barseq/resource
 ```
 
 Ensure:
+```
 [DEFAULT]
 resource_dir = ~/project/barseq/resource
-
+```
 
 ## Experiment Data Layout, Initial Configuration
 By default, commands in the pipeline will take their defaults from a single configuration file. Examples are included in the distribution, e.g. ~/git/barseq-processing/etc/geneseq.conf  ~/git/barseq-processing/etc/barseq.conf.
