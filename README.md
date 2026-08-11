@@ -6,21 +6,15 @@ The pipeline consists of a top-level runner script, core code, and a set of scri
 ## Install software and dependencies
 These instructions assume familiarity with running bioinformatics pipelines. They are regularly run and tested on MacOS and Linux.  
 
-* Clone the barseq-processing software from the repository to the standard location. (This assumes you already have git installed. If not, install it first). 
-
-```
-mkdir ~/git
-git clone https://github.com/ZadorLaboratory/barseq-processing.git 
-```
-All the code is currently organized so it is run directly from the git directory (rather than installed). 
-
 * Install Conda. 
 [https://docs.conda.io/projects/miniconda/en/latest/index.html](https://docs.conda.io/projects/miniconda/en/latest/index.html)
 
-* Create an environment for the BARseq pipeline.
+* Create an environment for the BARseq pipeline framework. 
 ```
 conda env create --file ~/git/barseq-processing/envs/barseq.environment.yaml 
 ```
+
+This environment includes the barseq-processing framework code. 
 
 * Activate the environment
 ```
@@ -36,9 +30,12 @@ conda env create --file  ~/git/barseq-processing/envs/cellpose.environment.yaml
 The n2v conda environment may need to be installed manually. See:
 ```
 ~/git/barseq-processing/envs/n2v.softenv.txt
+
 ``` 
 
-* Create a working directory for your experiment, and copy in the default configuration file. We assume that your max projection data is in a separate location, which we will link via symlink. E.g.
+## Experiment working directory
+
+Create a working directory for your experiment, and copy in the default configuration file. We assume that your max projection input data is in a separate location, which we will link via symlink. E.g.
 
 ```
 mkdir ~/project/barseq/BC12345 ; cd ~/project/barseq/BC12345
@@ -46,23 +43,39 @@ cp ~/git/barseq/etc/barseq.conf ./BC12345.barseq.conf
 ln -s ~/data/barseq/BC12345 
 ```
 
+## Resource directory
+
+Establish a directory for pipeline resources (e.g. microscope channel profiles, shifts, sequence codebooks, etc.) and ensure that it is pointed to in the configuration file. A resource directory can be shared by multiple experiments. 
+
+```
+mkdir ~/project/barseq/resource 
+cp ~/git/barseq-processing/resource/*  ~/project/barseq/resource
+```
+
+Ensure:
+[DEFAULT]
+resource_dir = ~/project/barseq/resource
+
+
 ## Experiment Data Layout, Initial Configuration
-By default, commands in the pipeline will take their defaults from a single configuration file, included in the distribution ~/git/barseq-processing/etc/barseq.conf.
+By default, commands in the pipeline will take their defaults from a single configuration file. Examples are included in the distribution, e.g. ~/git/barseq-processing/etc/geneseq.conf  ~/git/barseq-processing/etc/barseq.conf.
+
+Ensure that experiment-specific labels, directories, and resources exist and are correct. 
 
 
 ## Running the standard pipelines 
 
-### process_workflow.py
-To run the standard workflows for barseq or geneseq, run the run_workflow.py script pointed at the appropriate configuration file. A typical invocation would redirect logging output to a file, e.g.
+### process_workflow
+To run the standard workflows for barseq or geneseq, run process_workflow pointed at the appropriate configuration file. A typical invocation would redirect logging output to a file, e.g.
 ```
-~/git/barseq-processing/scripts/process_workflow.py 
+process_workflow 
     -v 
     -c BC12345.geneseq.conf 
     -O BC12345.run1.out  
     ./BC12345 > run_geneseq.run1.log 2>&1
     
 ```
-run_workflow.py will get the stages and their order from the configuration file. 
+process_workflow will get the stages and their order from the configuration file. 
 
 
 ## Customization and non-standard usage
@@ -75,7 +88,6 @@ To do non-trivial pipeline alterations, or to handle novel input filenames, it i
 Currently all sections are in a single config file. As long as the section names do not collide, they can serve different functions.  
 
 ### Experiment
-
 
 #### Modes and Cycles
 
@@ -100,9 +112,6 @@ Currently all sections are in a single config file. As long as the section names
 | label = None                |   arbitrary          |  inserted output names before extension. <base>.<label>.<ext>   |
 | ext = None                  |   arbitrary          |  output extension (if different from input)  |
 | strip_base = False          |   True|False         |  output will be only <label>.<ext>    |
-
-
-
 
 
 
