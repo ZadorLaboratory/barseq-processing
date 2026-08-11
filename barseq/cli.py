@@ -8,7 +8,7 @@ from configparser import ConfigParser
 from barseq.core import *
 from barseq.utils import *
 
-def process_workflow():
+def process_workflow_cli():
 
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
     logging.basicConfig(format=FORMAT)
@@ -103,6 +103,454 @@ def process_workflow():
                 )
     
     logging.info(f'done processing output to {outdir}')
- 
 
+
+def aggregate_cellids_py_cli():
+
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+          
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    aggregate_cellids_py( infiles=args.infiles, 
+                          outfiles=args.outfiles,
+                          stage=args.stage,  
+                          cp=cp )
+    
+    logging.info(f'done processing output to {args.outfiles[0]}')
+
+
+def aggregate_data_py_cli():
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+          
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    aggregate_data_py( infiles=args.infiles, 
+                            outfiles=args.outfiles,
+                            stage=args.stage,  
+                            cp=cp )
+    logging.info(f'done processing output to {args.outfiles[0]}')
+
+def aggregate_transform_np_cli():
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+          
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    aggregate_transform_np( infiles=args.infiles, 
+                            outfiles=args.outfiles,
+                            stage=args.stage,  
+                            cp=cp )
+    logging.info(f'done processing output to {args.outfiles[0]}')
+
+
+def background_cv2_cli():
+  
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+         
+    (outdir, file) = os.path.split(args.outfiles[0])
+        
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    background_cv2( infiles=args.infiles, 
+                    outfiles=args.outfiles,
+                    stage=args.stage,  
+                    cp=cp )
+    
+    logging.info(f'done processing output to {outdir}') 
+
+
+def basecall_geneseq_bardensr_cli():
+
+    import bardensr
+    import bardensr.plotting
+
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='stage to use as template')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+          
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    basecall_geneseq_bardensr( infiles=args.infiles, 
+                       outfiles=args.outfiles,
+                       stage=args.stage,  
+                       cp=cp )
+    
+    logging.info(f'done processing output to {args.outfiles[0]}')
+
+
+
+def basecall_hyb_ski_cli():
+    
+    from skimage import color
+    from skimage.exposure import rescale_intensity
+    from skimage.measure import label, regionprops, regionprops_table
+    from skimage.morphology import extrema, binary_dilation
+    from skimage.util import img_as_float
+
+    FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.WARN)
+    
+    parser = argparse.ArgumentParser()
+      
+    parser.add_argument('-d', '--debug', 
+                        action="store_true", 
+                        dest='debug', 
+                        help='debug logging')
+
+    parser.add_argument('-v', '--verbose', 
+                        action="store_true", 
+                        dest='verbose', 
+                        help='verbose logging')
+
+    parser.add_argument('-c','--config', 
+                        metavar='config',
+                        required=False,
+                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        type=str, 
+                        help='config file.')
+    
+    parser.add_argument('-s','--stage', 
+                    metavar='stage',
+                    default=None, 
+                    type=str, 
+                    help='label for this stage config')
+
+    parser.add_argument('-t','--template', 
+                    metavar='template',
+                    default=None,
+                    required=False, 
+                    type=str, 
+                    help='label for this stage config')
+    
+    parser.add_argument('-i','--infiles',
+                        metavar='infiles',
+                        nargs ="+",
+                        type=str,
+                        help='All image files to be handled.') 
+
+    parser.add_argument('-o','--outfiles', 
+                    metavar='outfiles',
+                    default=None, 
+                    nargs ="+",
+                    type=str,  
+                    help='outfile. ')
+       
+    args= parser.parse_args()
+    
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        loglevel = 'debug'
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)   
+        loglevel = 'info'
+    
+    cp = ConfigParser()
+    cp.read(args.config)
+    cdict = format_config(cp)
+    logging.debug(f'Running with config={args.config}:\n{cdict}')
+          
+    datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
+
+    basecall_hyb_ski( infiles=args.infiles, 
+                       outfiles=args.outfiles,
+                       stage=args.stage,  
+                       cp=cp )
+    
+    logging.info(f'done processing output to {args.outfiles[0]}')
 

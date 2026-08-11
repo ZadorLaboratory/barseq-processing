@@ -26,7 +26,7 @@ def format_config(cp):
     s = pprint.pformat(cdict, indent=4)
     return s
 
-def dump_bardensr_codebook(infile, outfile, n_cycles=7):
+def dump_hyb_codebook(infile, outfile, n_cycles=7):
       
     infile = os.path.abspath(os.path.expanduser(infile))
     outfile = os.path.abspath(os.path.expanduser(outfile))
@@ -35,7 +35,7 @@ def dump_bardensr_codebook(infile, outfile, n_cycles=7):
     logging.debug(f'infile={infile} outfile={outfile}')    
     num_channels = 4
 
-    mcodebook = scipy.io.loadmat(infile)['codebook']
+    mcodebook = scipy.io.loadmat(infile)['codebookhyb']
     genes=np.array([str(x[0][0]) for x in mcodebook], dtype=str)
     logging.debug(f'mcodebook={mcodebook}')
 
@@ -44,33 +44,9 @@ def dump_bardensr_codebook(infile, outfile, n_cycles=7):
     for e in mcblist:
         elist = list(e)
         gene = str(elist[0][0])
-        seq = str(elist[1][0])
+        seq = str(elist[1][0][0])
         lol.append([gene,seq])
     df = pd.DataFrame(lol, columns=['gene','sequence'])
-
-    codebook1=np.zeros((np.size(mcodebook,0), n_cycles ), dtype=str)
-    for i in range(np.size(mcodebook,0)):
-        for j in range(n_cycles):
-            codebook1[i,j]=mcodebook[i][1][0][j]
-
-    codebook_bin=np.ones(np.shape(codebook1),dtype=np.double)
-    codebook_bin=np.reshape(np.array([float(x.replace('G','8').replace('T','4').replace('A','2').replace('C','1')) for y in codebook1 for x in y]), np.shape(codebook1))
-    codebook_bin=np.matmul(np.uint8(codebook_bin),2**np.transpose(np.array((np.arange(4*n_cycles-4,-1,-4)))))
-    codebook_bin=np.array([bin(i)[2:].zfill( n_cycles * num_channels) for i in codebook_bin])
-    codebook_bin=np.reshape([np.uint8(i) for j in codebook_bin for i in j],(np.size(codebook1,0),n_cycles*num_channels))
-    co=[[genes[i],codebook_bin[j,:]] for i in range(np.size(genes,0))]
-    co=[mcodebook,co]
-    codebook_bin1=np.reshape(codebook_bin, ( np.size(codebook_bin, 0), -1, num_channels) )
-        
-    # os.path.join(pth,'processed','codebook.joblib')
-    of = os.path.join(odirpath, f'{obase}.codebook.joblib' )
-    joblib.dump(co, of )
-
-
-    # os.path.join(pth,'processed','codebookforbardensr.joblib')
-    of = os.path.join(odirpath, f'{obase}.codebookforbardensr.joblib' )
-    joblib.dump(codebook_bin1, of )
-
     df.to_csv(outfile, sep='\t')
     logging.debug(f'got codebook len={len(df)} e.g. {df.iloc[0]}')
 
@@ -145,11 +121,11 @@ if __name__ == '__main__':
     logging.debug(f'Running with config. {args.config}: {cdict}')
     logging.debug(f'infile={args.infile} outfile={args.outfile}')
        
-    dump_bardensr_codebook(args.infile, args.outfile, args.n_cycles)
+    dump_hyb_codebook(args.infile, args.outfile, args.n_cycles)
 
     # Test loading the newly-made file...
-    logging.info(f'testing loading of {args.outfile}')
-    df = load_codebook_file(args.outfile)
-    codeflat, R, C, J, genes, pos_unused_codes = make_codebook_object(df)
-    logging.info(f'genes =\n{genes}\npos_unused_codes ={pos_unused_codes}')
+    #logging.info(f'testing loading of {args.outfile}')
+    #df = load_codebook_file(args.outfile)
+    #codeflat, R, C, J, genes, pos_unused_codes = make_codebook_object(df)
+    #logging.info(f'genes =\n{genes}\npos_unused_codes ={pos_unused_codes}')
     

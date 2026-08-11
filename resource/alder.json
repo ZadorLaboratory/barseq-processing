@@ -1,0 +1,65 @@
+{
+  "scope_name": "alder",
+  "chprofile20x_name": "chprofile20x-50-30-20-40-20220218.mat",
+  "chshift20x_name": "chshift20x-20220218.mat",
+  "chprofilehyb": [
+    [
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0.52,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1
+    ]
+  ],
+  "chshifthyb": [
+    [
+      0,
+      -3
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      -1,
+      4
+    ]
+  ],
+  "automation": 0,
+  "gene_rgb_intensity": 0.6,
+  "gene_max_thresh": 2000,
+  "opt_rgb_intensity": 0.6,
+  "opt_max_thresh": 2000,
+  "bc_rgb_intensity": 0.6,
+  "max_thresh_bc": 1000,
+  "hyb_radius": 100,
+  "hyb_regchradius": 30,
+  "hyb_rgb_intensity": 0.6,
+  "stitch_overlap": 0.23,
+  "stitch_xcam": 3200,
+  "stitch_ycam": 3200,
+  "cam_pixel": 0.33,
+  "registration_intensity_scaling": 3,
+  "bc_registration_intensity_scaling": 3
+}

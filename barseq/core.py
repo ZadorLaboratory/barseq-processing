@@ -4,6 +4,7 @@ import math
 import os
 import pprint
 import re
+import site
 import sys
 import time
 import traceback
@@ -202,10 +203,12 @@ class BarseqExperiment():
         dlist = os.listdir(parse_dir)
         dlist.sort()
         for d in dlist:
-            for p in pdict.keys():
-                if p.search(d) is not None:
-                    k = pdict[p]
-                    ddict[k].append(d)
+            fullpath = os.path.join(parse_dir, d)
+            if os.path.isdir(fullpath): 
+                for p in pdict.keys():
+                    if p.search(d) is not None:
+                        k = pdict[p]
+                        ddict[k].append(d)
         logging.debug(f'directory dict = {ddict}')
       
         cdict = {}
@@ -582,9 +585,24 @@ def get_default_config():
     return cp
     
 def get_script_dir():
-    logging.debug(f'getting current script name {sys.argv[0]}')
-    script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-    logging.debug(f'script_dir = {script_dir}')
+    #logging.debug(f'getting current script name {sys.argv[0]}')
+    #script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    #logging.debug(f'script_dir = {script_dir}')
+    #return script_dir
+
+    # Finds valid programmatically installed (pip, conda, etc.) tool directory
+    # within barseq install. 
+    script_dir = None
+    logging.debug(f'getting site packages dir.')
+    packdirlist = site.getsitepackages() 
+    logging.debug(f'site packages path(s)= {packdirlist}')
+    for sitepath in packdirlist:
+        script_dir = os.path.join(sitepath, 'barseq','tools')
+        logging.debug(f'checking for path={script_dir}')
+        if os.path.isdir( script_dir ):
+            logging.info(f'found installed script path = {script_dir}')
+            break
+    logging.info(f'installed script dir = {script_dir}')
     return script_dir
 
 def process_stage_map(indir, outdir, bse, stage=None, cp=None, force=False):
@@ -728,9 +746,10 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
     script_base = cp.get(stage, 'script_base')
     script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
+    if script_dir is None:
+        script_dir = os.path.expanduser( cp.get('experiment','script_dir') )
     script_path = f'{script_dir}/{script_name}'
     stagedir = cp.get(stage, 'stagedir')
-
     strip_base = cp.getboolean(stage, 'strip_base')
     template_mode = get_config_none(cp, stage, 'template_mode')
     template_source = get_config_none(cp, stage, 'template_source')
@@ -766,12 +785,15 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
             cmd = ['conda','run',
                         '-n', conda_env , 
                         'python', script_path,
+                        # script_name, 
                         log_arg, 
                         '--config' , runconfig ,                            
                         ]
         else:
             logging.debug(f'same envs needed, run direct...')
-            cmd = ['python', script_path,
+            cmd = ['python', 
+                        script_path,
+                        # script_name,
                         log_arg,
                         '--config' , runconfig, 
                         ]    
@@ -884,8 +906,10 @@ def make_command_list_single(file_map, stage, bse, indir, outdir, cp):
     num_cycles = int(cp.get(stage, 'num_cycles'))
     outdir = os.path.expanduser( os.path.abspath(outdir) )
     script_base = cp.get(stage, 'script_base')
-    script_name = f'{script_base}_{tool}.py'
     script_dir = get_script_dir()
+    if script_dir is None:
+        script_dir = os.path.expanduser( cp.get('experiment','script_dir') )
+    script_name = f'{script_base}_{tool}.py'
     script_path = f'{script_dir}/{script_name}'
     stagedir = cp.get(stage, 'stagedir')
 
@@ -917,12 +941,15 @@ def make_command_list_single(file_map, stage, bse, indir, outdir, cp):
             cmd = ['conda','run',
                         '-n', conda_env , 
                         'python', script_path,
+                        # script_name, 
                         log_arg, 
                         '--config' , runconfig ,                            
                         ]
         else:
             logging.debug(f'same envs needed, run direct...')
-            cmd = ['python', script_path,
+            cmd = ['python', 
+                        script_path,
+                        # script_name, 
                         log_arg,
                         '--config' , runconfig, 
                         ]    

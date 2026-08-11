@@ -2,17 +2,29 @@
 #
 #  https://academic.oup.com/bioinformatics/article/38/19/4613/6668278#401879063
 #
-# manual code to deal with stitching, but fileseries ont filepattern :-(
+# manual code to deal with stitching, but fileseries not filepattern :-(
 #   https://github.com/labsyspharm/ashlar/issues/166 
 #
 #  https://forum.image.sc/t/ashlar-how-to-pass-multiple-images-to-be-stitched/49864/69?page=3
-#
 #
 #  Undocumented command line hack...
 #  ashlar 'fileseries|/path/to/images|pattern=img_{series:3}.tif|width=5|height=3|pixel_size=0.3|overlap=0.1'
 #
 #  writing metadata:  https://forum.image.sc/t/python-tifffile-ome-full-metadata-support/56526/10 
 #
+#  WORKS FROM COMMAND LINE
+# ashlar 
+# -c 4 
+# --output-channels 4 
+# --output-positions stitch/hyb/MAX_Pos1.positions.csv  
+# --flip-x -o stitch/hyb/MAX_Pos1.stitched.tif 
+# 'filepattern|/Users/hover/project/barseq/process_workflow/YWT011357_4T.27.out/regcycle/hyb01|pattern=MAX_Pos1_{col:03}_{row:03}.tif|pixel_size=0.33|overlap=0.23'       'filepattern|/Users/hover/project/barseq/process_workflow/YWT011357_4T.27.out/regcycle/hyb01|pattern=MAX_Pos1_{col:03}_{row:03}.tif|pixel_size=0.33|overlap=0.23'
+# 
+# Merge 'foreign' pull requests.  E.g.
+#   https://github.com/labsyspharm/ashlar/pull/194/changes 
+#   https://stackoverflow.com/questions/6022302/how-to-apply-unmerged-upstream-pull-requests-from-other-forks-into-my-fork 
+#
+#  merged output-postions from jmuhlich to ashlar-libsyspharm local fork. 
 
 import argparse
 import json
@@ -20,7 +32,6 @@ import logging
 import os
 import re
 import sys
-
 
 import datetime as dt
 

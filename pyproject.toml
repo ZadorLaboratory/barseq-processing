@@ -38,8 +38,13 @@ dependencies = [
 include = ["barseq*"]
 
 [project.scripts]
-process_workflow = "barseq.cli:process_workflow" 
-
+process_workflow = "barseq.cli:process_workflow_cli"
+# aggregate_cellids_py = "barseq.cli:aggregate_cellids_py_cli" 
+# aggregate_data_py = "barseq.cli:aggregate_data_py_cli"
+# aggregate_transform_np = "barseq.cli:aggregate_transform_np_cli"
+# background_cv2 = "barseq.cli:background_cv2_cli"
+# basecall_geneseq_bardensr = "barseq.cli:basecall_geneseq_bardensr_cli"
+# basecall_hyb_ski = "barseq.cli:basecall_hyb_ski_cli"
 
 [project.urls]
 Homepage = "https://github.com/ZadorLaboratory/barseq-processing"
