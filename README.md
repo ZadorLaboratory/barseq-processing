@@ -78,6 +78,18 @@ process_workflow
 ```
 process_workflow will get the stages and their order from the configuration file. 
 
+## Testing and Validation
+
+For geneseq fuctionality, we created a slimmed-down test dataset, YWT011357_4T that can be found at:
+
+https://labshare.cshl.edu/shares/mbseq/barseq/test_data/
+
+This should be used, along with the relevant `geneseq.conf` file in `/etc` and the resources in `/resource` to confirm that your installation works. After running the pipeline, output can be compared to known-correct output in `/misc/validation/YWT011357_4T/`. The exact output values have been confirmed to match those produced by Xiaoyin's original MATLAB analysis code on the same dataset. 
+
+The `positions.txt` files in `<output>/stitch/hyb/` will confirm that ASHLAR stitching is correct.
+The `bardensrparams` files in `<output>/basecall/geneseq/` can confirm bardensr is working normally.  
+The `cellsbygenes.tsv` and `filt_cellsbygenes.tsv` output will confirm final data aggregation is correct. 
+
 
 ## Customization and non-standard usage
 
