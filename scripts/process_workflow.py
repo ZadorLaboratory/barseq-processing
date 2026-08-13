@@ -35,9 +35,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-c','--config', 
                         metavar='config',
-                        required=False,
+                        required=True,
                         #nargs='*',
-                        default=os.path.expanduser('~/git/barseq-processing/etc/barseq.conf'),
+                        default=None,
                         type=str, 
                         help='config file.')
 
@@ -79,7 +79,10 @@ if __name__ == '__main__':
     logging.debug(f'args = {args}') 
 
     cp = ConfigParser()
-    cp.read(args.config)
+    cplist = cp.read(args.config) 
+    if len(cplist) < 1:
+        print('error: no readable configuration file.')
+        sys.exit(1)    
     cdict = format_config(cp)
     #logging.debug(f'Running with config={args.config}:\n{cdict}')
 
