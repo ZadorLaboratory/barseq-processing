@@ -92,7 +92,6 @@ The `bardensrparams` files in `<output>/basecall/geneseq/` can confirm bardensr 
 
 The `cellsbygenes.tsv` and `filt_cellsbygenes.tsv` output will confirm final data aggregation is correct. 
 
-
 ## Customization and non-standard usage
 
 To do a more ad-hoc pipeline, examine the run_barseq.py or run_geneseq.py scripts, which explicitly call the processing steps for each stage.  
