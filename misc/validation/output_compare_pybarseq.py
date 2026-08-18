@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Compare output of two barseq-processing runs. 
+# Compare MATLAB/Pybarseq output to Python pipeline output. 
 #  
 import argparse
 import joblib
@@ -11,6 +11,12 @@ import pprint
 import shutil
 import sys
 
+gitpath=os.path.expanduser("~/git/barseq-processing")
+sys.path.append(gitpath)
+
+from barseq.core import *
+from barseq.utils import *
+from barseq.imageutils import *
 
 N_GENESEQ_CYCLES = 7
 N_HYB_CYCLES = 1
@@ -39,28 +45,20 @@ POS_TILENAMES = { 'Pos1' :  ['MAX_Pos1_000_000',
                 }
 
 
+
+PBS_PREFIXES = ['original/',
+                'backsub/backsub',
+                'chalign/chalign',
+                'bleedthrough/bleedthrough',
+                'aligned/aligned',
+]
+
 BSP_PREFIXES = ['denoised',
                 'background',
                 'regchannels',
                 'bleedthrough',
-                'regcycle',
-                'segment',
-                'stitch',
-                'merge',
-                'basecall',
-                'aggregated'
+                'regcycle'
                 ]
-
-
-def do_compare_output(outdir1, outdir2):
-    outdir1 = os.path.abspath(outdir1)
-    outdir2 = os.path.abspath(outdir2)
-
-    identical = True
-
-
-
-
 
 
 def do_compare_output_pybarseq(outdir1, outdir2):
@@ -452,7 +450,7 @@ if __name__ == '__main__':
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)   
 
-    identical = do_compare_output(args.outdir1, args.outdir2)
+    identical = do_compare_output_pybarseq(args.outdir1, args.outdir2)
     if identical:
         print('\nOutput trees are identical. ')
     else:
