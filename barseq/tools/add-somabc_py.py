@@ -20,9 +20,6 @@ from configparser import ConfigParser
 
 import numpy as np
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.utils import *
 from barseq.imageutils import *
 

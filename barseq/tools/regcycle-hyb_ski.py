@@ -14,8 +14,6 @@ import skimage
 from skimage.exposure import match_histograms
 from skimage.registration import phase_cross_correlation as pcc
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *

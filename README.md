@@ -21,11 +21,20 @@ This environment includes the barseq-processing framework code.
 conda activate barseq
 ```
 
-* For the standard pipeline, create the sub-environments needed to run stages that require specialize software.
+* For the standard pipeline, create the sub-environments needed to run stages that require specialized software, and then add the barseq-processing software as well. 
 ```
 conda env create --file  ~/git/barseq-processing/envs/ashlar.environment.yaml
+conda activate ashlar
+pip install --no-build-isolation --no-deps ~/git/barseq-processing/
+
 conda env create --file  ~/git/barseq-processing/envs/bardensr.environment.yaml
+conda activate bardensr
+pip install --no-build-isolation --no-deps ~/git/barseq-processing/
+
 conda env create --file  ~/git/barseq-processing/envs/cellpose.environment.yaml
+conda activate cellpose
+pip install --no-build-isolation --no-deps ~/git/barseq-processing/
+
 ```
 The n2v conda environment may need to be installed manually. See:
 ```

@@ -183,7 +183,11 @@ class BarseqExperiment():
         pdict = {}
         ddict = {}
 
-        modes = get_config_list(self.cp, 'experiment', 'modes')
+        #modes = get_config_list(self.cp, 'experiment', 'modes')
+        if stage is None:
+            modes = get_config_list(self.cp, 'experiment', 'modes')
+        else:
+            modes = get_config_list(self.cp, stage, 'modes')
 
         for mode in modes:
             p = re.compile( self.cp.get( 'barseq',f'{mode}_regex'))
@@ -212,7 +216,7 @@ class BarseqExperiment():
         logging.debug(f'directory dict = {ddict}')
       
         cdict = {}
-        for mode in self.modes:
+        for mode in modes:
             cdict[mode] = []  # list of lists
             for d in ddict[mode]:
                 cyclelist = []
@@ -245,7 +249,7 @@ class BarseqExperiment():
                 cdict[mode].append(cyclelist)        
 
         pdict = {}
-        for mode in self.modes:
+        for mode in modes:
             pdict[mode] = []
             cycfilelist = cdict[mode]
             for i, cycle in enumerate( cycfilelist ):
@@ -767,6 +771,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
         template_stagedir = cp.get(template_source, 'stagedir')
         # Only tileset currently makes sense for templates. 
         template_fileset_list = bse.get_stage_files( template_mode, stage=template_source, maptype='tileset' )
+        
         logging.debug(f'template_stagedir={template_stagedir} template_fileset_list = {template_fileset_list}')
         chunked_templates = [ template_fileset_list[i :  i + chunk_size] for i in range(0, len(template_fileset_list), chunk_size) ]
         chunked_templates = chunked_templates[0:n_chunks]

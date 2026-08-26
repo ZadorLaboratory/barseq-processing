@@ -1,0 +1,12 @@
+
+DESIGN
+
+
+
+INSTALLATION
+https://stackoverflow.com/questions/76722680/what-is-the-best-way-to-combine-conda-with-standard-python-packaging-tools-e-g 
+
+
+CUSTOMIZATION
+
+

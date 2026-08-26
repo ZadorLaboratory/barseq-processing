@@ -16,9 +16,6 @@ import anndata as ad
 import numpy as np
 from natsort import natsorted as nsort
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from scipy import sparse
 from scipy.sparse import coo_matrix
 from scipy.spatial import cKDTree

@@ -18,9 +18,6 @@ import pandas as pd
 from skimage.segmentation import expand_labels
 from skimage.measure import label, regionprops_table
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *

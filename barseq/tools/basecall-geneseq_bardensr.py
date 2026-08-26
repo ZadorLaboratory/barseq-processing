@@ -18,15 +18,11 @@ import datetime as dt
 
 from configparser import ConfigParser
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 import numpy as np
 
 import bardensr
 import bardensr.plotting
 
-#from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 

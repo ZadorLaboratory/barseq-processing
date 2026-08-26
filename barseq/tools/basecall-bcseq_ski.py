@@ -24,10 +24,6 @@ from skimage.measure import label, regionprops
 from skimage.morphology import extrema, binary_dilation
 from skimage.util import img_as_float
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
-#from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 
@@ -61,6 +57,15 @@ def basecall_bcseq_ski( infiles, outfiles, stage=None, cp=None):
     (dirpath, base, label, ext) = split_path(os.path.abspath(infiles[0]))
     (prefix, subdir) = os.path.split(dirpath)
     logging.debug(f'dirpath={dirpath} base={base} ext={ext} prefix={prefix} subdir={subdir}')
+
+
+
+
+
+
+
+
+
 
 
 
@@ -156,6 +161,7 @@ def basecall_bcseq_ski_claude(infiles, outfiles, stage=None, cp=None):
 
     # tile basename (all infiles are the same tile across cycles)
     (dirpath, base, ilabel, ext) = split_path(os.path.abspath(infiles[0]))
+    
     # MATLAB sorts the cycle files naturally; the harness already passes them in cycle order.
     seqfiles = list(infiles)
 

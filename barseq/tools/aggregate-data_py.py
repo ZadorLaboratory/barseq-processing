@@ -20,10 +20,6 @@ from natsort import natsorted as nsort
 from scipy.spatial.distance import cdist
 from scipy.sparse import coo_matrix
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
-#from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 

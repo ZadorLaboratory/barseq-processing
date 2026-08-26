@@ -14,8 +14,6 @@ import skimage as ski
 from skimage.util import view_as_blocks
 from scipy.signal import convolve2d , correlate2d, fftconvolve
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
 from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *

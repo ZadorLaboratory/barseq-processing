@@ -25,10 +25,6 @@ from skimage.measure import label, regionprops, regionprops_table
 from skimage.morphology import extrema, binary_dilation
 from skimage.util import img_as_float
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
-#from barseq.core import *
 from barseq.utils import *
 from barseq.imageutils import *
 

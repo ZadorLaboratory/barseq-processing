@@ -1,0 +1,15 @@
+anndata
+arrow
+h5py
+hdf5
+imageio
+joblib
+matplotlib-base
+natsort
+numpy=1.26
+opencv
+pandas
+python=3.12
+scikit-image
+scipy
+tifffile

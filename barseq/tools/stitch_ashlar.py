@@ -34,9 +34,6 @@ import ashlar
 from ashlar import filepattern, reg, thumbnail
 from tifffile import imread, imwrite, TiffFile, TiffWriter
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.core import *
 from barseq.utils import *
 

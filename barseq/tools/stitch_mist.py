@@ -37,15 +37,10 @@ import datetime as dt
 
 from configparser import ConfigParser
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.core import *
 from barseq.utils import *
 
-
 import imagej
-
 
 def run_cmd_shell(cmd):
     """

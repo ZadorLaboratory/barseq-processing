@@ -25,9 +25,6 @@ import joblib
 import numpy as np
 import scipy.ndimage as ndi
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.utils import *
 from barseq.imageutils import *
 
