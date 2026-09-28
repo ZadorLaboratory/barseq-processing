@@ -99,8 +99,8 @@ def add_somabc_py(infiles, outfiles, stage=None, cp=None):
     # NOTE: select_input_files returns files ordered by sorted KEY name:
     # bcrol < filt < soma.
     input_map = {'filt': 'filt_neurons.joblib',
-                 'soma': 'soma-bc.joblib',
-                 'bcrol': 'bc-rolonies.joblib'}
+                 'soma': 'basecalls-soma-bcseq.joblib',
+                 'bcrol': 'basecalls-bcseq.joblib'}
     (bcrol_file, filt_file, soma_file) = select_input_files(infiles, input_map)
     filt_data = joblib.load(filt_file)
     fn = filt_data['filt_neurons']

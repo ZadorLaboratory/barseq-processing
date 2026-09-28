@@ -62,8 +62,8 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #
     # return order will be alphabetical
     #
-    input_map = { 'gene_rol' : 'basecalls.joblib',
-                  'hyb_rol' :  'genehyb.joblib',
+    input_map = { 'gene_rol' : 'basecalls-geneseq.joblib',
+                  'hyb_rol' :  'basecalls-hyb.joblib',
                   'seg' : 'all_segmentation.joblib'
                   }
 
@@ -80,8 +80,6 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
         mask=seg[tilename]['dilated_labels']
         coord_xg=gene_rol[tilename]['lroi_x']
         coord_yg=gene_rol[tilename]['lroi_y']
-        # coord_xh=hyb_rol[tilename]['lroi_x'][0][0]
-        # coord_yh=hyb_rol[tilename]['lroi_y'][0][0]
         coord_xh=hyb_rol[tilename]['lroi_x']
         coord_yh=hyb_rol[tilename]['lroi_y']
         t['cellid']= assign_rolony_to_cell(mask, coord_xg, coord_yg)
@@ -90,29 +88,7 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     joblib.dump(T,os.path.join(outfile))
     logging.info(f'Done.')
 
-def assign_rolony_to_cell(mask, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. Calls get_cellid function if there are rolonies detected in this tile or else assigns empty cell id to this tile
-    """
-    #logging.debug(f'handling coord_x = {coord_x}, coord_y={coord_y}')
-    if len(coord_x):
-        cell_id=get_cellid(mask, coord_x, coord_y)
-    else:
-        cell_id=[] # earlier this was [] and was causing error later
-    return cell_id
 
-def get_cellid(mask, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. For any detected rolony-assigns it to a cell
-    2. Returns the cell ids for all rolonies in this tile
-    """
-    #logging.debug(f'handling coord_x = {coord_x}, coord_y={coord_y}')
-    coord_xl=[int(np.round(x)) for x in coord_x]
-    coord_yl=[int(np.round(x)) for x in coord_y]
-    cell_id=mask[coord_xl,coord_yl]
-    return cell_id
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

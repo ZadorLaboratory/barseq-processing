@@ -99,8 +99,8 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     # return order from select function will be alphabetical by key name.  
     input_map = {   'cellid'  :  'cell_id.joblib',
                     'coord'   :  'lroi10x.joblib',
-                    'gene_rol':  'basecalls.joblib',
-                    'hyb_rol' :  'genehyb.joblib',
+                    'gene_rol':  'basecalls-geneseq.joblib',
+                    'hyb_rol' :  'basecalls-hyb.joblib',
                     'seg'     :  'all_segmentation.joblib',
                     'tforms'  :  'tforms_final.joblib',
                   }

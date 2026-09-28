@@ -385,3 +385,61 @@ def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
     else:
         logging.debug(f'no mods requests. returning all channels.')
     return I
+
+
+#  Rolony / cell coordinate helpers (shared by aggregate-* and bcseq stages).
+#  apply_transform ports MATLAB transformPointsForward (bc_to_10x / lroi 40x->10x);
+#  get_cellid / assign_rolony_to_cell port the segmentation-mask lookup used by
+#  assign_gene_rolonies and assign_bc2cell. Factored here so the bcseq basecall
+#  stages reuse the exact same logic as aggregate-cellids/aggregate-transform.
+#
+def apply_transform(tform, coord_x, coord_y):
+    '''
+    Transform local (40x) coordinates to global downsized (10x) coordinates per
+    tile, matching MATLAB transformPointsForward(tform, [x y]). tform is a
+    skimage transform callable accepting an (N,2) array of (x,y) points.
+    Returns (x, y) arrays; empty lists if there are no input coordinates.
+    '''
+    if len(coord_x):
+        if not (isinstance(coord_x, list) or isinstance(coord_x, np.ndarray)):
+            coord_x = coord_x.to_list()
+            coord_y = coord_y.to_list()
+        q = np.zeros([len(coord_x), 2])
+        q[:, 0] = np.reshape(coord_x, (1, -1))
+        q[:, 1] = np.reshape(coord_y, (1, -1))
+        v = tform(q)
+        x = v[:, 0]
+        y = v[:, 1]
+    else:
+        x = []
+        y = []
+    return x, y
+    
+
+def get_cellid(mask, coord_x, coord_y):
+    '''
+    Global transformation function:
+    1. For any detected rolony-assigns it to a cell
+    2. Returns the cell ids for all rolonies in this tile
+
+    Look up the cell label at each rolony position, matching MATLAB
+    mmassignrol2cell (imcell(sub2ind(...))). coord_x indexes axis 0 (rows),
+    coord_y axis 1 (cols), consistent with aggregate-cellids. Coordinates are
+    rounded to nearest integer. Returns an ndarray of cell ids (0 = outside any cell).
+    '''
+    coord_xl = [int(np.round(x)) for x in coord_x]
+    coord_yl = [int(np.round(x)) for x in coord_y]
+    cell_id = mask[coord_xl, coord_yl]
+    return cell_id
+
+def assign_rolony_to_cell(mask, coord_x, coord_y):
+    """
+    Global transformation function:
+    1. Calls get_cellid function if there are rolonies detected in this tile or else assigns empty cell id to this tile
+    """
+    #logging.debug(f'handling coord_x = {coord_x}, coord_y={coord_y}')
+    if len(coord_x):
+        cell_id=get_cellid(mask, coord_x, coord_y)
+    else:
+        cell_id=[] # earlier this was [] and was causing error later
+    return cell_id

@@ -120,24 +120,24 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     score2[no_call, :] = 0.0
     sig2[no_call, :, :] = 0.0
 
+
     cellid_data = cellid1.astype(np.int64)
     seq_data = seq1.astype(np.int8)
     seq_hd_data = seq2.astype(np.int8)
     score_hd_data = score2
 
-    out = {base: {
+    out = {base : {
         'cellid': cellid_data,     # LOCAL labels; merge applies fov offset
         'seq': seq_data,
         'sig': sig1,
         'score': score1,
-        'seq_hd': seq_hd_data,
+        'seq_hd': seq_hd_data ,
         'sig_hd': sig2,
-        'score_hd': score_hd_data,
+        'score_hd': score_hd_data ,
     }}
     logging.info(f'{base}: {n_cells} cells soma-basecalled. writing {outfile}')
     joblib.dump(out, outfile)
-
-
+    
     # Make human-readable TSV. 
     dir, base, label, ext = split_path(outfile)
     outfile = os.path.join(dir, f'{base}.tsv')   
@@ -162,7 +162,6 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     logging.info(f'{base}: {n_cells} cells soma-basecalled. writing {outfile}')
     df.to_csv(outfile, sep='\t')
     logging.info('Done.')
-
 
 
 if __name__ == '__main__':
