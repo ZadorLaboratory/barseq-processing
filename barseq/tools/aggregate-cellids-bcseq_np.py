@@ -8,8 +8,11 @@
 # assign_rolony_to_cell/get_cellid (= mmassignrol2cell) so bc rolonies are handled
 # exactly like the geneseq/hyb rolonies in aggregate-transform/aggregate-cellids.
 #
-# Inputs (gathered via merge-dummy): basecalls-bc.joblib (merge/bcseq),
-#   all_segmentation.joblib (dilated_labels) and tforms_final.joblib (merge/hyb).
+# Inputs (gathered via merge-dummy): 
+#   basecalls-bc.joblib (merge/bcseq),
+#   all_segmentation.joblib (dilated_labels) 
+#   tforms_final.joblib (merge/hyb).
+#
 # Output: bc-rolonies.joblib (aggregated/bcseq).
 #
 import argparse
