@@ -60,7 +60,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     #             'all_segmentation.joblib'   
     #             'genehyb.joblib'
     #
-    # main output : processeddata.joblib
+    #     main output : processeddata.joblib
     #
     if cp is None:
         cp = get_default_config()

@@ -13,7 +13,7 @@
 #   all_segmentation.joblib (dilated_labels) 
 #   tforms_final.joblib (merge/hyb).
 #
-# Output: cell_id_bcseq.joblib (merge/bcseq).
+# Output: rolonies_bcseq.joblib (merge/bcseq).
 #
 import argparse
 import joblib
@@ -27,26 +27,8 @@ from configparser import ConfigParser
 import numpy as np
 from natsort import natsorted as nsort
 
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from barseq.utils import *
 from barseq.imageutils import *
-
-
-def make_pos_id_map(tilename_list, image_regex, position_group):
-    '''Map tilename -> position INDEX (0-based), matching aggregate-data.'''
-    tilename_list = nsort(tilename_list)
-    pos_list = []
-    for tilename in tilename_list:
-        m = re.search(image_regex, tilename)
-        if m is not None:
-            pos_list.append(m.group(position_group))
-        else:
-            logging.error(f'unable to parse {tilename} for position!')
-    unique_pos = list(dict.fromkeys(pos_list))
-    return {t: unique_pos.index(pos_list[i]) for i, t in enumerate(tilename_list)}
-
 
 def _vstack(arrs, ncols):
     arrs = [a for a in arrs if a is not None and len(a) > 0]
@@ -59,7 +41,7 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'aggregate-cellids-bcseq'
+        stage = 'aggregate-data-bcseq'
 
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
@@ -74,7 +56,7 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
     position_group = cp.getint('barseq', 'position_group')
 
     input_map = {'bc_rol': 'basecalls-bcseq.joblib',
-                 'seg': 'all_segmentation.joblib',
+                 'seg'   : 'all_segmentation.joblib',
                  'tforms': 'tforms_final.joblib'}
                  
     (bc_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
@@ -87,17 +69,21 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
     tilename_list = nsort(list(seg.keys()))
     pos_id_map = make_pos_id_map(tilename_list, image_regex, position_group)
 
-    pos40x_x, pos40x_y, pos10_x, pos10_y = [], [], [], []
-    seq_l, qual_l, int_l, sig_l = [], [], [], []
-    slice_l, fov_l, cellid_l = [], [], []
-    n_cyc = None
-    n_ch = None
+
 
     for i, tilename in enumerate(tilename_list):
-        if tilename not in bc_rol:
+        try:
+            bc = bc_rol[tilename]
+        except KeyError:
             logging.warning(f'no bc basecalls for tile {tilename}, skipping')
             continue
-        bc = bc_rol[tilename]
+
+        pos40x_x, pos40x_y, pos10_x, pos10_y = [], [], [], []
+        seq_l, qual_l, int_l, sig_l = [], [], [], []
+        slice_l, fov_l, cellid_l = [], [], []
+        n_cyc = None
+        n_ch = None
+
         rows = np.asarray(bc['lroi_x'])      # axis-0 (row, y)
         cols = np.asarray(bc['lroi_y'])      # axis-1 (col, x)
         n = len(rows)

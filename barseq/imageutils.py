@@ -424,8 +424,9 @@ def get_cellid(mask, coord_x, coord_y):
 
     Look up the cell label at each rolony position, matching MATLAB
     mmassignrol2cell (imcell(sub2ind(...))). coord_x indexes axis 0 (rows),
-    coord_y axis 1 (cols), consistent with aggregate-cellids. Coordinates are
-    rounded to nearest integer. Returns an ndarray of cell ids (0 = outside any cell).
+    coord_y axis 1 (cols), consistent with aggregate-cellids. 
+    Coordinates are rounded to nearest integer. 
+    Returns an ndarray of cell ids (0 = outside any cell).
     '''
     coord_xl = [int(np.round(x)) for x in coord_x]
     coord_yl = [int(np.round(x)) for x in coord_y]
@@ -443,3 +444,18 @@ def assign_rolony_to_cell(mask, coord_x, coord_y):
     else:
         cell_id=[] # earlier this was [] and was causing error later
     return cell_id
+
+
+
+def make_pos_id_map(tilename_list, image_regex, position_group):
+    '''Map tilename -> position INDEX (0-based), matching aggregate-data.'''
+    tilename_list = nsort(tilename_list)
+    pos_list = []
+    for tilename in tilename_list:
+        m = re.search(image_regex, tilename)
+        if m is not None:
+            pos_list.append(m.group(position_group))
+        else:
+            logging.error(f'unable to parse {tilename} for position!')
+    unique_pos = list(dict.fromkeys(pos_list))
+    return {t: unique_pos.index(pos_list[i]) for i, t in enumerate(tilename_list)}

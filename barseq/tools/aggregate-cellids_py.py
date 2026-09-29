@@ -25,9 +25,10 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #         arity=single
     #         so inputs will be (flat list of all files from first cycle)
     #
-    #.    inputs: 'basecalls.joblib'.  
+    #.    inputs: 'basecalls-geneseq.joblib'.  
+    #             'basecalls-hyb.joblib'
     #             'all_segmentation.joblib'   
-    #             'genehyb.joblib'
+    #
     #. There may be more inputs that required, so only select relevant ones...
     # E.g.
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/all_segmentation.joblib 
@@ -35,7 +36,9 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_original.joblib 
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_rescaled0p5.joblib 
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/geneseq/basecalls.joblib
-    # 
+    #
+    # Output:  cell_id.joblib 
+
 
     if cp is None:
         cp = get_default_config()
