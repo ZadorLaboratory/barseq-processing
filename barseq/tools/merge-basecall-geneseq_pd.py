@@ -56,12 +56,10 @@ def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
 
     outdf = make_tiledict_dataframe(tile_dict)
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.tsv')
+    outfile = os.path.join(dir, f'{base}_df.tsv')
     logging.info(f'Writing merged data to TSV: {outfile} ')
     outdf.to_csv(outfile, sep='\t')
     logging.info(f'Done.')
-
-
 
 
 if __name__ == '__main__':

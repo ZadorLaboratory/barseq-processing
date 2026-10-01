@@ -148,14 +148,21 @@ def select_input_files( infiles, input_map):
     '''
     out_list = [] 
     k_list = nsort( list( input_map.keys()))
+    fname_list = []
+    out_map = {}
     for k in k_list:
         fname = input_map[k]
+        fname_list.append(fname)
+        out_map[fname] = None
         for cfile in infiles:
             (dirpath, base) = os.path.split(cfile)
             if base == fname:
                 out_list.append(cfile)
+                out_map[fname] = cfile
     if len(out_list) != len(k_list):
-        logging.error(f'Unable to match all required files:\n. k_list={k_list}\n. out_list={out_list}\n infiles={infiles}')
+        logging.error(f'Unable to match all required files:\n. k_list={k_list}\n. infiles={infiles}')
+        
+        logging.error(f'out_map = \n {out_map}')
         sys.exit(2)
     else:
         logging.debug(f'found {len(out_list)} matching files.')

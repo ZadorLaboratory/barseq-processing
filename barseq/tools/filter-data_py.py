@@ -74,7 +74,8 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     neurons = data['neurons']
     center_x=neurons['pos10x_x']
     center_y=neurons['pos10x_y']
-    exp_mat=neurons['expmat'].todense() # I should do it in csr rather than dense--memory efficient
+    exp_mat=neurons['expmat'].todense() 
+    # I should do it in csr rather than dense--memory efficient
 
     xmin = center_x - overlap_half_width
     xmax = center_x + overlap_half_width
@@ -123,7 +124,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
 
         total_exp_cell = np.asarray( np.sum( exp_mat[idx_slice,:], axis=1))
         [_,rev_idx] = np.unique( neurons['id'][idx_slice][overlap_cells_id], return_counts=False, return_inverse=True )
-        df = pd.DataFrame({'cell':neurons['id'][idx_slice][overlap_cells_id],
+        df = pd.DataFrame({ 'cell':neurons['id'][idx_slice][overlap_cells_id],
                             'neigh':neurons['id'][idx_slice][overlap_neighbors_id] ,
                             'group':np.transpose(rev_idx),
                             'neigh_exp':total_exp_cell[overlap_neighbors_id].flatten(),

@@ -10,6 +10,7 @@
 #
 import logging
 import os
+import re
 
 import tifffile
 from tifffile import imread, imwrite, TiffFile, TiffWriter
@@ -414,7 +415,29 @@ def apply_transform(tform, coord_x, coord_y):
         x = []
         y = []
     return x, y
-    
+
+
+def apply_transform_dupe(tform, coord_x, coord_y):
+    """
+    Global transformation function:
+    1. Transforms the local coordinates of rolonies and cells to global downsized coordinates per tile
+    """
+    if len(coord_x):
+        if not (isinstance(coord_x,list) or isinstance(coord_x,np.ndarray)):
+            coord_x=coord_x.to_list()
+            coord_y=coord_y.to_list()
+        q=np.zeros([len(coord_x),2])
+        q[:,0]=np.reshape(coord_x,(1,-1))
+        q[:,1]=np.reshape(coord_y,(1,-1))
+        v=tform(q)
+        x=v[:,0]
+        y=v[:,1]
+    else:
+        x=[]
+        y=[]
+    return x,y
+
+
 
 def get_cellid(mask, coord_x, coord_y):
     '''
@@ -447,7 +470,7 @@ def assign_rolony_to_cell(mask, coord_x, coord_y):
 
 
 
-def make_pos_id_map(tilename_list, image_regex, position_group):
+def make_pos_id_map_XXX(tilename_list, image_regex, position_group):
     '''Map tilename -> position INDEX (0-based), matching aggregate-data.'''
     tilename_list = nsort(tilename_list)
     pos_list = []
@@ -459,3 +482,30 @@ def make_pos_id_map(tilename_list, image_regex, position_group):
             logging.error(f'unable to parse {tilename} for position!')
     unique_pos = list(dict.fromkeys(pos_list))
     return {t: unique_pos.index(pos_list[i]) for i, t in enumerate(tilename_list)}
+
+def make_pos_id_map( tilename_list, image_regex, position_group):
+    '''
+    make map (dict) from tilename to position INDEX (starting at 0)
+    e.g.
+    MAX_Pos1_000_000 -> 0
+    MAX_Pos2_000_000 -> 1
+
+    Retain order. 
+    Tolerate non-integer position identifiers. 
+    '''
+    tilename_list = nsort(tilename_list)
+    pos_list = []
+    pos_id_map = {}
+    for tilename in tilename_list:
+        m = re.search(image_regex, tilename)
+        if m is not None:
+            pos = m.group(position_group)
+            pos_list.append(pos)
+        else:
+            logging.error(f'unable to parse {tilename} for position!')
+    unique_pos = list(dict.fromkeys(pos_list))
+    index_list = []
+    for i, tilename in enumerate(tilename_list):
+        p = pos_list[i]
+        pos_id_map[tilename] = unique_pos.index(p)
+    return pos_id_map

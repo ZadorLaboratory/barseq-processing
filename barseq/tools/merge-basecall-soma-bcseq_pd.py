@@ -87,7 +87,7 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
     # 
     keep_columns = ['id', 'seq', 'seq_hd' ]  
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.tsv')   
+    outfile = os.path.join(dir, f'{base}_df.tsv')   
 
     dflist = []
     for base in list( tile_data.keys() ):

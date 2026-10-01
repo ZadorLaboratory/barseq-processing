@@ -23,35 +23,6 @@ from scipy.sparse import coo_matrix
 from barseq.utils import *
 from barseq.imageutils import *
 
-def make_pos_id_map( tilename_list, image_regex, position_group):
-    '''
-    make map (dict) from tilename to position INDEX (starting at 0)
-    e.g.
-    MAX_Pos1_000_000 -> 0
-    MAX_Pos2_000_000 -> 1
-
-    Retain order. 
-    Tolerate non-integer position identifiers. 
-    '''
-    tilename_list = nsort(tilename_list)
-    pos_list = []
-    pos_id_map = {}
-    for tilename in tilename_list:
-        m = re.search(image_regex, tilename)
-        if m is not None:
-            pos = m.group(position_group)
-            pos_list.append(pos)
-        else:
-            logging.error(f'unable to parse {tilename} for position!')
-    unique_pos = list(dict.fromkeys(pos_list))
-    index_list = []
-    for i, tilename in enumerate(tilename_list):
-        p = pos_list[i]
-        pos_id_map[tilename] = unique_pos.index(p)
-    return pos_id_map
-
-
-
 def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     #     cycleset map 
     #         arity=single
@@ -97,10 +68,10 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     # figure out which is which. 
     # 'basecalls.joblib'.  'all_segmentation.joblib'   'genehyb.joblib' ...
     # return order from select function will be alphabetical by key name.  
-    input_map = {   'cellid'  :  'cell_id.joblib',
-                    'coord'   :  'lroi10x.joblib',
-                    'gene_rol':  'basecalls-geneseq.joblib',
-                    'hyb_rol' :  'basecalls-hyb.joblib',
+    input_map = {   'cellid'  :  'rolonies_genehyb.joblib',
+                    'coord'   :  'lroi10x_genehyb.joblib',
+                    'gene_rol':  'basecalls_geneseq.joblib',
+                    'hyb_rol' :  'basecalls_hyb.joblib',
                     'seg'     :  'all_segmentation.joblib',
                     'tforms'  :  'tforms_final.joblib',
                   }

@@ -402,26 +402,28 @@ class BarseqExperiment():
                 input_list = []
                 for rpath in infile_list:
                     input_list.append(rpath)
-
                 mode = instage_mode[0]
-                (subdir, base, current_label, current_ext) = parse_rpath( infile_list[0])
-                if (ext is not None) or (label is not None):
-                    if ext is None:
-                        ext = current_ext
-                    if label is not None:
-                        if strip_base:
-                            # stripping base only makes sense if there is a label.
-                            # and if arity=single
-                            output_elem = os.path.join( mode, f'{label}.{ext}')
+                if len(infile_list) > 0:
+                    (subdir, base, current_label, current_ext) = parse_rpath( infile_list[0])
+                    if (ext is not None) or (label is not None):
+                        if ext is None:
+                            ext = current_ext
+                        if label is not None:
+                            if strip_base:
+                                # stripping base only makes sense if there is a label.
+                                # and if arity=single
+                                output_elem = os.path.join( mode, f'{label}.{ext}')
+                            else:
+                                output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
                         else:
-                            output_elem = os.path.join( mode, f'{base}.{label}.{ext}')
+                            output_elem = os.path.join( mode, f'{base}.{ext}')
                     else:
                         output_elem = os.path.join( mode, f'{base}.{ext}')
+                            
+                    logging.debug(f'filelist output={( infile_list, output_elem)}')        
+                    output_list.append( ( infile_list , [ output_elem ] )  )
                 else:
-                    output_elem = os.path.join( mode, f'{base}.{ext}')
-                        
-                logging.debug(f'filelist output={( infile_list, output_elem)}')        
-                output_list.append( ( infile_list , [ output_elem ] )  )
+                    logging.warning(f'infile_list for first infile_set is empty. No outputs.')
         logging.debug(f'made list of {len(output_list)} filemaps')     
         return output_list    
 
@@ -568,14 +570,20 @@ class BarseqExperiment():
         return True
 
 
-def search_regex_list_any( regex_list, test_string  ):
+def search_regex_list_any( regex_list, test_string, strict=True ):
     '''
     apply all regexes in regex_list to test_string 
     return first successful match
     otherwise return None
+
+    if strict is true, only consider matches where regex is 
+    beginning and end of test string. 
+
     '''
     re_match = None
     for regex in regex_list:
+        if strict:
+            regex = f'^{regex}$'
         m = re.search(regex, test_string)
         if m is not None:
             return m

@@ -55,7 +55,7 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
     image_regex = cp.get('barseq', 'file_regex')
     position_group = cp.getint('barseq', 'position_group')
 
-    input_map = {'bc_rol': 'basecalls-bcseq.joblib',
+    input_map = {'bc_rol': 'basecalls_bcseq.joblib',
                  'seg'   : 'all_segmentation.joblib',
                  'tforms': 'tforms_final.joblib'}
                  
@@ -69,7 +69,7 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
     tilename_list = nsort(list(seg.keys()))
     pos_id_map = make_pos_id_map(tilename_list, image_regex, position_group)
 
-
+    bc_out = {}
 
     for i, tilename in enumerate(tilename_list):
         try:
@@ -96,8 +96,9 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
         mask = seg[tilename]['dilated_labels']
         tform = tform_final[tilename]
 
-        # assign_bc2cell: cell label at rolony pixel; global id = local + i*offset
-        # (matches aggregate-data cellidall; rolonies outside cells -> i*offset, match no cell).
+        # assign_bc2cell: cell label at rolony pixel; global id = local + i * offset
+        # (matches aggregate-data cellidall ; 
+        # rolonies outside cells -> i*offset, match no cell).
         cellid_local = np.asarray(get_cellid(mask, rows, cols), dtype=np.int64)
         cellid_global = cellid_local + i * starting_fov_idx * dummy_cell_num
 
@@ -117,25 +118,29 @@ def aggregate_bcseq_np(infiles, outfiles, stage=None, cp=None):
         fov_l.append(np.full(n, i))
         cellid_l.append(cellid_global)
 
-    if n_cyc is None:
-        n_cyc, n_ch = 0, 4
+        if n_cyc is None:
+            n_cyc, n_ch = 0, 4
 
-    bc_out = {
-        'pos40x_x': np.concatenate(pos40x_x) if pos40x_x else np.zeros(0),
-        'pos40x_y': np.concatenate(pos40x_y) if pos40x_y else np.zeros(0),
-        'pos_x': np.concatenate(pos10_x) if pos10_x else np.zeros(0),
-        'pos_y': np.concatenate(pos10_y) if pos10_y else np.zeros(0),
-        'seq': _vstack(seq_l, n_cyc).astype(np.int8),
-        'qual': _vstack(qual_l, n_cyc),
-        'int': _vstack(int_l, n_cyc),
-        'sig': (np.concatenate([s for s in sig_l if s.size], axis=0)
-                if any(s.size for s in sig_l) else np.zeros((0, n_cyc, n_ch))),
-        'slice': np.concatenate(slice_l) if slice_l else np.zeros(0, dtype=int),
-        'fov': np.concatenate(fov_l) if fov_l else np.zeros(0, dtype=int),
-        'cellid': np.concatenate(cellid_l) if cellid_l else np.zeros(0, dtype=np.int64),
-        'fov_names': tilename_list,
-    }
-    logging.info(f'bc-rolonies: {len(bc_out["seq"])} rolonies, {n_cyc} cycles. Writing {outfile}')
+        # index by tile, so remove global refs. 
+
+        tile_data = {
+            'pos40x_x': np.concatenate(pos40x_x) if pos40x_x else np.zeros(0),
+            'pos40x_y': np.concatenate(pos40x_y) if pos40x_y else np.zeros(0),
+            'pos_x': np.concatenate(pos10_x) if pos10_x else np.zeros(0),
+            'pos_y': np.concatenate(pos10_y) if pos10_y else np.zeros(0),
+            'seq': _vstack(seq_l, n_cyc).astype(np.int8),
+            'qual': _vstack(qual_l, n_cyc),
+            'int': _vstack(int_l, n_cyc),
+            'sig': (np.concatenate([s for s in sig_l if s.size], axis=0)
+                    if any(s.size for s in sig_l) else np.zeros((0, n_cyc, n_ch))),
+            'slice': np.concatenate(slice_l) if slice_l else np.zeros(0, dtype=int),
+            'fov': np.concatenate(fov_l) if fov_l else np.zeros(0, dtype=int),
+            'cellid': np.concatenate(cellid_l) if cellid_l else np.zeros(0, dtype=np.int64),
+            # 'fov_names': tilename_list,
+        }
+        logging.info(f'rolonies_bcseq:{tilename} -> {len(tile_data["seq"])} rolonies, {n_cyc} cycles. ')
+        bc_out[tilename] = tile_data
+    logging.info(f'Done. Writing {outfile}')
     joblib.dump(bc_out, outfile)
     logging.info('Done.')
 

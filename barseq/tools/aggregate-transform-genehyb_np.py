@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-# Aggregate and add cell_ids
-# used for hyb
+# Apply transforms
+# 
 # 
 import argparse
 import joblib
@@ -20,14 +20,14 @@ from natsort import natsorted as nsort
 from barseq.utils import *
 from barseq.imageutils import *
 
-def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
+def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #     cycleset map 
     #         arity=single
     #         so inputs will be (flat list of all files from first cycle)
-    #
-    #.    inputs: 'basecalls-geneseq.joblib'.  
-    #             'basecalls-hyb.joblib'
+    #.    inputs: 'basecalls.joblib'.  
     #             'all_segmentation.joblib'   
+    #             'genehyb.joblib'
+    #             'tforms_final.joblib'
     #
     #. There may be more inputs that required, so only select relevant ones...
     # E.g.
@@ -36,19 +36,20 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_original.joblib 
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_rescaled0p5.joblib 
     #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/geneseq/basecalls.joblib
-    #
-    # Output:  cell_id.joblib 
-
+    # 
+    # lroi10x.joblib is main flag output. 
 
     if cp is None:
         cp = get_default_config()
 
     if stage is None:
-        stage = 'aggregate-cellids'
+        stage = 'aggregate-transform'
 
     logging.info(f'infiles={infiles} outfiles={outfiles} stage={stage}')
 
-    # We know arity is single, so we can grab the outfile 
+    # We know arity is single, so we can grab the outfile
+    # primary outfile is lroi10x.joblib
+    #  
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
     if not os.path.exists(outdir):
@@ -65,32 +66,39 @@ def aggregate_cellids_py(infiles, outfiles, stage=None, cp=None):
     #
     # return order will be alphabetical
     #
-    input_map = { 'gene_rol' : 'basecalls-geneseq.joblib',
-                  'hyb_rol' :  'basecalls-hyb.joblib',
-                  'seg' : 'all_segmentation.joblib'
+    input_map = { 'gene_rol' : 'basecalls_geneseq.joblib',
+                  'hyb_rol'  : 'basecalls_hyb.joblib',
+                  'seg'      : 'all_segmentation.joblib',
+                  'tforms'   : 'tforms_final.joblib',
                   }
 
-    (gene_rol_file, hyb_rol_file, seg_file) = select_input_files(infiles, input_map)
+    (gene_rol_file, hyb_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
     gene_rol=joblib.load(gene_rol_file)
     seg=joblib.load(seg_file)
     hyb_rol=joblib.load(hyb_rol_file)
+    tform_final =joblib.load(tforms_file)
 
+    tilename_list = nsort( list(seg.keys() ))
     T={}
-    tilename_list = nsort( list(seg.keys()) )
-    for i, tilename in enumerate( tilename_list) :
+    for i, tilename in enumerate(tilename_list):
         logging.debug(f'handling {tilename}') 
         t={}
-        mask=seg[tilename]['dilated_labels']
-        coord_xg=gene_rol[tilename]['lroi_x']
-        coord_yg=gene_rol[tilename]['lroi_y']
-        coord_xh=hyb_rol[tilename]['lroi_x']
-        coord_yh=hyb_rol[tilename]['lroi_y']
-        t['cellid']= assign_rolony_to_cell(mask, coord_xg, coord_yg)
-        t['cellidhyb']= assign_rolony_to_cell(mask, coord_xh, coord_yh)
+        tform=tform_final[tilename]        
+        [x,y]=apply_transform(tform, gene_rol[tilename]['lroi_y'], gene_rol[tilename]['lroi_x'])
+        t['lroi10x_x']=x
+        t['lroi10x_y']=y
+        [x,y]=apply_transform(tform, hyb_rol[tilename]['lroi_y'],hyb_rol[tilename]['lroi_x']) 
+        t['lroi10xhyb_x']=x
+        t['lroi10xhyb_y']=y
+        [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
+        t['cellpos10x_x']=x
+        t['cellpos10x_y']=y
         T[tilename]=t
-    joblib.dump(T,os.path.join(outfile))
+    
+    logging.info(f'Writing output to {outfile}')
+    joblib.dump(T, outfile)
     logging.info(f'Done.')
-
+    
 
 
 if __name__ == '__main__':
@@ -159,9 +167,8 @@ if __name__ == '__main__':
           
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    aggregate_cellids_py( infiles=args.infiles, 
-                          outfiles=args.outfiles,
-                          stage=args.stage,  
-                          cp=cp )
-    
+    aggregate_transform_np( infiles=args.infiles, 
+                            outfiles=args.outfiles,
+                            stage=args.stage,  
+                            cp=cp )
     logging.info(f'done processing output to {args.outfiles[0]}')

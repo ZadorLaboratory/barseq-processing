@@ -66,16 +66,14 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #
     # return order will be alphabetical
     #
-    input_map = { 'gene_rol' : 'basecalls-geneseq.joblib',
-                  'hyb_rol' :  'basecalls-hyb.joblib',
-                  'seg' : 'all_segmentation.joblib',
-                  'tforms' : 'tforms_final.joblib',
+    input_map = { 'gene_rol' : 'basecalls_bcseq.joblib',
+                  'seg'      : 'all_segmentation.joblib',
+                  'tforms'   : 'tforms_final.joblib',
                   }
 
-    (gene_rol_file, hyb_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
+    (gene_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
     gene_rol=joblib.load(gene_rol_file)
     seg=joblib.load(seg_file)
-    hyb_rol=joblib.load(hyb_rol_file)
     tform_final =joblib.load(tforms_file)
 
     tilename_list = nsort( list(seg.keys() ))
@@ -87,9 +85,6 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
         [x,y]=apply_transform(tform, gene_rol[tilename]['lroi_y'], gene_rol[tilename]['lroi_x'])
         t['lroi10x_x']=x
         t['lroi10x_y']=y
-        [x,y]=apply_transform(tform, hyb_rol[tilename]['lroi_y'],hyb_rol[tilename]['lroi_x']) 
-        t['lroi10xhyb_x']=x
-        t['lroi10xhyb_y']=y
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
         t['cellpos10x_x']=x
         t['cellpos10x_y']=y
@@ -100,25 +95,6 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     logging.info(f'Done.')
     
 
-def apply_transform(tform, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. Transforms the local coordinates of rolonies and cells to global downsized coordinates per tile
-    """
-    if len(coord_x):
-        if not (isinstance(coord_x,list) or isinstance(coord_x,np.ndarray)):
-            coord_x=coord_x.to_list()
-            coord_y=coord_y.to_list()
-        q=np.zeros([len(coord_x),2])
-        q[:,0]=np.reshape(coord_x,(1,-1))
-        q[:,1]=np.reshape(coord_y,(1,-1))
-        v=tform(q)
-        x=v[:,0]
-        y=v[:,1]
-    else:
-        x=[]
-        y=[]
-    return x,y
 
 
 
