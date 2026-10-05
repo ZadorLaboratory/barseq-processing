@@ -161,48 +161,20 @@ def select_input_files( infiles, input_map):
                 out_map[fname] = cfile
     if len(out_list) != len(k_list):
         logging.error(f'Unable to match all required files:\n. k_list={k_list}\n. infiles={infiles}')
-        
         logging.error(f'out_map = \n {out_map}')
         sys.exit(2)
     else:
-        logging.debug(f'found {len(out_list)} matching files.')
+        logging.debug(f'found {len(out_list)} matching files:\n')
+        formatted_map = format_map(out_map)
+        logging.debug(f'output map: {formatted_map}')
     return tuple(out_list)
 
+def format_map(item_map):
+    s = ''
+    for k in sorted(item_map.keys()):
+        s += f'{k} : {item_map[k]}\n'
+    return s
 
-def make_tiledict_dataframe(tile_dict):
-    '''
-    take tile_dict (or multi-variate dict of dicts indexed by single key, 
-    with multiple sub-keys )
-    create flat dataframe from all 
-    
-    { 't1' : { 'col1' : <list1>, 
-               'col2' : <list2>},      ====>
-      't2' : { 'col1' : <list3>, 
-               'col2' : <list4>}             
-    }
-        
-         t   col1  col2  
-    -------------------
-    0    t1   l1a  l2a
-    1    t1   l1b  l2b 
-    2    t1   l1c  l2c 
-    3    t2   l3a  l4a
-    4    t2   l3b  l4b
-    5    t2   l3c  l4c
-  
-    '''
-    outdf_list = []
-    for tilename in list(tile_dict.keys()):
-        tdf = pd.DataFrame()
-        tile_data = tile_dict[tilename]
-        for col in list(tile_data.keys()):
-            cser = pd.Series(tile_data[col])
-            tdf[col] = cser
-        tdf['tile_name'] = tilename
-        outdf_list.append(tdf)
-    outdf = pd.concat( outdf_list, ignore_index=True)
-    outdf.reset_index(inplace=True, drop=True)
-    return outdf
 
 
 def load_df(filepath, as_array=False, dtype='float64'):

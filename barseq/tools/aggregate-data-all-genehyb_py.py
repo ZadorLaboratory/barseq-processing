@@ -93,8 +93,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     logging.debug(f'loaded input joblibs.')
 
     joblib.dump([codebook_hyb.to_numpy() ],os.path.join(outdir, 'hyb_codebook.joblib'))
-    joblib.dump( [ codebook_geneseq.to_numpy() ], os.path.join(outdir, 'codebook.joblib'))
-    #codebook_hyb = joblib.load(os.path.join(outdir, 'hyb_codebook.joblib'))  
+    joblib.dump( [ codebook_geneseq.to_numpy() ], os.path.join(outdir, 'codebook.joblib')) 
 
     d={}
     d=data_dict_organizer(d,'initialize',fov=[], gene_rol_id=[],
@@ -128,7 +127,6 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                               
                               hyb_rol_id = hyb_rol[tilename]['gene_id'],
 
-                              # possible mismatch? nested list in our hyb_rol vs. notebook?
                               fov_hyb = np.full(len( hyb_rol[tilename]['gene_id'] ),i),
                               
                               pos_10x_allx_hyb = coord[tilename]['lroi10xhyb_x'],
@@ -196,9 +194,9 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall') 
     
     border_size=np.round(fraction_border * tilesize)
-    pos_id=d['combined_gene_hyb_id']>0 # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
-    pos_inside_border_x=(d['combined_gene_hyb_pos40x_x'] > border_size-1) & (d['combined_gene_hyb_pos40x_x'] < tilesize-border_size+1)
-    pos_inside_border_y=(d['combined_gene_hyb_pos40x_y'] > border_size-1) & (d['combined_gene_hyb_pos40x_y'] < tilesize-border_size+1)
+    pos_id=d['combined_gene_hyb_id'] > 0    # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
+    pos_inside_border_x=(d['combined_gene_hyb_pos40x_x'] > border_size-1) & (d['combined_gene_hyb_pos40x_x'] < tilesize-border_size + 1)
+    pos_inside_border_y=(d['combined_gene_hyb_pos40x_y'] > border_size-1) & (d['combined_gene_hyb_pos40x_y'] < tilesize-border_size + 1)
     filter_id=pos_id & pos_inside_border_x & pos_inside_border_y
 
     filtered_d={}
@@ -268,6 +266,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     logging.info('ALL DATA IS ORGANIZED')
 
     logging.info(f'Writing out data subsets...')    
+
     # Output subsets...
     # create individual output data files. DFs. Pandas matrix.
     #
@@ -525,154 +524,6 @@ def merge_gene_hyb_dict(d, key1, key2, key3):
     ar=[d[key1], d[key2]]
     d[key3]= np.concatenate(ar)
     return d
-
-
-#########################
-# NOTEBOOK CODE
-#########################
-def organize_processed_data_notebook(pth,config_pth,is_optseq=0,hyb_codebook_name='codebookhyb.mat',starting_slice_idx=1,starting_fov_idx=1,dummy_cell_num=10000,tilesize=3200,
-                           fraction_border=0.07):
-    """
-    Postprocessing function:
-    Organizes all the data into rolonies and neurons--prepares a big dictionary
-    """
-    today=datetime.date.today().strftime('%d%m%Y')
-    gene_rol=load(os.path.join(pth,'processed','basecalls.joblib'))
-    seg=load(os.path.join(pth,'processed','all_segmentation.joblib'))
-    hyb_rol=load(os.path.join(pth,'processed','genehyb.joblib'))
-    Tf=load(os.path.join(pth,'processed','tforms_final.joblib'))
-    coord=load(os.path.join(pth,'processed','lroi10x.joblib'))
-    codebook=load(os.path.join(pth,'processed','codebook.joblib'))
-    cellid=load(os.path.join(pth,'processed','cell_id.joblib'))
-    hyb_codebook=scipy.io.loadmat(os.path.join(config_pth,hyb_codebook_name))['codebookhyb']
-    dump([hyb_codebook],os.path.join(pth,'processed','hyb_codebook.joblib'))
-    hyb_codebook=load(os.path.join(pth,'processed','hyb_codebook.joblib'))
-    [folders,pos,_,_]=get_folders(pth)
-    npos=nsort(np.unique(pos))
-    d={}
-    d=data_dict_organizer(d,'initialize',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
-                          cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
-                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
-                          fov_cell=[],sliceidall_cell=[])
-
-    for i,folder in enumerate(folders):
-        
-        pos_id=np.array([j for j,name in enumerate(npos) if name==pos[i]]) # search for slice/position number for this tile
-
-        d=data_dict_organizer(d,'append',
-                              fov=np.full(len(gene_rol['gene_id'][i]),i),
-                              gene_rol_id=np.array(gene_rol['gene_id'][i]),
-                              pos_10x_allx=coord[folders[i]]['lroi10x_x'],
-                              pos_10x_ally=coord[folders[i]]['lroi10x_y'],
-                              pos_40x_allx=np.array(gene_rol['lroi_x'][i]),
-                              pos_40x_ally=np.array(gene_rol['lroi_y'][i]),
-                              cellidall=np.array(cellid[folders[i]]['cellid'])+np.array(i*starting_fov_idx*dummy_cell_num),# if len(cellid[folders[i]]['cellid']) else np.array([0]),
-                              sliceidall=np.full(len(gene_rol['gene_id'][i]),pos_id+starting_slice_idx), # check this later,does it require -1 or not
-                              hyb_rol_id=hyb_rol['gene_id'][i][0],
-                              fov_hyb=np.full(len(hyb_rol['gene_id'][i][0]),i),
-                              pos_10x_allx_hyb=coord[folders[i]]['lroi10xhyb_x'],
-                              pos_10x_ally_hyb=coord[folders[i]]['lroi10xhyb_y'],
-                              pos_40x_allx_hyb=hyb_rol['lroi_x'][i][0],
-                              pos_40x_ally_hyb=hyb_rol['lroi_y'][i][0],
-                              cellidall_hyb=np.array(cellid[folders[i]]['cellidhyb'])+np.array(i*starting_fov_idx*dummy_cell_num),
-                              sliceidall_hyb=np.full(len(hyb_rol['gene_id'][i][0]),pos_id+starting_slice_idx),
-                              cell_list_all=np.array(seg[folders[i]]['cell_num'])+np.array(i*starting_fov_idx*dummy_cell_num),
-                              cell_pos_10x_allx=coord[folders[i]]['cellpos10x_x'],
-                              cell_pos_10x_ally=coord[folders[i]]['cellpos10x_y'],
-                              cell_pos_40x_allx=seg[folders[i]]['cent_x'],
-                              cell_pos_40x_ally=seg[folders[i]]['cent_y'],
-                              fov_cell=np.full(len(seg[folders[i]]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[folders[i]]['cell_num']),pos_id+starting_slice_idx))
-
-    d=data_dict_organizer(d,'concat',fov=[],gene_rol_id=[],pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],
-                          cellidall=[],sliceidall=[],hyb_rol_id=[],fov_hyb=[],pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
-                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],cell_pos_10x_allx=[],cell_pos_10x_ally=[],cell_pos_40x_allx=[],cell_pos_40x_ally=[],
-                          fov_cell=[],sliceidall_cell=[])
-    if is_optseq:
-        print('Has optseq')
-        codebook_optseq=load(os.path.join(pth,'processed','codebook_optseq.joblib'))
-        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0])+len(codebook_optseq[0])# -2 not needed this subtraction if passing index from above
-        codebook_comb=[codebook[0],codebook_optseq[0],hyb_codebook[0]]
-    else:
-        d['hyb_rol_id1']=d['hyb_rol_id']+len(codebook[0]) #-1 not needed this subtraction if passing index from above
-        codebook_comb=[codebook[0],hyb_codebook[0]]
-        
-    codebook_comb=np.concatenate(codebook_comb)
-    d=merge_gene_hyb_dict(d,'gene_rol_id','hyb_rol_id1','combined_gene_hyb_id')
-    d=merge_gene_hyb_dict(d,'fov','fov_hyb','combined_gene_hyb_fov')
-    d=merge_gene_hyb_dict(d,'pos_10x_allx','pos_10x_allx_hyb','combined_gene_hyb_pos10x_x')
-    d=merge_gene_hyb_dict(d,'pos_10x_ally','pos_10x_ally_hyb','combined_gene_hyb_pos10x_y')
-    d=merge_gene_hyb_dict(d,'pos_40x_allx','pos_40x_allx_hyb','combined_gene_hyb_pos40x_x')
-    d=merge_gene_hyb_dict(d,'pos_40x_ally','pos_40x_ally_hyb','combined_gene_hyb_pos40x_y')
-    d=merge_gene_hyb_dict(d,'cellidall','cellidall_hyb','combined_gene_hyb_cellidall')
-    d=merge_gene_hyb_dict(d,'sliceidall','sliceidall_hyb','combined_gene_hyb_sliceidall')
-
-    
-    border_size=np.round(fraction_border*tilesize)
-
-    pos_id=d['combined_gene_hyb_id']>0 # uncalled rolonies--how does this happen? what's bardensr's code for uncalled ones
-    pos_inside_border_x=(d['combined_gene_hyb_pos40x_x']>border_size-1) & (d['combined_gene_hyb_pos40x_x']<tilesize-border_size+1)
-    pos_inside_border_y=(d['combined_gene_hyb_pos40x_y']>border_size-1) & (d['combined_gene_hyb_pos40x_y']<tilesize-border_size+1)
-    filter_id=pos_id & pos_inside_border_x & pos_inside_border_y
-
-    filtered_d={}
-    filtered_d=data_dict_organizer(filtered_d,'initialize',combined_gene_hyb_id=[],combined_gene_hyb_fov=[],combined_gene_hyb_pos10x_x=[],combined_gene_hyb_pos10x_y=[],
-                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],combined_gene_hyb_cellidall=[],combined_gene_hyb_sliceidall=[])
-
-    filtered_d=data_dict_organizer(filtered_d,'append',
-                                   combined_gene_hyb_id=d['combined_gene_hyb_id'][filter_id],
-                                   combined_gene_hyb_fov=d['combined_gene_hyb_fov'][filter_id],
-                                   combined_gene_hyb_pos10x_x=d['combined_gene_hyb_pos10x_x'][filter_id],
-                                   combined_gene_hyb_pos10x_y=d['combined_gene_hyb_pos10x_y'][filter_id],
-                                   combined_gene_hyb_pos40x_x=d['combined_gene_hyb_pos40x_x'][filter_id],
-                                   combined_gene_hyb_pos40x_y=d['combined_gene_hyb_pos40x_y'][filter_id],
-                                   combined_gene_hyb_cellidall=d['combined_gene_hyb_cellidall'][filter_id],
-                                   combined_gene_hyb_sliceidall=d['combined_gene_hyb_sliceidall'][filter_id])
-    filtered_d=data_dict_organizer(filtered_d,'concat',combined_gene_hyb_id=[],combined_gene_hyb_fov=[],combined_gene_hyb_pos10x_x=[],combined_gene_hyb_pos10x_y=[],
-                                   combined_gene_hyb_pos40x_x=[],combined_gene_hyb_pos40x_y=[],combined_gene_hyb_cellidall=[],combined_gene_hyb_sliceidall=[])
-
-    
-    cells=d['cell_list_all'].copy() # check if copy messed something
-    genes = np.arange(0,len(codebook_comb))
-    # genes=np.unique(d['combined_gene_hyb_id'])
-    
-    rol_id=d['combined_gene_hyb_id'].copy()
-    rol_cell=d['combined_gene_hyb_cellidall'].copy()
-    v=pd.crosstab(rol_cell, rol_id, rownames=['cell_index'], colnames=['genes'],dropna=False)
-    v=v.reindex(index=cells, columns=genes, fill_value=0)
-    exp_m=coo_matrix(v.to_numpy())
-    processed_data={'all_data':d,
-                    'filtered_data':filtered_d,
-                    'expmat':exp_m,
-                    'cells':cells,
-                    'gene_id':genes,
-                    'codebook_combined':codebook_comb}
-    dump(processed_data,os.path.join(pth,'processed','processeddata.joblib'))
-
-
-    rolonies={'id':filtered_d['combined_gene_hyb_id'],
-              'pos10_x':filtered_d['combined_gene_hyb_pos10x_x'],
-              'pos10_y':filtered_d['combined_gene_hyb_pos10x_y'],
-              'pos40_x':filtered_d['combined_gene_hyb_pos40x_x'],
-              'pos40_y':filtered_d['combined_gene_hyb_pos40x_y'],
-              'slice':filtered_d['combined_gene_hyb_sliceidall'],
-              'genes':codebook_comb,
-              'fov':filtered_d['combined_gene_hyb_fov'],
-              'fov_names':folders}
-    neurons={'expmat':exp_m,
-             'id':d['cell_list_all'],
-             'pos10x_x':d['cell_pos_10x_allx'],
-             'pos10x_y':d['cell_pos_10x_ally'],
-             'pos40x_x':d['cell_pos_40x_allx'],
-             'pos40x_y':d['cell_pos_40x_ally'],
-             'slice':d['sliceidall_cell'],
-             'genes':codebook_comb,
-             'fov':d['fov_cell'],
-             'fov_names':folders}
-    dated_filename='alldata'+str(today)+'.joblib'
-    dump({"rolonies":rolonies,"neurons":neurons},os.path.join(pth,'processed',dated_filename))
-    print('ALL DATA IS ORGANIZED')
-    return dated_filename
 
 
 

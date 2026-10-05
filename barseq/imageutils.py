@@ -1,12 +1,14 @@
 #
-#  Initial library to abstract out image handling. 
+#  Library to abstract out image handling.
+#  Image comparison for result validation. 
+#  Channel labelling and lookup. 
+#  Utility functions for coordinate handling with nested/stitched FOVS. 
+#  Overlap calculation algorithm(s) 
 #  May allow substitution of file formats and tiff/imageio versions.
 #  Will only work if version compatibility with the various tool environments is tolerant. 
 #
-#
 #  Our standard is CHANNEL-FIRST   ( 5, 3200, 3200 )
 #  channel, row, column    CXY
-#
 #
 import logging
 import os
@@ -509,3 +511,39 @@ def make_pos_id_map( tilename_list, image_regex, position_group):
         p = pos_list[i]
         pos_id_map[tilename] = unique_pos.index(p)
     return pos_id_map
+
+
+def make_tiledict_dataframe(tile_dict):
+    '''
+    take tile_dict (or multi-variate dict of dicts indexed by single key, 
+    with multiple sub-keys )
+    create flat dataframe from all 
+    
+    { 't1' : { 'col1' : <list1>, 
+               'col2' : <list2>},      ====>
+      't2' : { 'col1' : <list3>, 
+               'col2' : <list4>}             
+    }
+        
+         t   col1  col2  
+    -------------------
+    0    t1   l1a  l2a
+    1    t1   l1b  l2b 
+    2    t1   l1c  l2c 
+    3    t2   l3a  l4a
+    4    t2   l3b  l4b
+    5    t2   l3c  l4c
+  
+    '''
+    outdf_list = []
+    for tilename in list(tile_dict.keys()):
+        tdf = pd.DataFrame()
+        tile_data = tile_dict[tilename]
+        for col in list(tile_data.keys()):
+            cser = pd.Series(tile_data[col])
+            tdf[col] = cser
+        tdf['tile_name'] = tilename
+        outdf_list.append(tdf)
+    outdf = pd.concat( outdf_list, ignore_index=True)
+    outdf.reset_index(inplace=True, drop=True)
+    return outdf

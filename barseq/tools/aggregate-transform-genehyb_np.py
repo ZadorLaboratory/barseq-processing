@@ -79,7 +79,7 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     tform_final =joblib.load(tforms_file)
 
     tilename_list = nsort( list(seg.keys() ))
-    T={}
+    tile_dict={}
     for i, tilename in enumerate(tilename_list):
         logging.debug(f'handling {tilename}') 
         t={}
@@ -93,10 +93,17 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
         t['cellpos10x_x']=x
         t['cellpos10x_y']=y
-        T[tilename]=t
+        tile_dict[tilename]=t
     
     logging.info(f'Writing output to {outfile}')
-    joblib.dump(T, outfile)
+    joblib.dump(tile_dict, outfile)
+
+    outdf = make_tiledict_dataframe(tile_dict)
+    dir, base, label, ext = split_path(outfile)
+    outfile = os.path.join(dir, f'{base}.tsv')
+    logging.info(f'Writing data to TSV: {outfile} ')
+    outdf.to_csv(outfile, sep='\t')
+
     logging.info(f'Done.')
     
 
