@@ -100,15 +100,37 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     joblib.dump( [ codebook_geneseq.to_numpy() ], os.path.join(outdir, 'codebook.joblib')) 
 
     d={}
-    d=data_dict_organizer(d,'initialize',fov=[], gene_rol_id=[],
-                          pos_10x_allx=[],pos_10x_ally=[],pos_40x_allx=[],pos_40x_ally=[],cellidall=[],sliceidall=[],
-                          hyb_rol_id=[],fov_hyb=[],
-                          pos_10x_allx_hyb=[],pos_10x_ally_hyb=[],
-                          pos_40x_allx_hyb=[],pos_40x_ally_hyb=[],
-                          pos_40x_allx_bcseq=[],pos_40x_ally_bcseq=[],
-                          cellidall_hyb=[],sliceidall_hyb=[],cell_list_all=[],
-                          cell_pos_10x_allx=[],cell_pos_10x_ally=[], cell_pos_40x_allx=[], cell_pos_40x_ally=[],
-                          fov_cell=[], sliceidall_cell=[])
+    d=data_dict_organizer(d,'initialize',
+                          fov=[], 
+                          gene_rol_id=[],
+                          pos_10x_allx=[],
+                          pos_10x_ally=[],
+                          pos_40x_allx=[],
+                          pos_40x_ally=[],
+                          cellidall=[],
+                          sliceidall=[],
+                          hyb_rol_id=[],
+                          fov_hyb=[],
+                          pos_10x_allx_hyb=[],
+                          pos_10x_ally_hyb=[],
+                          pos_40x_allx_hyb=[],
+                          pos_40x_ally_hyb=[],
+                          cellidall_hyb=[],
+                          sliceidall_hyb=[],
+                          cell_list_all=[],
+                          cell_pos_10x_allx=[],
+                          cell_pos_10x_ally=[], 
+                          cell_pos_40x_allx=[],
+                          cell_pos_40x_ally=[],
+                          fov_cell=[],
+                          sliceidall_cell=[],
+                          pos_40x_allx_bcseq=[],
+                          pos_40x_ally_bcseq=[],
+                          seq_bcseq=[],
+                          score_bcseq=[],
+                          sig_bcseq=[],
+                          int_bcseq=[],
+                          )
 
     tilename_list = nsort( list(seg.keys()) )
     pos_id_map = make_pos_id_map( tilename_list, image_regex, position_group)
@@ -124,8 +146,6 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                               pos_10x_ally = coord[tilename]['lroi10x_y'],
                               pos_40x_allx = np.array(gene_rol[tilename]['lroi_x']),
                               pos_40x_ally = np.array(gene_rol[tilename]['lroi_y']),
-                              pos_40x_allx_bcseq = np.array(bcseq_rol[tilename]['lroi_x']),
-                              pos_40x_ally_bcseq = np.array(bcseq_rol[tilename]['lroi_y']),
 
                               # if len(cellid[tilename]['cellid']) else np.array([0]),
                               cellidall = np.array( cell_id[tilename]['cellid'] ) + np.array(i * starting_fov_idx * dummy_cell_num), 
@@ -153,7 +173,15 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                               cell_pos_40x_ally=seg[tilename]['cent_y'],
                               
                               fov_cell=np.full(len(seg[tilename]['cell_num']),i),
-                              sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx))
+                              sliceidall_cell=np.full(len(seg[tilename]['cell_num']), pos_id + starting_slice_idx),
+
+                              pos_40x_allx_bcseq = np.array(bcseq_rol[tilename]['lroi_x']),
+                              pos_40x_ally_bcseq = np.array(bcseq_rol[tilename]['lroi_y']),
+                              seq_bcseq = np.array(bcseq_rol[tilename]['seq']),
+                              score_bcseq = np.array(bcseq_rol[tilename]['score']),
+                              sig_bcseq = np.array(bcseq_rol[tilename]['sig']),
+                              int_bcseq = np.array(bcseq_rol[tilename]['int']),
+                            )
 
 
 
@@ -163,9 +191,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     d=data_dict_organizer(d,'concat', pos_10x_allx=[])
     d=data_dict_organizer(d,'concat', pos_10x_ally=[])
     d=data_dict_organizer(d,'concat', pos_40x_allx=[])
-    d=data_dict_organizer(d,'concat', pos_40x_ally=[])
-    d=data_dict_organizer(d,'concat', pos_40x_allx_bcseq=[])
-    d=data_dict_organizer(d,'concat', pos_40x_ally_bcseq=[])       
+    d=data_dict_organizer(d,'concat', pos_40x_ally=[])      
     d=data_dict_organizer(d,'concat', cellidall=[])
     d=data_dict_organizer(d,'concat', sliceidall=[])
     d=data_dict_organizer(d,'concat', hyb_rol_id=[])
@@ -183,6 +209,12 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
     d=data_dict_organizer(d,'concat', cell_pos_40x_ally=[])
     d=data_dict_organizer(d,'concat', fov_cell=[])
     d=data_dict_organizer(d,'concat', sliceidall_cell=[])
+    d=data_dict_organizer(d,'concat', pos_40x_allx_bcseq=[])
+    d=data_dict_organizer(d,'concat', pos_40x_ally_bcseq=[])
+    d=data_dict_organizer(d,'concat', seq_bcseq=[])
+    d=data_dict_organizer(d,'concat', score_bcseq=[])
+    d=data_dict_organizer(d,'concat', sig_bcseq=[])
+    d=data_dict_organizer(d,'concat', int_bcseq=[])
 
     # Original codebook structure:
     #  codebook_geneseq   
@@ -249,9 +281,7 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
                     'gene_id': genes,
                     'codebook_combined': codebook_combined
                     }
-    logging.info(f'Writing output to {outfile}')
-    joblib.dump(processed_data, outfile)
-
+   
     rolonies={'id':filtered_d['combined_gene_hyb_id'],
               'pos10_x':filtered_d['combined_gene_hyb_pos10x_x'],
               'pos10_y':filtered_d['combined_gene_hyb_pos10x_y'],
@@ -274,11 +304,15 @@ def aggregate_data_py(infiles, outfiles, stage=None, cp=None):
              'fov_names':tilename_list}
 
     alldata = {"rolonies":rolonies, "neurons":neurons} 
-    joblib.dump( alldata, os.path.join(outdir, 'alldata.joblib'))
+    logging.info(f'Writing alldata to {outfile}')
+    joblib.dump( alldata, outfile)
     logging.info('ALL DATA IS ORGANIZED')
 
-    logging.info(f'Writing out data subsets...')    
+    outfile = os.path.join(outdir, 'processeddata.joblib' )
+    logging.info(f'Writing processed_data to {outfile}')
+    joblib.dump(processed_data, outfile)
 
+    logging.info(f'Writing out data subsets...')    
     # Output subsets...
     # create individual output data files. DFs. Pandas matrix.
     #
