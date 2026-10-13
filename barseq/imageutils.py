@@ -399,8 +399,8 @@ def bd_read_image_single(infile, R, C, trim=None, cropf=None ):
 def apply_transform(tform, coord_x, coord_y):
     '''
     Transform local (40x) coordinates to global downsized (10x) coordinates per
-    tile, matching MATLAB transformPointsForward(tform, [x y]). tform is a
-    skimage transform callable accepting an (N,2) array of (x,y) points.
+    tile, matching MATLAB transformPointsForward(tform, [x y]). 
+    tform is an skimage transform callable accepting an (N,2) array of (x,y) points.
     Returns (x, y) arrays; empty lists if there are no input coordinates.
     '''
     if len(coord_x):
@@ -417,28 +417,6 @@ def apply_transform(tform, coord_x, coord_y):
         x = []
         y = []
     return x, y
-
-
-def apply_transform_dupe(tform, coord_x, coord_y):
-    """
-    Global transformation function:
-    1. Transforms the local coordinates of rolonies and cells to global downsized coordinates per tile
-    """
-    if len(coord_x):
-        if not (isinstance(coord_x,list) or isinstance(coord_x,np.ndarray)):
-            coord_x=coord_x.to_list()
-            coord_y=coord_y.to_list()
-        q=np.zeros([len(coord_x),2])
-        q[:,0]=np.reshape(coord_x,(1,-1))
-        q[:,1]=np.reshape(coord_y,(1,-1))
-        v=tform(q)
-        x=v[:,0]
-        y=v[:,1]
-    else:
-        x=[]
-        y=[]
-    return x,y
-
 
 
 def get_cellid(mask, coord_x, coord_y):
@@ -461,7 +439,8 @@ def get_cellid(mask, coord_x, coord_y):
 def assign_rolony_to_cell(mask, coord_x, coord_y):
     """
     Global transformation function:
-    1. Calls get_cellid function if there are rolonies detected in this tile or else assigns empty cell id to this tile
+    1. Calls get_cellid function if there are rolonies detected in this tile or else assigns 
+    empty cell id to this tile
     """
     #logging.debug(f'handling coord_x = {coord_x}, coord_y={coord_y}')
     if len(coord_x):
