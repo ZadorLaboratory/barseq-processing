@@ -38,7 +38,7 @@ def merge_segment_ski( infiles, outfiles, stage=None, cp=None ):
         logging.debug(f'made outdir={outdir}')
        
     # get params
-    dilation_radius = cp.getint(stage,'dilation_radius')
+    dilation_radius = cp.getint(stage, 'dilation_radius')
 
     all_segmentation_dict={}
     for infile in infiles:

@@ -2,7 +2,6 @@
 #
 # Apply transforms
 # 
-# 
 import argparse
 import joblib
 import logging
@@ -66,13 +65,11 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #
     # return order will be alphabetical
     #
-    input_map = { 'gene_rol' : 'basecalls_bcseq.joblib',
-                  'seg'      : 'all_segmentation.joblib',
+    input_map = { 'seg'      : 'all_segmentation.joblib',
                   'tforms'   : 'tforms_final.joblib',
                   }
 
-    (gene_rol_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
-    gene_rol=joblib.load(gene_rol_file)
+    (seg_file, tforms_file) = select_input_files(infiles, input_map)
     seg=joblib.load(seg_file)
     tform_final =joblib.load(tforms_file)
 
@@ -82,9 +79,6 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
         logging.debug(f'handling {tilename}') 
         t={}
         tform=tform_final[tilename]        
-        [x,y]=apply_transform(tform, gene_rol[tilename]['lroi_y'], gene_rol[tilename]['lroi_x'])
-        t['lroi10x_x']=x
-        t['lroi10x_y']=y
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
         t['cellpos10x_x']=x
         t['cellpos10x_y']=y
@@ -98,8 +92,10 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     outfile = os.path.join(dir, f'{base}.tsv')
     logging.info(f'Writing data to TSV: {outfile} ')
     outdf.to_csv(outfile, sep='\t')
+
     logging.info(f'Done.')
     
+
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

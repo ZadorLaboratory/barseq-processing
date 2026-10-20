@@ -15,7 +15,7 @@
 #   {'lroi_x'(rows), 'lroi_y'(cols), 'seq'(N,Ncyc 1-4), 'score'(N,Ncyc),
 #    'sig'(N,Ncyc,4), 'int'(N,Ncyc)}
 # lroi_x/lroi_y use the same (row, col) convention as the geneseq/hyb basecalls so
-# the shared aggregate helpers (get_cellid / apply_transform) apply unchanged.
+# the shared aggregate helpers apply unchanged.
 #
 import argparse
 import logging
@@ -193,8 +193,6 @@ def basecall_bcseq_ski(infiles, outfiles, stage=None, cp=None):
     logging.info(f'writing basecall-bcseq TSV: {outfile}')
     df.to_csv(outfile, sep='\t')
     logging.info(f'Done.')
-
-
 
 
     logging.info('Done.')

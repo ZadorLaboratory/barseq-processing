@@ -464,7 +464,7 @@ def make_pos_id_map_XXX(tilename_list, image_regex, position_group):
     unique_pos = list(dict.fromkeys(pos_list))
     return {t: unique_pos.index(pos_list[i]) for i, t in enumerate(tilename_list)}
 
-def make_pos_id_map( tilename_list, image_regex, position_group):
+def make_pos_idx_map( tilename_list, image_regex, position_group):
     '''
     make map (dict) from tilename to position INDEX (starting at 0)
     e.g.
@@ -490,6 +490,19 @@ def make_pos_id_map( tilename_list, image_regex, position_group):
         p = pos_list[i]
         pos_id_map[tilename] = unique_pos.index(p)
     return pos_id_map
+
+
+def make_dict_dataframe(data_dict):
+    '''
+  
+    '''
+    outdf = pd.DataFrame()
+    for col in list(data_dict.keys()):
+        cser = pd.Series(data_dict[col])
+        outdf[col] = cser
+    outdf.reset_index(inplace=True, drop=True)
+    return outdf
+
 
 
 def make_tiledict_dataframe(tile_dict):

@@ -43,8 +43,15 @@ def merge_basecall_hyb_pd( infiles, outfiles, stage=None, cp=None ):
         gho = joblib.load(infile)
         tile_dict[base] = gho
 
-    logging.debug(f'Merged {len(infiles)} genehyb. ')
+    logging.debug(f'Merged {len(infiles)} hyb to {outfile} ')
     joblib.dump(tile_dict, outfile)
+
+    outdf = make_tiledict_dataframe(tile_dict)
+    dir, base, label, ext = split_path(outfile)
+    outfile = os.path.join(dir, f'{base}.tsv')
+    logging.info(f'Writing merged data to TSV: {outfile} ')
+    outdf.to_csv(outfile, sep='\t')
+
     logging.info(f'Done.')
 
 if __name__ == '__main__':

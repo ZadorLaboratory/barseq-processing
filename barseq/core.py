@@ -403,6 +403,7 @@ class BarseqExperiment():
                 for rpath in infile_list:
                     input_list.append(rpath)
                 mode = instage_mode[0]
+                #mode = mode[0]
                 if len(infile_list) > 0:
                     (subdir, base, current_label, current_ext) = parse_rpath( infile_list[0])
                     if (ext is not None) or (label is not None):

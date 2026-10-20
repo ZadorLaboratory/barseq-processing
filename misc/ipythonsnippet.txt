@@ -6,10 +6,6 @@ import sys
 import datetime as dt
 
 from configparser import ConfigParser
-
-gitpath=os.path.expanduser("~/git/barseq-processing")
-sys.path.append(gitpath)
-
 from natsort import natsorted as nsort
 
 from barseq.core import *
@@ -35,12 +31,13 @@ cfile = ''
 #
 # pipeline map
 #
-cell_id_file     = 'merge/hyb/cell_id.joblib'
-coord_file      = 'merge/hyb/lroi10x.joblib'
-gene_rol_file   = 'merge/geneseq/basecalls.joblib'
-hyb_rol_file    = 'merge/hyb/genehyb.joblib'
-seg_file        = 'merge/hyb/all_segmentation.joblib'
-tforms_file     = 'merge/hyb/tforms_final.joblib'
+outdir = 'HTNA24.01.out'
+basecalls_geneseq_file  = f'{outdir}/merge/geneseq/basecalls_geneseq.joblib'
+basecalls_hyb_file      = f'{outdir}/merge/hyb/basecalls_hyb.joblib'
+coord_genehyb_file      = f'{outdir}/merge/hyb/lroi10x_genehyb.joblib'
+rolonies_genehyb_file   = f'{outdir}/merge/hyb/rolonies_genehyb.joblib'
+seg_file                = f'{outdir}/merge/hyb/all_segmentation.joblib'
+tforms_file             = f'{outdir}/merge/hyb/tforms_final.joblib'
 
 resource_dir = os.path.expanduser('~/git/barseq-processing/resource')
 codebook_hyb_file = os.path.join(resource_dir, 'codebook_hyb.tsv')

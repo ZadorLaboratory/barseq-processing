@@ -92,7 +92,6 @@ def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
     
     # Make global_tform_rescaled for each tile. 
     # Use original + rescaled data structure. 
-    
     Tfinal = {}
 
     for pos_id in nsort( list( Texp.keys() ) ):
@@ -103,13 +102,13 @@ def merge_stitch_ashlar_pd( infiles, outfiles, stage=None, cp=None ):
                                                     translation= [Texp[pos_id][tilename]["ref_pos"][0], 
                                                                   Texp[pos_id][tilename]["ref_pos"][1]]
                                                     ) 
-            outfile = os.path.join( outdir, f'{base}.global_tform_{trf_string}.joblib' )
-            logging.info(f'Writing global_tform to {outfile}')    
-            joblib.dump(tform, outfile )
+            #outfile = os.path.join( outdir, f'{base}.global_tform_{trf_string}.joblib' )
+            #logging.info(f'Writing global_tform to {outfile}')    
+            #joblib.dump(tform, outfile )
             Tfinal[tilename] = tform
     
-        outfile = os.path.join( outdir, f'{base}.global_tform_{trf_string}.joblib' )
-        logging.info(f'Writing global_tform to {outfile}')
+        #outfile = os.path.join( outdir, f'{base}.global_tform_{trf_string}.joblib' )
+        #logging.info(f'Writing global_tform to {outfile}')
         # Switch to marking by position eventually.    
         # joblib.dump(Tfinal, os.path.join(outdir, f'{pos_id}.tforms_final.joblib'))
         joblib.dump(Tfinal, os.path.join(outdir, f'tforms_final.joblib'))

@@ -1,0 +1,5 @@
+
+conda create -n blast
+conda activate blast
+conda install -c bioconda blast
+conda install -c conda-forge ncbi-datasets-cli
