@@ -3,12 +3,12 @@
 # Assign each rolony to a cell, 
 #
 # Inputs (gathered via merge-dummy): 
-#   basecalls-geneseq.joblib (merge/bcseq),
+#   basecalls-geneseq.joblib (merge/geneseq),
 #   all_segmentation.joblib (dilated_labels) 
 #
 # Simplified output, moving toward Python datatypes. 
 #
-# Output: cellid_bcseq.joblib (merge/bcseq).
+# Output: cellid_geneseq.joblib (merge/bcseq).
 #
 import argparse
 import joblib
@@ -41,6 +41,10 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
     starting_slice_idx = cp.getint(stage, 'starting_slice_idx')
     image_regex = cp.get('barseq', 'file_regex')
     position_group = cp.getint('barseq', 'position_group')
+    
+    resource_dir = os.path.abspath(os.path.expanduser( cp.get('experiment','resource_dir')))
+    codebook_file = cp.get('geneseq','codebook_file')
+    codebook = pd.read_csv(os.path.join(resource_dir, codebook_file), sep='\t', index_col=0) 
 
     input_map = {'basecalls': 'basecalls_geneseq.joblib',
                  'segmentation': 'all_segmentation.joblib',
@@ -55,6 +59,7 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
     pos40x_x = [] 
     pos40x_y = []
     gene_id_list = []
+    gene_list = []
     cell_id_list = []
     slice_id_list = []
    
@@ -66,6 +71,10 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
         rows = np.asarray(tile_basecalls['lroi_x'])      # axis-0 (row, y)
         cols = np.asarray(tile_basecalls['lroi_y'])      # axis-1 (col, x)
         gene_id = np.asarray(tile_basecalls['gene_id'])
+        for gid in tile_basecalls['gene_id']:
+            gene = codebook['gene'][gid]
+            gene_list.append(gene)        
+
         mask = seg[tilename]['dilated_labels']
         pos_idx = pos_idx_map[tilename]
 
@@ -87,6 +96,7 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
         'pos40x_x': np.concatenate(pos40x_x) if pos40x_x else np.zeros(0),
         'pos40x_y': np.concatenate(pos40x_y) if pos40x_y else np.zeros(0),
         'gene_id': np.concatenate(gene_id_list) if gene_id_list else np.zeros(0),
+        'gene'   : gene_list,
         'slice_id': np.concatenate(slice_id_list) if slice_id_list else np.zeros(0, dtype=int),
         'cell_id': np.concatenate(cell_id_list) if cell_id_list else np.zeros(0, dtype=np.int64),
     }

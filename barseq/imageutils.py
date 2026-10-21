@@ -50,6 +50,23 @@ def channel_names_index_map(select_channels, image_channels):
             raise
     return idx_list
 
+def channel_names_id_reverse_map(channel_list):
+    '''
+        Given channel list make map to id (starting from 1)
+        [G,T,A,C]
+        ->
+        { 1 : 'G',
+          2 : 'T',
+          3 : 'A',
+          4 : 'C',
+          }
+    '''
+    reverse_map = {}
+    for i, x in enumerate(channel_list):
+        reverse_map[i + 1] = x
+    return reverse_map        
+
+
 
 def read_image(infile, channels=None):
     '''
