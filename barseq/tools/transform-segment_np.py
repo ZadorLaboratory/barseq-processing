@@ -58,6 +58,14 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     # Get parameters
     logging.info(f'handling stage={stage} to outdir={outdir}')
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
+    starting_fov_idx = cp.getint(stage, 'starting_fov_idx')
+    dummy_cell_num = cp.getint(stage, 'dummy_cell_num')
+    starting_slice_idx = cp.getint(stage, 'starting_slice_idx')
+
+    image_regex = cp.get('barseq', 'file_regex')
+    position_group = cp.getint('barseq', 'position_group')
+
+
 
     # We have heterogenous input files, so we need to confirm all are present, and 
     # figure out which is which. 
@@ -72,18 +80,33 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     (seg_file, tforms_file) = select_input_files(infiles, input_map)
     seg=joblib.load(seg_file)
     tform_final =joblib.load(tforms_file)
-
     tilename_list = nsort( list(seg.keys() ))
+    pos_idx_map = make_pos_idx_map(tilename_list, image_regex, position_group)
+    
     tile_dict={}
     for i, tilename in enumerate(tilename_list):
         logging.debug(f'handling {tilename}') 
         t={}
         tform=tform_final[tilename]        
+
         [x,y]=apply_transform(tform, seg[tilename]['cent_y'],seg[tilename]['cent_x']) 
         t['cellpos10x_x']=x
         t['cellpos10x_y']=y
+
+        n = len(seg[tilename]['cent_x'])
+        pos_idx = pos_idx_map[tilename]
+
+        cell_id_local = seg[tilename]['cell_num']
+        t['cell_id_local'] = cell_id_local
+
+        # assign global cellid: cell label at rolony pixel; 
+        # global id = local + i * offset
+        # cellid_local = np.asarray(get_cellid(mask, rows, cols), dtype=np.int64)
+        cell_id_global = cell_id_local + i * starting_fov_idx * dummy_cell_num
+        t['cell_id'] = cell_id_global
+        t['slice_id'] = np.full(n, pos_idx + starting_slice_idx)
         tile_dict[tilename]=t
-    
+
     logging.info(f'Writing output to {outfile}')
     joblib.dump(tile_dict, outfile)
 

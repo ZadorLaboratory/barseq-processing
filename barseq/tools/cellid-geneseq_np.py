@@ -83,7 +83,7 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
         # assign cellid: cell label at rolony pixel; 
         # global id = local + i * offset
         cellid_local = np.asarray(get_cellid(mask, rows, cols), dtype=np.int64)
-        cellid_global = cellid_local + i * starting_fov_idx * dummy_cell_num
+        cellid_global = cellid_local + ( i * starting_fov_idx * dummy_cell_num )
 
         pos40x_x.append(cols)
         pos40x_y.append(rows)
