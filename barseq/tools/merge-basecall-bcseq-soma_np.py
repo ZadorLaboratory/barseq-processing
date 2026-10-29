@@ -57,7 +57,7 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
     ids, seq, sig, score, seq_hd, sig_hd, score_hd = [], [], [], [], [], [], []
     for i, tilename in enumerate(tilename_list):
         data = tile_data[tilename]
-        local = np.asarray(data['cellid'], dtype=np.int64)
+        local = np.asarray(data['cell_id'], dtype=np.int64)
         if len(local) == 0:
             continue
         ids.append(local + i * starting_fov_idx * dummy_cell_num)
@@ -69,7 +69,7 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
         score_hd.append(data['score_hd'])
 
     out = {
-        'id': _concat(ids),
+        'cell_id': _concat(ids),
         'seq': _concat(seq),
         'sig': _concat(sig),
         'score': _concat(score),
@@ -78,14 +78,14 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
         'score_hd': _concat(score_hd),
         'fov_names': tilename_list,
     }
-    n = 0 if out['id'] is None else len(out['id'])
+    n = 0 if out['cell_id'] is None else len(out['cell_id'])
     logging.info(f'merged soma-bc: {n} cells across {len(tilename_list)} tiles. writing {outfile}')
     joblib.dump(out, outfile)
 
     # Make human-readable TSV.
     # Translate bases.
     # 
-    keep_columns = ['id', 'seq', 'seq_hd' ]  
+    keep_columns = ['cell_id', 'seq', 'seq_hd' ]  
     dir, base, label, ext = split_path(outfile)
     outfile = os.path.join(dir, f'{base}.tsv')   
 

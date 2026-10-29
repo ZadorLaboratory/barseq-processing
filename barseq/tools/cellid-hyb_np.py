@@ -43,7 +43,7 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
     position_group = cp.getint('barseq', 'position_group')
 
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('experiment','resource_dir')))
-    codebook_file = cp.get('hyb ','codebook_file')
+    codebook_file = cp.get('hyb','codebook_file')
     codebook = pd.read_csv(os.path.join(resource_dir, codebook_file), sep='\t', index_col=0)
 
     input_map = {'basecalls': 'basecalls_hyb.joblib',

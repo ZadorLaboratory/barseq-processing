@@ -28,12 +28,11 @@ import scipy.ndimage as ndi
 from barseq.utils import *
 from barseq.imageutils import *
 
-
 def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=None):
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'basecall-soma-bcseq'
+        stage = 'basecall-bcseq-soma'
 
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
@@ -125,15 +124,15 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     seq_hd_data = seq2.astype(np.int8)
     score_hd_data = score2
 
-    out = {base: {
-        'cellid': cellid_data,     # LOCAL labels; merge applies fov offset
+    out = { 
+        'cell_id': cellid_data,     # LOCAL labels; merge applies fov offset
         'seq': seq_data,
         'sig': sig1,
         'score': score1,
         'seq_hd': seq_hd_data,
         'sig_hd': sig2,
         'score_hd': score_hd_data,
-    }}
+    }
     logging.info(f'{base}: {n_cells} cells soma-basecalled. writing {outfile}')
     joblib.dump(out, outfile)
 

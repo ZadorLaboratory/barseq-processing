@@ -1,0 +1,20 @@
+{
+	"dataset_id": "test_dataset_YW080",
+	"batch_num": 1,
+	"startingsliceidx": 1,
+	"use_predefined_thresh": 0,
+	"scope_name": "alder",
+	
+	"codebook_name": "codebookM1all.mat",
+	"codebookhyb_name": "codebookhyb.mat",
+	
+	"hybthresh": [[50,10,40,10]],
+	"hybbgn": [[50, 60, 40, 30]],
+	"hyb_reg_ch": 3,
+	
+	"is_barcoded": 1,
+	"rolthresh": [[30, 30, 30, 30]],
+	"count_thresh": 3,
+	"err_corr_thresh": 2
+	
+}
