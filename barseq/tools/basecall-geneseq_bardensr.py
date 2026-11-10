@@ -109,14 +109,24 @@ def basecall_bardensr( infiles, outfiles, stage=None, cp=None):
     spots.loc[:,'m1'] = spots.loc[:,'m1'] + trim
     spots.loc[:,'m2'] = spots.loc[:,'m2'] + trim
 
+    # Output standard normalized joblib
+    lroi_x = list(spots.m2)
+    lroi_y = list(spots.m1)
+    gene_id = list(spots.j)
+    tile_data = {"lroi_x": lroi_y, "lroi_y":lroi_x, "gene_id":gene_id}    
+    joblib.dump(tile_data, outfile)
+
+    # Output older bardensrresults.csv 
     (odirpath, obase, olabel, oext) = split_path(outfile)
-    logging.info(f'In {obase} found {len(spots)} spots.')            
+    logging.info(f'In {obase} found {len(spots)} spots.')
+    outfile = os.path.join( odirpath, f'{obase}.bardensrresults.csv') 
     spots.to_csv(outfile, index=False)   
     logging.debug(f'wrote spots to outfile={outfile}')
 
+    # Output codeflat
     of = os.path.join(odirpath, f'{obase}.codeflat.joblib')
     joblib.dump(codeflat, of)
- 
+
 
 if __name__ == '__main__':
     FORMAT='%(asctime)s (UTC) [ %(levelname)s ] %(filename)s:%(lineno)d %(name)s.%(funcName)s(): %(message)s'

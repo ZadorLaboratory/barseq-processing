@@ -49,9 +49,10 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
     # gather all per-FOV tile dicts -> tilename: data
     tile_data = {}
     for infile in infiles:
+        logging.debug(f'loading {infile}')
+        dir, base, label, ext = split_path(outfile)
         d = joblib.load(infile)
-        for tilebase, data in d.items():
-            tile_data[tilebase] = data
+        tile_data[base] = d
 
     tilename_list = nsort(list(tile_data.keys()))
     ids, seq, sig, score, seq_hd, sig_hd, score_hd = [], [], [], [], [], [], []

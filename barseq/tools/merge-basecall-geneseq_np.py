@@ -35,22 +35,23 @@ def merge_basecall_geneseq_pd( infiles, outfiles, stage=None, cp=None ):
     if not os.path.exists(outdir):
         os.makedirs(outdir, exist_ok=True)
         logging.debug(f'made outdir={outdir}')
-       
-    # get params
-    
-    #
+          
     tile_dict = {}
     for infile in infiles:
         (subdir, base, current_label, current_ext) = parse_rpath(infile)
         logging.info(f'handling {infile} base={base}') 
-        df=pd.read_csv(infile, header=0)
-        lroi_x = list(df.m2)
-        lroi_y = list(df.m1)
-        gene_id = list(df.j)
-        tile_data = {"lroi_x": lroi_y, "lroi_y":lroi_x, "gene_id":gene_id}
+        basecalls = joblib.load(infile)
+        # df=pd.read_csv(infile, header=0)
+        #lroi_x = list(df.m2)
+        #lroi_y = list(df.m1)
+        #gene_id = list(df.j)
+        lroi_x = basecalls['lroi_x']
+        lroi_y = basecalls['lroi_y']
+        gene_id = basecalls['gene_id']
+        tile_data = {"lroi_x": lroi_y, "lroi_y":lroi_x, "gene_id": gene_id}
         tile_dict[base] = tile_data
 
-    logging.debug(f'Merged {len(infiles)} bardensrresults. Lengths: lroi_x={len(lroi_x)} lroi_y={len(lroi_y)} gene_id={len(gene_id)}')
+    logging.debug(f'Merged {len(infiles)} bardensrresults.')
     logging.info(f'Writing merged data to joblib: {outfile} ')
     joblib.dump(tile_dict, outfile)
 

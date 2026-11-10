@@ -61,7 +61,7 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     H, W = maski.shape
 
     if n_cells == 0:
-        out = {base: {'cellid': np.zeros(0, dtype=np.int64),
+        out = {base: {'local_cell_id': np.zeros(0, dtype=np.int64),
                       'seq': np.zeros((0, n_cyc), dtype=np.int8),
                       'sig': np.zeros((0, num_c, n_cyc)),
                       'score': np.zeros((0, n_cyc)),
@@ -125,7 +125,7 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     score_hd_data = score2
 
     out = { 
-        'cell_id': cellid_data,     # LOCAL labels; merge applies fov offset
+        'local_cell_id': cellid_data,     # LOCAL labels; merge applies fov offset
         'seq': seq_data,
         'sig': sig1,
         'score': score1,
@@ -139,10 +139,10 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
 
     # Make human-readable TSV. 
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.tsv')   
+    outfile = os.path.join(dir, f'{base}.{label}.tsv')   
 
     df = pd.DataFrame()
-    df['cellid'] = list(cellid_data)
+    df['local_cell_id'] = list(cellid_data)
 
     seq_bases = []
     for ar in seq_data:

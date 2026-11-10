@@ -47,7 +47,7 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
     codebook = pd.read_csv(os.path.join(resource_dir, codebook_file), sep='\t', index_col=0) 
 
     input_map = {'basecalls': 'basecalls_geneseq.joblib',
-                 'segmentation': 'all_segmentation.joblib',
+                 'segmentation': 'segmentation.joblib',
                 }
                  
     (basecalls_file, seg_file) = select_input_files(infiles, input_map)

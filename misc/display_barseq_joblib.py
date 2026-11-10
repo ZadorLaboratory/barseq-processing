@@ -30,16 +30,16 @@ def handle_child(obj, level=0):
                 if type(o) == numpy.ndarray:
                     print(f'{IND*level}{k} -> ndarray: shape={o.shape}')
                 elif type(o) == pandas.core.series.Series:
-                    print(f'{IND*level}{k}: Series len={len(o)}')
+                    print(f'{IND*level}{k} -> Series len={len(o)}')
                 elif type(o) == dict:
                     print(f'{IND*level}{k}:')
                     handle_child(o, level=level+1)
                 elif type(o) == list:
-                    print(f'{IND*level}{k}:')
+                    #print(f'{IND*level}{k}:')
                     if len(o) < LIST_THRESH:
                         handle_child(o, level=level+1)    
                     else:
-                        print(f'{IND*level}{k}: LIST len={len(o)}')
+                        print(f'{IND*level}{k} -> LIST len={len(o)}')
 
         elif type(obj) == list:
             if len(obj) < LIST_THRESH:

@@ -167,16 +167,15 @@ def basecall_bcseq_ski(infiles, outfiles, stage=None, cp=None):
         'sig': sig,
         'int': intensity,
     }
-    out = {base: tile_data}
     logging.info(f'writing {outfile}')
-    joblib.dump(out, outfile)
+    joblib.dump(tile_data, outfile)
 
     # Make human-readable TSV.
     # Translate bases.
     # 
     keep_columns = ['lroi_x','lroi_y', 'seq', 'seq_hd' ]  
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.tsv')   
+    outfile = os.path.join(dir, f'{base}.{label}.tsv')   
 
     df = pd.DataFrame()
     for data_col in list( tile_data.keys()):
