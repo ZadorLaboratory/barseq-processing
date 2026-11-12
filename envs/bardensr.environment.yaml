@@ -19,7 +19,7 @@ dependencies:
   - pip:
     - git+https://github.com/jacksonloper/bardensr.git
   - pyarrow
-  - python
+  - python==3.14
   - scikit-image
   - scipy
   - tensorflow
