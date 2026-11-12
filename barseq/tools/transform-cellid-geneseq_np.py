@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Apply transforms
+# Apply transforms and assign cellids
 # 
 # 
 import argparse
@@ -21,23 +21,6 @@ from barseq.utils import *
 from barseq.imageutils import *
 
 def transform_cellid_np(infiles, outfiles, stage=None, cp=None):
-    #     cycleset map 
-    #         arity=single
-    #         so inputs will be (flat list of all files from first cycle)
-    #.    inputs: 'basecalls.joblib'.  
-    #             'all_segmentation.joblib'   
-    #             'genehyb.joblib'
-    #             'tforms_final.joblib'
-    #
-    #. There may be more inputs that required, so only select relevant ones...
-    # E.g.
-    #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/all_segmentation.joblib 
-    #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/genehyb.joblib 
-    #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_original.joblib 
-    #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/hyb/tforms_rescaled0p5.joblib 
-    #   /Users/hover/project/barseq/run_barseq/BC726126.7.out/merge/geneseq/basecalls.joblib
-    # 
-    # lroi10x.joblib is main flag output. 
 
     if cp is None:
         cp = get_default_config()
@@ -93,15 +76,17 @@ def transform_cellid_np(infiles, outfiles, stage=None, cp=None):
         tile_dict[tilename]=t
 
     # first output lroi10x_geneseq.joblib / tsv
-    outfile = os.path.join(dir, f'lroi10x_geneseq.joblib')
-    logging.info(f'Writing output to {outfile}')
-    joblib.dump(tile_dict, outfile)
+    dir, base, label, ext = split_path(outfile)
+    of = os.path.join(dir, f'lroi10x_geneseq.joblib')
+    logging.info(f'Writing output to {of}')
+    joblib.dump(tile_dict, of)
 
     outdf = make_tiledict_dataframe(tile_dict)
     outdf['mode'] = 'geneseq'
-    outfile = os.path.join(dir, f'lroi10x_geneseq.tsv')
-    logging.info(f'Writing data to TSV: {outfile} ')
-    outdf.to_csv(outfile, sep='\t')
+    of = os.path.join(dir, f'lroi10x_geneseq.tsv')
+    logging.info(f'Writing data to TSV: {of} ')
+    outdf.to_csv(of, sep='\t')
+
 
     # Handle cell_id assignment
     pos_idx_map = make_pos_idx_map(tilename_list, image_regex, position_group)
@@ -228,7 +213,7 @@ if __name__ == '__main__':
           
     datestr = dt.datetime.now().strftime("%Y%m%d%H%M")
 
-    aggregate_transform_np( infiles=args.infiles, 
+    transform_cellid_np( infiles=args.infiles, 
                             outfiles=args.outfiles,
                             stage=args.stage,  
                             cp=cp )

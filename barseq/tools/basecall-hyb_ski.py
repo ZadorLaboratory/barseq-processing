@@ -155,6 +155,11 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.info(f'Writing results to {outfile}')
     joblib.dump(data_dict, outfile)
 
+    # Write out DF
+    
+
+
+
 
 def flat_np_list(xss):
     flat_list = [ x for xs in xss for x in xs ]

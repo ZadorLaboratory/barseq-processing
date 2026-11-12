@@ -70,11 +70,12 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
                   'tforms'   : 'tforms_final.joblib',
                   }
 
-    (hyb_rol_file, tforms_file) = select_input_files(infiles, input_map)
-    hyb_rol=joblib.load(hyb_rol_file)
+    (basecalls_file, seg_file, tforms_file) = select_input_files(infiles, input_map)
+    basecalls=joblib.load(basecalls_file)
+    seg = joblib.load(seg_file)
     tform_final =joblib.load(tforms_file)
-
-    tilename_list = nsort( list(hyb_rol.keys() ))
+    tilename_list = nsort( list(seg.keys() ))
+    
     tile_dict={}
     for i, tilename in enumerate(tilename_list):
         logging.debug(f'handling {tilename}') 

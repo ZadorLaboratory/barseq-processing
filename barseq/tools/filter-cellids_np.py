@@ -2,7 +2,6 @@
 #
 # Filters out relevant cell_ids from any mode table.
 #
-
 import argparse
 import joblib
 import logging

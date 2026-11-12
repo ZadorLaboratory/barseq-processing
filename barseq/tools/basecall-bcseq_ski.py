@@ -175,7 +175,7 @@ def basecall_bcseq_ski(infiles, outfiles, stage=None, cp=None):
     # 
     keep_columns = ['lroi_x','lroi_y', 'seq', 'seq_hd' ]  
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.{label}.tsv')   
+    of = os.path.join(dir, f'{base}.{label}_df.tsv')   
 
     df = pd.DataFrame()
     for data_col in list( tile_data.keys()):
@@ -189,8 +189,8 @@ def basecall_bcseq_ski(infiles, outfiles, stage=None, cp=None):
                 df[f'{data_col}_sequence'] = seq_bases
                 df = df.drop([data_col], axis=1)
     df['tilename'] = base        
-    logging.info(f'writing basecall-bcseq TSV: {outfile}')
-    df.to_csv(outfile, sep='\t')
+    logging.info(f'writing basecall-bcseq TSV: {of}')
+    df.to_csv(of, sep='\t')
     logging.info(f'Done.')
 
 

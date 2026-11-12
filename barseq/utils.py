@@ -14,7 +14,30 @@ from collections import defaultdict
 from natsort import natsorted as nsort
 
 import pandas as pd
+import pyarrow as pa
 import numpy as np
+
+INT_COLS = [ 'local_cell_id','cell_id']
+STR_COLS = [ 'sequence', 'hd_sequence']
+
+FMT_DTYPES = {      'cell_id'           : 'int64',
+                    'local_cell_id'     : 'int64',
+                    'slice_id'          : 'int64',
+                    'seq_sequence'      : 'string[pyarrow]',
+                    'seq_hd_sequence'   : 'string[pyarrow]',
+                    'tilename': 'category',
+    }
+
+ 
+def fix_barseq_column_types(df):
+    for col_name in df.columns:
+        if col_name in INT_COLS:
+            df[col_name] = df[col_name].astype('int64')
+        elif col_name in STR_COLS:
+            df[col_name] = df[col_name].astype('string[pyarrow]')
+    return df
+
+
 
 def format_config(cp):
     cdict = {section: dict(cp[section]) for section in cp.sections()}
@@ -560,7 +583,6 @@ def make_codebook_object(codebook_df, codebook_bases=['G','T','A','C'], n_cycles
 
     return (codeflat, R, C, J, genes, pos_unused_codes)
 
-
 def calc_proportion(a, b):
     '''
         Calc proportion difference between a and b, round to sig figs. 
@@ -575,4 +597,4 @@ def calc_proportion(a, b):
         return round(b / a , 3)
     else:
         return round( a / b, 3 )
- 
+

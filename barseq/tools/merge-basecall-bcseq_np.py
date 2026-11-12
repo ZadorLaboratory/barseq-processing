@@ -40,8 +40,7 @@ def merge_basecall_bcseq_pd( infiles, outfiles, stage=None, cp=None ):
     for infile in infiles:
         (subdir, base, current_label, current_ext) = parse_rpath(infile)
         logging.info(f'handling {infile} base={base}')
-        gho = joblib.load(infile)
-        to = gho[base]
+        to = joblib.load(infile)
         tile_dict[base] = to
 
     logging.debug(f'Merged {len(infiles)} bcseq. ')

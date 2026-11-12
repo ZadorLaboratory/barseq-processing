@@ -61,13 +61,13 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
     H, W = maski.shape
 
     if n_cells == 0:
-        out = {base: {'local_cell_id': np.zeros(0, dtype=np.int64),
+        out = {'local_cell_id': np.zeros(0, dtype=np.int64),
                       'seq': np.zeros((0, n_cyc), dtype=np.int8),
                       'sig': np.zeros((0, num_c, n_cyc)),
                       'score': np.zeros((0, n_cyc)),
                       'seq_hd': np.zeros((0, n_cyc), dtype=np.int8),
                       'sig_hd': np.zeros((0, num_c, n_cyc)),
-                      'score_hd': np.zeros((0, n_cyc))}}
+                      'score_hd': np.zeros((0, n_cyc))}
         joblib.dump(out, outfile)
         logging.info(f'{base}: no cells. wrote {outfile}')
         return
@@ -139,7 +139,7 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
 
     # Make human-readable TSV. 
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.{label}.tsv')   
+    of = os.path.join(dir, f'{base}.{label}_df.tsv')   
 
     df = pd.DataFrame()
     df['local_cell_id'] = list(cellid_data)
@@ -158,8 +158,8 @@ def basecall_soma_bcseq_ski(infiles, outfiles, template=None, stage=None, cp=Non
         seq_hd_bases.append( ''.join( [ basecall_channels[ y - 1 ] for y in base_list ] )            )
     df['sequence_hd'] = seq_hd_bases
 
-    logging.info(f'{base}: {n_cells} cells soma-basecalled. writing {outfile}')
-    df.to_csv(outfile, sep='\t')
+    logging.info(f'{base}: {n_cells} cells soma-basecalled. writing {of}')
+    df.to_csv(of, sep='\t')
     logging.info('Done.')
 
 

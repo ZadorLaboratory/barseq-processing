@@ -21,7 +21,6 @@ from natsort import natsorted as nsort
 from barseq.utils import *
 from barseq.imageutils import *
 
-
 def _concat(arrs):
     arrs = [a for a in arrs if a is not None and len(a) > 0]
     if not arrs:
@@ -29,7 +28,7 @@ def _concat(arrs):
     return np.concatenate(arrs, axis=0)
 
 
-def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
+def merge_bcseq_soma_pd(infiles, outfiles, stage=None, cp=None):
     if cp is None:
         cp = get_default_config()
     if stage is None:
@@ -50,15 +49,18 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
     tile_data = {}
     for infile in infiles:
         logging.debug(f'loading {infile}')
-        dir, base, label, ext = split_path(outfile)
+        dir, base, label, ext = split_path(infile)
+        logging.debug(f'base={base} label = {label}')
         d = joblib.load(infile)
         tile_data[base] = d
 
     tilename_list = nsort(list(tile_data.keys()))
+    logging.debug(f'tilename_list = {tilename_list}')
     ids, seq, sig, score, seq_hd, sig_hd, score_hd = [], [], [], [], [], [], []
     for i, tilename in enumerate(tilename_list):
         data = tile_data[tilename]
-        local = np.asarray(data['cell_id'], dtype=np.int64)
+        logging.debug(f'tilename = {tilename} keys={data.keys()}')
+        local = np.asarray(data['local_cell_id'], dtype=np.int64)
         if len(local) == 0:
             continue
         ids.append(local + i * starting_fov_idx * dummy_cell_num)
@@ -86,12 +88,12 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
     # Make human-readable TSV.
     # Translate bases.
     # 
-    keep_columns = ['cell_id', 'seq', 'seq_hd' ]  
+    keep_columns = ['local_cell_id', 'seq', 'seq_hd' ]  
     dir, base, label, ext = split_path(outfile)
-    outfile = os.path.join(dir, f'{base}.tsv')   
+    of = os.path.join(dir, f'{base}_df.tsv')   
 
     dflist = []
-    for base in list( tile_data.keys() ):
+    for base in tilename_list:
         df = pd.DataFrame()
         for data_col in list( tile_data[base].keys()):
             if data_col in keep_columns:
@@ -103,11 +105,14 @@ def merge_soma_bcseq_pd(infiles, outfiles, stage=None, cp=None):
                         seq_bases.append( ''.join( [ basecall_channels[ y - 1 ] for y in base_list ] ))
                     df[f'{data_col}_sequence'] = seq_bases
                     df = df.drop([data_col], axis=1)
+            else:
+                logging.debug(f'ignoring non-keep data column {data_col}')
         df['tilename'] = base        
         dflist.append(df)
     outdf = merge_dfs(dflist)
-    logging.info(f'writing basecall-soma-bcseq TSV: {outfile}')
-    df.to_csv(outfile, sep='\t')        
+    outdf = fix_barseq_column_types(outdf)
+    logging.info(f'writing basecall-soma-bcseq TSV: {of}')
+    outdf.to_csv(of, sep='\t')        
     logging.info('Done.')
 
 
@@ -138,6 +143,6 @@ if __name__ == '__main__':
     cp = ConfigParser()
     cp.read(args.config)
 
-    merge_soma_bcseq_pd(infiles=args.infiles, outfiles=args.outfiles, stage=args.stage, cp=cp)
+    merge_bcseq_soma_pd(infiles=args.infiles, outfiles=args.outfiles, stage=args.stage, cp=cp)
     (outdir, fname) = os.path.split(args.outfiles[0])
     logging.info(f'done processing output to {outdir}')

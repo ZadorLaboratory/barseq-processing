@@ -42,7 +42,7 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
         cp = get_default_config()
 
     if stage is None:
-        stage = 'aggregate-transform'
+        stage = 'transform-segment'
 
     logging.info(f'infiles={infiles} outfiles={outfiles} stage={stage}')
 
@@ -69,11 +69,11 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
 
     # We have heterogenous input files, so we need to confirm all are present, and 
     # figure out which is which. 
-    #   'basecalls.joblib'.  'all_segmentation.joblib'   'genehyb.joblib'
+    #   'basecalls.joblib'.  'segmentation.joblib'   'genehyb.joblib'
     #
     # return order will be alphabetical
     #
-    input_map = { 'seg'      : 'all_segmentation.joblib',
+    input_map = { 'seg'      : 'segmentation.joblib',
                   'tforms'   : 'tforms_final.joblib',
                   }
 
