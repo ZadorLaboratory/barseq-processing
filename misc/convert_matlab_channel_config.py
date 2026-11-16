@@ -108,7 +108,7 @@ if __name__ == '__main__':
                         type=str,
                         nargs='+',
                         default=None, 
-                        help='BARseq .MAT config file(s)')
+                        help='BARseq .MAT channel profile/shift config file(s)')
        
 
     args= parser.parse_args()

@@ -3,10 +3,22 @@ DESIGN
 
 
 
+CONVENTIONS
+
+
+
+<label>_id
+<label>_idx
+IDs start with 1, IDX (indexes) start with 0. 
+
+
 INSTALLATION
 https://stackoverflow.com/questions/76722680/what-is-the-best-way-to-combine-conda-with-standard-python-packaging-tools-e-g 
 
 
 CUSTOMIZATION
+
+
+
 
 

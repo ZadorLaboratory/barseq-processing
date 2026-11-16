@@ -2,6 +2,10 @@
 #
 # Filters out relevant cell_ids from any mode table.
 #
+# For each slice, 
+#
+#
+
 import argparse
 import joblib
 import logging
@@ -39,61 +43,43 @@ def assign_cellid_np(infiles, outfiles, stage=None, cp=None):
     overlap_half_width = np.round(box_half_width_um / pr)
     search_radius = np.round(search_radius_um / pr)
 
-    input_map = { 'basecalls': 'basecalls_hyb.joblib',
+    # gather inputs. 
+    input_map = { 'matrix': 'matrix_geneseq.joblib',
                   'segmentation': 'transform_segment.joblib',
                 }
                  
-    (basecalls_file, seg_file) = select_input_files(infiles, input_map)
-    basecalls = joblib.load(basecalls_file)
-    seg = joblib.load(seg_file)
-    tilename_list = nsort(list(seg.keys()))
+    (matrix_file, seg_file) = select_input_files(infiles, input_map)
+    matrix = joblib.load(matrix_file)
+    expmat = matrix['expmat']
+    cells = joblib.load(seg_file)
+    tilename_list = nsort(list(cells.keys()))
+
+    # map is indexes, starting at 0
     pos_idx_map = make_pos_idx_map(tilename_list, image_regex, position_group)
+    cell_df = make_tiledict_dataframe(cells)
+    cell_df.rename(columns={'cellpos10x_x':'center_x', 'cellpos10x_y':'center_y' },inplace=True)
 
-    pos40x_x = [] 
-    pos40x_y = []
-    gene_id_list = []
-    gene_list = []
-    cell_id_list = []
-    slice_id_list = []
-   
-    for i, tilename in enumerate(tilename_list):
-        if tilename not in basecalls:
-            logging.warning(f'no geneseq basecalls for tile {tilename}, skipping')
-            continue
-        tile_basecalls = basecalls[tilename]
-        rows = np.asarray(tile_basecalls['lroi_x'])      # axis-0 (row, y)
-        cols = np.asarray(tile_basecalls['lroi_y'])      # axis-1 (col, x)
-        gene_id = np.asarray(tile_basecalls['gene_id'])
-        for gid in tile_basecalls['gene_id']:
-            gene = codebook['gene'][gid]
-            gene_list.append(gene)            
+    cell_df['xmin'] = cell_df['center_x'] - overlap_half_width
+    cell_df['xmax'] = cell_df['center_x'] + overlap_half_width
+    cell_df['ymin'] = cell_df['center_y'] - overlap_half_width
+    cell_df['ymax'] = cell_df['center_y'] + overlap_half_width
+ 
+    filt_df_list = []
+    id_to_keep = []
+
+    for slice_id in list(df['slice_id'].unique()):
+        sdf = df[df['slice_id'] == slice_id ]
+        c = np.column_stack((sdf['center_x'], sdf['center_y']))
+        tree = cKDTree( c )
+        sparse_dist = tree.sparse_distance_matrix(tree, 
+                                                  max_distance=search_radius, 
+                                                  output_type='coo_matrix')
+        cell_id = sparse_dist.row
+        nearest_neigh_id = sparse_dist.col
+        dist_vals = sparse_dist.data
         
-        mask = seg[tilename]['dilated_labels']
-        pos_idx = pos_idx_map[tilename]
 
-        n = len(rows)
 
-        # assign cellid: cell label at rolony pixel; 
-        # global id = local + i * offset
-        cellid_local = np.asarray(get_cellid(mask, rows, cols), dtype=np.int64)
-        cellid_global = cellid_local + i * starting_fov_idx * dummy_cell_num
-
-        pos40x_x.append(cols)
-        pos40x_y.append(rows)
-        gene_id_list.append(tile_basecalls['gene_id'])
-        slice_id_list.append(np.full(n, pos_idx + starting_slice_idx))
-        #slice_idx.append(np.full(n, i))
-        cell_id_list.append(cellid_global)
-
-    cellid_out = {
-        'pos40x_x': np.concatenate(pos40x_x) if pos40x_x else np.zeros(0),
-        'pos40x_y': np.concatenate(pos40x_y) if pos40x_y else np.zeros(0),
-        'gene_id': np.concatenate(gene_id_list) if gene_id_list else np.zeros(0),
-        'gene'   : gene_list,
-        'slice_id': np.concatenate(slice_id_list) if slice_id_list else np.zeros(0, dtype=int),
-        'cell_id': np.concatenate(cell_id_list) if cell_id_list else np.zeros(0, dtype=np.int64),
-    }
-    logging.info(f'cellid: {len(cellid_out)} rolonies. Writing {outfile}')
     joblib.dump(cellid_out, outfile)
     logging.info('Done.')
 

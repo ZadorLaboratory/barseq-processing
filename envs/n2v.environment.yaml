@@ -13,6 +13,7 @@ dependencies:
   - matplotlib-base=3.8.4
   - numpy=1.22.4
   - pandas=2.2.2
+  - pyarrow
   - scipy=1.10.1
   - tensorflow=2.10.0
   - tifffile=2023.8.12
