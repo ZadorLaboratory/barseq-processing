@@ -63,7 +63,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
 
     # Stage-specific tool params
     all_genes_ch = cp.getint(stage, 'all_genes_ch')    
-    thresh_str = cp.get( stage,'thresh')    
+    thresh_str = cp.get( stage, 'thresh')    
     relaxed = cp.getboolean( stage, 'relaxed')
     no_deconv = cp.getboolean( stage, 'no_deconv')
     filter_overlap = cp.getint( stage, 'filter_overlap')
