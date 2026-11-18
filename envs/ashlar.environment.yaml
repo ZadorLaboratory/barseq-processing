@@ -8,6 +8,7 @@ dependencies:
   - networkx
   - numpy
   - openjdk
+  - pyarrow
   - scikit-image
   - scikit-learn
   - scipy
