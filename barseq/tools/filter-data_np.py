@@ -96,7 +96,7 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
         nearest_neigh_id = sparse_dist.col
         dist_vals = sparse_dist.data
         fov_neigh = neurons['fov'][idx_slice][nearest_neigh_id]
-        fov_cell = neurons['fov'][idx_slice][cell_id]
+        fov_cell =  neurons['fov'][idx_slice][cell_id]
         sel_cells_id = fov_cell != fov_neigh
         distances_neigh = dist_vals[sel_cells_id] 
     
