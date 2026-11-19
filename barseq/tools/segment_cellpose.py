@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Use Cellpose to segemnt cells. 
+# Use Cellpose to segment cells. 
 #
 # current inputs. 
 #         hyb:  5 channels. 
