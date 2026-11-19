@@ -41,9 +41,10 @@ def merge_segment_ski( infiles, outfiles, stage=None, cp=None ):
     dilation_radius = cp.getint(stage, 'dilation_radius')
 
     all_segmentation_dict={}
-    for infile in infiles:
+    n_infiles = len(infiles)
+    for i, infile in enumerate(infiles):
         (subdir, base, label, ext) = parse_rpath(infile)
-        logging.debug(f'handling subdir={subdir} base={base} label={label} ext={ext}')
+        logging.debug(f'handling base={base} label={label} ext={ext} [{i}/{n_infiles}]')
         tile_data={}
         [mask, mask_dil, cell_num, cent_x, cent_y] = handle_single_tile_segmentation(infile, dilation_radius)
         tile_data['original_labels']= mask
