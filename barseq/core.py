@@ -764,7 +764,7 @@ def make_command_list(file_map, stage, bse, indir, outdir, cp):
     script_path = f'{script_dir}/{script_name}'
     stagedir = cp.get(stage, 'stagedir')
     strip_base = cp.getboolean(stage, 'strip_base')
-    template_mode = get_config_none(cp, stage, 'template_mode')
+    template_mode = get_config_none(cp, stage, 'template_mode')  
     template_source = get_config_none(cp, stage, 'template_source')
     logging.debug(f'current_env={current_env} tool={tool} conda_env={conda_env} script_dir={script_dir} script_path={script_path} script_name={script_name}')
 
