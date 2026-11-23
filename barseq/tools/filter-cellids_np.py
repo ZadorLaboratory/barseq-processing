@@ -43,7 +43,6 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     box_half_width_um = cp.getint( stage, 'box_half_width_um')
     search_radius_um = cp.getint( stage, 'search_radius_um')
 
-
     # calculate secondary parameters
     pr = px / rescale_factor
     overlap_half_width = np.round(box_half_width_um / pr)
@@ -66,11 +65,16 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     total_expr= pd.DataFrame(total_expr, columns=['total_expr'])
     total_expr.reset_index(inplace=True,names=['cell_id'])
 
+    # set dataframe index to cell_id to ease filtering. 
+    total_expr.index = total_expr['cell_id']
 
     pos_id_map = make_pos_id_map(tilename_list, image_regex, position_group)
     cell_df = make_tiledict_dataframe(cells)
     cell_df['slice_id'] = cell_df['tile_name'].map(pos_id_map).astype('string')
- 
+
+    id_to_keep = []
+    id_to_remove = [] 
+
     for slice_id in list(cell_df['slice_id'].unique()):
         sdf = cell_df[cell_df['slice_id'] == slice_id ]
         c = np.column_stack((sdf['cent_x'], sdf['cent_y']))
@@ -94,17 +98,9 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
         edges = list(odf.itertuples(index=False, name=None))
         dg = nx.Graph()
         dg.add_weighted_edges_from(edges)
-        scc = nx.connected_components(graph)
+        scc = nx.connected_components(dg)
         compsets = list( scc )
-               
-        # mdf = pd.merge(odf, total_expr, on="cell_id", how="left").fillna(0)
-        # mdf = pd.merge(odf, total_expr, left_on="cell_id", right_on="cell_id", how="left")
-        #mdf.rename(columns={'total_expr':'cell_expr'}, inplace=True)
-
-        #mmdf = pd.merge(mdf, total_expr, left_on="neigh_id", right_on="cell_id", how="left").fillna(0)
-        #mmdf.rename(columns={'total_expr':'neigh_expr'}, inplace=True)
-
-
+        handle_component_sets(compsets, total_expr )     
 
     joblib.dump(cellid_out, outfile)
     logging.info('Done.')
@@ -118,7 +114,6 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     logging.info(f'Done.')
 
 
-
 def handle_component_sets(component_list, expr_df ):
     '''
     inputs:
@@ -130,12 +125,77 @@ def handle_component_sets(component_list, expr_df ):
             2        20021           1
 
     output:
-        -- cell_id to keep. 
-
-
-
-
+        -- keep_cellids, discard_cellids 
     '''
+    keep_cellids = []
+    discard_cellids = []
+
+    n_present = 0
+    n_missing = 0
+    n_multi_sets = 0 
+    n_compsets = len(compsets)
+
+    for i, compset in enumerate( compsets) :
+        logging.debug(f'[{i}/{n_compsets}]')
+        comp_list = sorted(list(compset))
+        sedf = None
+        try:
+            sedf = expr_df.loc[ comp_list ]
+        except KeyError as ke:
+            kerr_str = str(ke)
+            (present, missing)  = parse_keyerror_diff(comp_list, kerr_str)
+            logging.debug(f'{len(present)} present. {len(missing)} missing.')
+            n_present += len(present)
+            n_missing += len(missing)
+            if n_present >= 2:
+                n_multi_sets += 1
+                sedf = expr_df.loc[ present ]
+            else:
+                logging.debug(f'no components in expression table.')
+            
+        # Calculate highest 
+        if sedf is not None:
+            
+
+
+        # logging.debug(f'valid compset expr DF: {sedf}') 
+    logging.debug(f'total present={n_present} total_missing={n_missing} n_multi_sets={n_multi_sets} ')
+
+def parse_keyerror_diff(key_list, kerr_str):
+    '''
+        input: 
+        key_list =  [1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547, 30023]
+        kerr_str= '[1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547] not in index' 
+        output: 
+            present = [ 30023 ]
+            missing = {1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547}
+    '''
+    logging.debug(f'KeyError:{kerr_str}')
+    present = []
+    missing = []
+    
+    if kerr_str.startswith('"None'):
+        #logging.debug(f'Error starts with None. All missing.')
+        present = []
+        missing = key_list
+    elif kerr_str.startswith("'["):
+        #logging.debug(f"Error starts with '['. Evaluating. ")
+        kes = kerr_str[:kerr_str.find(']') + 1]
+        kes = kes.replace("'","")
+        kerr_list = eval(kes)
+        kerr_set = set(kerr_list)
+        key_set = set(key_list)
+        present = key_set - kerr_set
+        missing = key_set - present
+
+        present = sorted(list(present))
+        missing = sorted(list(missing))
+    else:
+        logging.warning(f'Key Error not parsable: {kerr_str}')
+    return (present, missing) 
+
+
+
 
 
 
