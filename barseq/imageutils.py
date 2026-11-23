@@ -522,10 +522,11 @@ def make_dict_dataframe(data_dict):
 
 
 
-def make_tiledict_dataframe(tile_dict):
+def make_tiledict_dataframe(tile_dict, exclude=[]):
     '''
     take tile_dict (or multi-variate dict of dicts indexed by single key, 
     with multiple sub-keys )
+
     create flat dataframe from all 
     
     { 't1' : { 'col1' : <list1>, 
@@ -549,8 +550,11 @@ def make_tiledict_dataframe(tile_dict):
         tdf = pd.DataFrame()
         tile_data = tile_dict[tilename]
         for col in list(tile_data.keys()):
-            cser = pd.Series(tile_data[col])
-            tdf[col] = cser
+            try:
+                cser = pd.Series(tile_data[col])
+                tdf[col] = cser
+            except ValueError as ve:
+                logging.debug(f'column not usable as Series.')
         tdf['tile_name'] = tilename
         outdf_list.append(tdf)
     outdf = pd.concat( outdf_list, ignore_index=True)
