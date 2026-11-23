@@ -466,21 +466,6 @@ def assign_rolony_to_cell(mask, coord_x, coord_y):
         cell_id=[] # earlier this was [] and was causing error later
     return cell_id
 
-
-
-def make_pos_id_map_XXX(tilename_list, image_regex, position_group):
-    '''Map tilename -> position INDEX (0-based), matching aggregate-data.'''
-    tilename_list = nsort(tilename_list)
-    pos_list = []
-    for tilename in tilename_list:
-        m = re.search(image_regex, tilename)
-        if m is not None:
-            pos_list.append(m.group(position_group))
-        else:
-            logging.error(f'unable to parse {tilename} for position!')
-    unique_pos = list(dict.fromkeys(pos_list))
-    return {t: unique_pos.index(pos_list[i]) for i, t in enumerate(tilename_list)}
-
 def make_pos_idx_map( tilename_list, image_regex, position_group):
     '''
     make map (dict) from tilename to position INDEX (starting at 0)
@@ -506,6 +491,29 @@ def make_pos_idx_map( tilename_list, image_regex, position_group):
     for i, tilename in enumerate(tilename_list):
         p = pos_list[i]
         pos_id_map[tilename] = unique_pos.index(p)
+    return pos_id_map
+
+def make_pos_id_map( tilename_list, image_regex, position_group):
+    '''
+    make map (dict) from tilename to position slice ID.
+    e.g.
+    MAX_Pos1_000_000 -> 1
+    MAX_Pos2_000_000 -> 2
+
+    Retain order. 
+    Tolerate non-integer position identifiers. 
+    '''
+    tilename_list = nsort(tilename_list)
+    pos_list = []
+    pos_id_map = {}
+    for tilename in tilename_list:
+        m = re.search(image_regex, tilename)
+        if m is not None:
+            pos = m.group(position_group)
+            pos_list.append(pos)
+        else:
+            logging.error(f'unable to parse {tilename} for position!')
+    pos_id_map = dict(zip(tilename_list, pos_list))    
     return pos_id_map
 
 
@@ -554,7 +562,8 @@ def make_tiledict_dataframe(tile_dict, exclude=[]):
                 cser = pd.Series(tile_data[col])
                 tdf[col] = cser
             except ValueError as ve:
-                logging.debug(f'column not usable as Series.')
+                #logging.debug(f'column not usable as Series.')
+                pass
         tdf['tile_name'] = tilename
         outdf_list.append(tdf)
     outdf = pd.concat( outdf_list, ignore_index=True)

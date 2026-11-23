@@ -11,9 +11,12 @@ import re
 import sys
 from configparser import ConfigParser
 
+
 import numpy as np
+import networkx as nx
 from natsort import natsorted as nsort
 from scipy.spatial import cKDTree
+
 
 from barseq.utils import *
 from barseq.imageutils import *
@@ -23,7 +26,7 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     if cp is None:
         cp = get_default_config()
     if stage is None:
-        stage = 'cellid-geneseq'
+        stage = 'filter-cellids'
 
     outfile = outfiles[0]
     (outdir, file) = os.path.split(outfile)
@@ -63,15 +66,14 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     total_expr= pd.DataFrame(total_expr, columns=['total_expr'])
     total_expr.reset_index(inplace=True,names=['cell_id'])
 
-    # map is indexes, starting at 0
-    pos_idx_map = make_pos_idx_map(tilename_list, image_regex, position_group)
-    cell_df = make_tiledict_dataframe(cells)
-    #cell_df.rename(columns={'cellpos10x_x':'center_x', 'cellpos10x_y':'center_y' },inplace=True)
- 
 
-    for slice_id in list(df['slice_id'].unique()):
-        sdf = df[df['slice_id'] == slice_id ]
-        c = np.column_stack((sdf['center_x'], sdf['center_y']))
+    pos_id_map = make_pos_id_map(tilename_list, image_regex, position_group)
+    cell_df = make_tiledict_dataframe(cells)
+    cell_df['slice_id'] = cell_df['tile_name'].map(pos_id_map).astype('string')
+ 
+    for slice_id in list(cell_df['slice_id'].unique()):
+        sdf = cell_df[cell_df['slice_id'] == slice_id ]
+        c = np.column_stack((sdf['cent_x'], sdf['cent_y']))
         tree = cKDTree( c )
         sparse_dist = tree.sparse_distance_matrix(tree, 
                                                   max_distance=search_radius, 
@@ -79,6 +81,7 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
         cell_id = sparse_dist.row
         nearest_neigh_id = sparse_dist.col
         dist_vals = sparse_dist.data
+
         ddf = pd.DataFrame()
         ddf['cell_id'] = pd.Series(cell_id)
         ddf['neigh_id'] =  pd.Series(nearest_neigh_id)
@@ -88,6 +91,12 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
         # overlap when distance less than 8. not square, so may miss corner overlap
         odf =  sddf[sddf['distance'] < ( overlap_half_width * 2 )  ]
 
+        edges = list(odf.itertuples(index=False, name=None))
+        dg = nx.Graph()
+        dg.add_weighted_edges_from(edges)
+        scc = nx.connected_components(graph)
+        compsets = list( scc )
+               
         # mdf = pd.merge(odf, total_expr, on="cell_id", how="left").fillna(0)
         # mdf = pd.merge(odf, total_expr, left_on="cell_id", right_on="cell_id", how="left")
         #mdf.rename(columns={'total_expr':'cell_expr'}, inplace=True)
@@ -108,6 +117,25 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     outdf.to_csv(outfile, sep='\t')
     logging.info(f'Done.')
 
+
+
+def handle_component_sets(component_list, expr_df ):
+    '''
+    inputs:
+        -- list of cell_id connected components. 
+        -- expression table
+                cell_id  total_expr
+            0        20000       17777
+            1        20019           4
+            2        20021           1
+
+    output:
+        -- cell_id to keep. 
+
+
+
+
+    '''
 
 
 

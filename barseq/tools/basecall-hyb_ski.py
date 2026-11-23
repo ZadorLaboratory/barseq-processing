@@ -53,7 +53,8 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     resource_dir = os.path.abspath(os.path.expanduser( cp.get('barseq','resource_dir')))
     image_type = cp.get(stage, 'image_type')
     image_channels = cp.get(image_type, 'channels').split(',')
-    position_regex = cp.get(stage, 'position_regex')
+    image_regex = cp.get('barseq','image_regex')
+    position_group = cp.getint('barseq','position_group')
     logging.debug(f'resource_dir={resource_dir} image_type={image_type} image_channels={image_channels}')
 
     logging.info(f'handling {len(infiles)} input files e.g. {infiles[0]} ')
@@ -79,9 +80,10 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
     logging.debug(f'all_genes_ch={all_genes_ch} thresh={thresh} prominence={prominence}')
 
     (dirpath, base ) = os.path.split(infile)
+    ( base, ext ) = os.path.splitext(base)
     m = re.search(position_regex, base)
     if m is not None:
-        pos_id = m.group(1)
+        pos_id = m.group(position_group)
     else:
         logging.error(f'Unable to extract position index from file base: {base}')
         sys.exit(2)
