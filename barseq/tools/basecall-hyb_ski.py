@@ -81,7 +81,7 @@ def basecall_hyb_ski( infiles, outfiles, stage=None, cp=None):
 
     (dirpath, base ) = os.path.split(infile)
     ( base, ext ) = os.path.splitext(base)
-    m = re.search(position_regex, base)
+    m = re.search(image_regex, base)
     if m is not None:
         pos_id = m.group(position_group)
     else:
