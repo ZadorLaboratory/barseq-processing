@@ -2,25 +2,31 @@
 #
 # Produces list of cell_ids to remove for use by other stages. 
 #
-
+#   rescale_factor = 0.5
+#   px = 0.33
+#   box_half_width_um = 5
+#   search_radius_um = 200
+#
+# 
+#
 import argparse
 import joblib
 import logging
 import os
 import re
 import sys
-from configparser import ConfigParser
 
+from configparser import ConfigParser
+from itertools import chain
 
 import numpy as np
-import networkx as nx
+# import networkx as nx
 from natsort import natsorted as nsort
 from scipy.spatial import cKDTree
 
-
 from barseq.utils import *
 from barseq.imageutils import *
- 
+
 
 def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     if cp is None:
@@ -42,15 +48,23 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     px = cp.getfloat( stage, 'px')
     box_half_width_um = cp.getint( stage, 'box_half_width_um')
     search_radius_um = cp.getint( stage, 'search_radius_um')
+    starting_fov_idx = cp.getint(stage, 'starting_fov_idx')
+    dummy_cell_num = cp.getint(stage, 'dummy_cell_num')
+    starting_slice_idx = cp.getint(stage, 'starting_slice_idx')
 
     # calculate secondary parameters
     pr = px / rescale_factor
     overlap_half_width = np.round(box_half_width_um / pr)
     search_radius = np.round(search_radius_um / pr)
 
+    # to use tree distance as final limit instead of bounding box calculation. 
+    # hypotenuse of maximum box.
+    tree_search_radius = math.sqrt( 2 *  math.pow(2 * overlap_half_width, 2) )
+
+
     # gather inputs. 
     input_map = { 'matrix': 'matrix_geneseq.joblib',
-                  'segmentation': 'transform_segment.joblib',
+                  'segmentation': 'segmentation.joblib',
                 }
                  
     (matrix_file, seg_file) = select_input_files(infiles, input_map)
@@ -72,131 +86,107 @@ def filter_cellid_np(infiles, outfiles, stage=None, cp=None):
     cell_df = make_tiledict_dataframe(cells)
     cell_df['slice_id'] = cell_df['tile_name'].map(pos_id_map).astype('string')
 
-    id_to_keep = []
-    id_to_remove = [] 
+    # Assign cell_ids from local cell_num
+    tile_idx_map = make_tilename_idx_map(tilename_list)
+    cell_df['tile_name_idx'] = cell_df['tile_name'].map(tile_idx_map)
+    cell_df['cell_id'] = cell_df['cell_num'] + (cell_df['tile_name_idx'] * starting_fov_idx * dummy_cell_num )
+
+    # extra values for box algorithm. 
+    #cell_df['xmin'] = cell_df['cent_x'] - overlap_half_width
+    #cell_df['xmax'] = cell_df['cent_x'] + overlap_half_width
+    #cell_df['ymin'] = cell_df['cent_y'] - overlap_half_width
+    #cell_df['ymax'] = cell_df['cent_y'] + overlap_half_width
+
+    id_to_keep_all = []
+    id_to_remove_all = [] 
 
     for slice_id in list(cell_df['slice_id'].unique()):
         sdf = cell_df[cell_df['slice_id'] == slice_id ]
+        
+        #
+        #   Find neighbor candidates. 
+        #
         c = np.column_stack((sdf['cent_x'], sdf['cent_y']))
         tree = cKDTree( c )
+        #sparse_dist = tree.sparse_distance_matrix(tree, 
+        #                                          max_distance=search_radius, 
+        #                                          output_type='coo_matrix')
+    
+        # Simply use search radius to fully limit neighbor search. 
         sparse_dist = tree.sparse_distance_matrix(tree, 
-                                                  max_distance=search_radius, 
+                                                  max_distance=tree_search_radius, 
                                                   output_type='coo_matrix')
+
         cell_id = sparse_dist.row
         nearest_neigh_id = sparse_dist.col
         dist_vals = sparse_dist.data
 
+        cell_ids = sdf.loc[cell_id]['cell_id'].copy()
+        nearest_neigh_ids = sdf.loc[nearest_neigh_id]['cell_id'].copy()
+
+        # Neighbors dataframe. 
         ddf = pd.DataFrame()
-        ddf['cell_id'] = pd.Series(cell_id)
-        ddf['neigh_id'] =  pd.Series(nearest_neigh_id)
-        ddf['distance'] = pd.Series(dist_vals)
-        sddf = ddf[ddf['distance'] > 0 ].reset_index(drop=True)
+        ddf['cell_id'] = pd.Series(cell_ids, dtype="int64")
+        ddf.reset_index(inplace=True, drop=True)
+        ddf['neigh_id'] = pd.Series(nearest_neigh_ids, dtype="int64").reset_index(drop=True)
+        ddf['distance'] = pd.Series(dist_vals, dtype='float64')
+        odf = ddf[ddf['distance'] > 0 ].reset_index(drop=True)
         # sub distance df contains only overlapping cellids. 
         # overlap when distance less than 8. not square, so may miss corner overlap
-        odf =  sddf[sddf['distance'] < ( overlap_half_width * 2 )  ]
+        # odf =  ddf[ddf['distance'] < ( overlap_half_width * 2 ) ].copy()
 
-        edges = list(odf.itertuples(index=False, name=None))
-        dg = nx.Graph()
-        dg.add_weighted_edges_from(edges)
-        scc = nx.connected_components(dg)
-        compsets = list( scc )
-        handle_component_sets(compsets, total_expr )     
+        # Add tile info. Remove pairs in same tile.        
+        lookup =  dict(zip( sdf['cell_id'], sdf['tile_name']) )
+        odf['cell_tile'] = odf['cell_id'].map(lookup)
+        odf['neigh_tile'] =  odf['neigh_id'].map(lookup)
 
-    joblib.dump(cellid_out, outfile)
-    logging.info('Done.')
+        # Shouldn't happen, but make sure pairs are not in same tile. 
+        odf = odf[ odf['cell_tile'] != odf['neigh_tile']]
+        # odf.drop( ['cell_tile','neigh_tile' ], inplace=True,  axis=1)
+        odf.reset_index(inplace=True, drop=True)
 
-    outdf = make_dict_dataframe(cellid_out)
-    outdf['mode'] = 'hyb'
+        # Use original notebook logic for cell_id overlap. 
+        # find_overlap_box(odf)
+        # Use nx connected components for cell_id overlap.  
+        # find_overlap_nx(odf, total_expr)
+        # odf is now all overlapping cells. 
+
+        # Find groups and choose highest expression
+        [_,rev_idx]  = np.unique( odf['cell_id'], return_counts=False, return_inverse=True)
+        df = pd.DataFrame({ 'cell_id': odf['cell_id'],
+                            'neigh_id': odf['neigh_id'] , 
+                            'group': np.transpose(rev_idx)
+                            } )        
+        exp_map = dict(zip( total_expr['cell_id'],total_expr['total_expr']))
+        df['cell_exp'] = df['cell_id'].map(exp_map).fillna(0)
+        df['neigh_exp'] =  df['neigh_id'].map(exp_map).fillna(0)
+        df = df.astype(int)
+        idx_max = df.groupby('group')['neigh_exp'].idxmax()     
+        df_ref = df.loc[idx_max]
+        remove_cell = df_ref['neigh_exp'] > df_ref['cell_exp']
+        id_to_remove = list(df_ref[remove_cell]['cell_id'] )
+        id_to_remove_all.append(id_to_remove)
+
+    # Flatten list of slice-specific remove lis
+    id_to_remove_all = [item for sublist in id_to_remove_all for item in sublist]
+    remove_df = pd.DataFrame({ 'cell_id': pd.Series(id_to_remove_all) })  
+
+    joblib.dump(remove_df, outfile)
     dir, base, label, ext = split_path(outfile)
     outfile = os.path.join(dir, f'{base}.tsv')
     logging.info(f'Writing data to TSV: {outfile} ')
-    outdf.to_csv(outfile, sep='\t')
-    logging.info(f'Done.')
-
-
-def handle_component_sets(component_list, expr_df ):
-    '''
-    inputs:
-        -- list of cell_id connected components. 
-        -- expression table
-                cell_id  total_expr
-            0        20000       17777
-            1        20019           4
-            2        20021           1
-
-    output:
-        -- keep_cellids, discard_cellids 
-    '''
-    keep_cellids = []
-    discard_cellids = []
-
-    n_present = 0
-    n_missing = 0
-    n_multi_sets = 0 
-    n_compsets = len(compsets)
-
-    for i, compset in enumerate( compsets) :
-        logging.debug(f'[{i}/{n_compsets}]')
-        comp_list = sorted(list(compset))
-        sedf = None
-        try:
-            sedf = expr_df.loc[ comp_list ]
-        except KeyError as ke:
-            kerr_str = str(ke)
-            (present, missing)  = parse_keyerror_diff(comp_list, kerr_str)
-            logging.debug(f'{len(present)} present. {len(missing)} missing.')
-            n_present += len(present)
-            n_missing += len(missing)
-            if n_present >= 2:
-                n_multi_sets += 1
-                sedf = expr_df.loc[ present ]
-            else:
-                logging.debug(f'no components in expression table.')
-            
-        # Calculate highest 
-        if sedf is not None:
-            
-
-
-        # logging.debug(f'valid compset expr DF: {sedf}') 
-    logging.debug(f'total present={n_present} total_missing={n_missing} n_multi_sets={n_multi_sets} ')
-
-def parse_keyerror_diff(key_list, kerr_str):
-    '''
-        input: 
-        key_list =  [1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547, 30023]
-        kerr_str= '[1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547] not in index' 
-        output: 
-            present = [ 30023 ]
-            missing = {1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547}
-    '''
-    logging.debug(f'KeyError:{kerr_str}')
-    present = []
-    missing = []
+    remove_df.to_csv(outfile, sep='\t')
     
-    if kerr_str.startswith('"None'):
-        #logging.debug(f'Error starts with None. All missing.')
-        present = []
-        missing = key_list
-    elif kerr_str.startswith("'["):
-        #logging.debug(f"Error starts with '['. Evaluating. ")
-        kes = kerr_str[:kerr_str.find(']') + 1]
-        kes = kes.replace("'","")
-        kerr_list = eval(kes)
-        kerr_set = set(kerr_list)
-        key_set = set(key_list)
-        present = key_set - kerr_set
-        missing = key_set - present
+    # Filter cell_df from segmentation. 
+    cell_df.set_index(cell_df['cell_id'], inplace=True)
+    filtered_cell_df = cell_df.loc[ ~cell_df.index.isin(remove_df['cell_id']) ]
 
-        present = sorted(list(present))
-        missing = sorted(list(missing))
-    else:
-        logging.warning(f'Key Error not parsable: {kerr_str}')
-    return (present, missing) 
-
-
-
-
+    outfile = os.path.join(dir, f'filtered_cells.joblib')
+    joblib.dump(filtered_cell_df, outfile)
+    outfile = os.path.join(dir, f'filtered_cells.tsv')
+    logging.info(f'Writing data to TSV: {outfile} ')
+    filtered_cell_df.to_csv(outfile, sep='\t')    
+    logging.info(f'Done.')
 
 
 if __name__ == '__main__':

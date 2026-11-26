@@ -81,48 +81,111 @@ def filter_data(infiles, outfiles, stage=None, cp=None):
     xmax = center_x + overlap_half_width
     ymin = center_y - overlap_half_width
     ymax = center_y + overlap_half_width
-    c = np.column_stack((center_x,center_y))
+
+    cell_coords = np.column_stack((center_x,center_y))
     num_slices = np.unique( neurons['slice'] )
     filt_neurons = {}
     id_to_keep_all =[]
     
+    # for YWT011357_4T data. alldata 
+    # 6217 total cells. 
     for uslice in num_slices:       
+        # boolean index of rows in slice. 6217
         idx_slice = neurons['slice'] == uslice
-        tree = cKDTree( c[idx_slice] )
+        slice_cell_coords = cell_coords[idx_slice]
+
+        tree = cKDTree( slice_cell_coords )
         sparse_dist = tree.sparse_distance_matrix(tree, 
                                                   max_distance=search_radius, 
                                                   output_type='coo_matrix')
+        
+        # sparse matrix of 488325 pairs within search_radius
+        # cell_id and nearest_neigh_id values are row *indexes* from slice_cell_coords 
         cell_id = sparse_dist.row
         nearest_neigh_id = sparse_dist.col
+        
+        # values are distances for corresponding index
         dist_vals = sparse_dist.data
-        fov_neigh = neurons['fov'][idx_slice][nearest_neigh_id]
+
+        # tile id list of primary cell_id 
         fov_cell =  neurons['fov'][idx_slice][cell_id]
+        # tile id list of neighbor  cell_ids
+        fov_neigh = neurons['fov'][idx_slice][nearest_neigh_id]
+         
+        # only keep pairs where neighbor is from *another* tile. 
+        # sel_cells_id is boolean mask on cell_id row index above. 
         sel_cells_id = fov_cell != fov_neigh
+
+        # pull out distance values for sel_cells_id (pairs from different tiles)        
+        # number of pairs from different tiles =    58314   /  488325 total pairs
         distances_neigh = dist_vals[sel_cells_id] 
     
+        # get list of actual cell_ids for selected cells (pairs from different tiles).  
         search_cells_id = cell_id[sel_cells_id]
+        # get list of neighbor cell_id for corresponding nearest neighbors
         search_neighbors_id = nearest_neigh_id[sel_cells_id]
-        search_dist = distances_neigh
-        
-        id_overlap=((  (( xmin[idx_slice][search_cells_id] < xmin[idx_slice][search_neighbors_id]) & 
-                                ( xmin[idx_slice][search_neighbors_id] < xmax[idx_slice][search_cells_id]))  |
-                       (( xmin[idx_slice][search_cells_id] < xmax[idx_slice][search_neighbors_id]) & 
-                                ( xmax[idx_slice][search_neighbors_id] < xmax[idx_slice][search_cells_id]))) & 
-                    (  (( ymin[idx_slice][search_cells_id] < ymin[idx_slice][search_neighbors_id]) & 
-                                ( ymin[idx_slice][search_neighbors_id] < ymax[idx_slice][search_cells_id]))  | 
-                       (( ymin[idx_slice][search_cells_id] < ymax[idx_slice][search_neighbors_id]) & 
-                                (ymax[idx_slice][search_neighbors_id]<ymax[idx_slice][search_cells_id]))
+
+        # these are all list of values 58314 long. 
+        # xmin and xmax for cells and neighbors 
+        cell_xmin_vals  = xmin[idx_slice][search_cells_id]
+        neigh_xmin_vals = xmin[idx_slice][search_neighbors_id]
+        cell_xmax_vals  = xmax[idx_slice][search_cells_id] 
+        neigh_xmax_vals = xmax[idx_slice][search_neighbors_id] 
+        # ymin and ymax for cells and neighbors
+        cell_ymin_vals  = ymin[idx_slice][search_cells_id]
+        neigh_ymin_vals = ymin[idx_slice][search_neighbors_id]
+        cell_ymax_vals  = ymax[idx_slice][search_cells_id] 
+        neigh_ymax_vals = ymax[idx_slice][search_neighbors_id]
+
+        # seems to be "do the bounding boxes overlap at all?"
+        id_overlap=((  ( ( cell_xmin_vals < neigh_xmin_vals ) & 
+                                ( neigh_xmin_vals < cell_xmax_vals) )  |
+                       (( cell_xmin_vals < neigh_xmax_vals ) & 
+                                ( neigh_xmax_vals < cell_xmax_vals ))) & 
+
+                    (  (( cell_ymin_vals < neigh_ymin_vals) & 
+                                ( neigh_ymin_vals < cell_ymax_vals ))  | 
+                       (( cell_ymin_vals < neigh_ymax_vals ) & 
+                                ( neigh_ymax_vals <  cell_ymax_vals ))
                     ))
+
+        # E.g. first pair:  cellid = 1107  neigh_id =  232 
+        #    cellid coords:    c[1107]  ->   array([1173.57078143,  512.48556059])
+        #                      c[232]   ->   array([1407.03402722,  705.16733387])
+        # cell_xmin =  1165.570
+        # cell_xmax =  1181.570
+        # neigh_xmin = 1399.034
+        # neigh_xmax = 1415.034
+        # cell_ymin =  504.485
+        # cell_ymax =  520.485
+        # neigh_ymin = 697.167
+        # neigh_ymax = 713.167
+
+
+        #id_overlap=((  (( xmin[idx_slice][search_cells_id] < xmin[idx_slice][search_neighbors_id]) & 
+        #                        ( xmin[idx_slice][search_neighbors_id] < xmax[idx_slice][search_cells_id]))  |
+        #               (( xmin[idx_slice][search_cells_id] < xmax[idx_slice][search_neighbors_id]) & 
+        #                        ( xmax[idx_slice][search_neighbors_id] < xmax[idx_slice][search_cells_id]))) & 
+        #            (  (( ymin[idx_slice][search_cells_id] < ymin[idx_slice][search_neighbors_id]) & 
+        #                        ( ymin[idx_slice][search_neighbors_id] < ymax[idx_slice][search_cells_id]))  | 
+        #               (( ymin[idx_slice][search_cells_id] < ymax[idx_slice][search_neighbors_id]) & 
+        #                        (ymax[idx_slice][search_neighbors_id]<ymax[idx_slice][search_cells_id]))
+        #            ))
      
         overlap_cells_id=search_cells_id[id_overlap]
         overlap_neighbors_id=search_neighbors_id[id_overlap]
-        overlap_distance=search_dist[id_overlap]       
+        overlap_distance=distances_neigh[id_overlap]       
         logging.info(f"Total cells: {len(center_x[idx_slice])}")
         logging.info(f"Cells in overlap pairs: {len(np.unique(overlap_cells_id))}")
         logging.info(f"Fraction of cells in overlaps: {len(np.unique(overlap_cells_id))/len(center_x[idx_slice]):.2%}")       
 
+        # INFO:root:Total cells: 3191
+        # INFO:root:Cells in overlap pairs: 138
+        # INFO:root:Fraction of cells in overlaps: 4.32%
 
         total_exp_cell = np.asarray( np.sum( exp_mat[idx_slice,:], axis=1))
+        
+        # rev_idx is the index back into 168 overlap_cells_id list of  
         [_,rev_idx] = np.unique( neurons['id'][idx_slice][overlap_cells_id], return_counts=False, return_inverse=True )
         df = pd.DataFrame({ 'cell':neurons['id'][idx_slice][overlap_cells_id],
                             'neigh':neurons['id'][idx_slice][overlap_neighbors_id] ,

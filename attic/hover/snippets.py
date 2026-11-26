@@ -471,3 +471,96 @@ def make_codebook_object(codebook, codebook_bases, n_cycles=7):
     codeflat=np.reshape(cb,( -1, J))
     return (codeflat, R, C, J, genes, pos_unused_codes)
 
+
+
+def handle_component_sets(component_list, expr_df ):
+    '''
+    inputs:
+        -- list of cell_id connected components. 
+        -- expression table
+                cell_id  total_expr
+            0        20000       17777
+            1        20019           4
+            2        20021           1
+
+    output:
+        -- keep_cellids, discard_cellids 
+    '''
+    keep_cellids = []
+    discard_cellids = []
+
+    n_present = 0
+    n_missing = 0
+    n_multi_sets = 0 
+    n_compsets = len(compsets)
+
+    sedf_list = []
+
+    for i, compset in enumerate( compsets) :
+        logging.debug(f'[{i}/{n_compsets}]')
+        comp_list = sorted(list(compset))
+        sedf = None
+        try:
+            sedf = expr_df.loc[ comp_list ]
+        except KeyError as ke:
+            kerr_str = str(ke)
+            (present, missing)  = parse_keyerror_diff(comp_list, kerr_str)
+            logging.debug(f'{len(present)} present. {len(missing)} missing.')
+            n_present += len(present)
+            n_missing += len(missing)
+            if len(present) >= 2:
+                n_multi_sets += 1
+                sedf = expr_df.loc[ present ]
+                sedf_list.append(sedf)
+            else:
+                logging.debug(f'no components in expression table.')
+            
+    # Calculate highest for multi sets. 
+    logging.debug(f'found {len(sedf_list)} multi-item components.')        
+
+
+
+        # logging.debug(f'valid compset expr DF: {sedf}') 
+    logging.debug(f'total present={n_present} total_missing={n_missing} n_multi_sets={n_multi_sets} ')
+
+def parse_keyerror_diff(key_list, kerr_str):
+    '''
+        input: 
+        key_list =  [1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547, 30023]
+        kerr_str= '[1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547] not in index' 
+        output: 
+            present = [ 30023 ]
+            missing = {1710, 2228, 9508, 12680, 15410, 16591, 20682, 21670, 27547}
+    '''
+    logging.debug(f'KeyError:{kerr_str}')
+    present = []
+    missing = []
+    
+    if kerr_str.startswith('"None'):
+        #logging.debug(f'Error starts with None. All missing.')
+        present = []
+        missing = key_list
+    elif kerr_str.startswith("'["):
+        #logging.debug(f"Error starts with '['. Evaluating. ")
+        kes = kerr_str[:kerr_str.find(']') + 1]
+        kes = kes.replace("'","")
+        kerr_list = eval(kes)
+        kerr_set = set(kerr_list)
+        key_set = set(key_list)
+        present = key_set - kerr_set
+        missing = key_set - present
+
+        present = sorted(list(present))
+        missing = sorted(list(missing))
+    else:
+        logging.warning(f'Key Error not parsable: {kerr_str}')
+    return (present, missing) 
+
+def find_overlap_nx(neighbor_df, expr_df):
+        edges = list(odf.itertuples(index=False, name=None))
+        dg = nx.Graph()
+        dg.add_weighted_edges_from(edges)
+        scc = nx.connected_components(dg)
+        compsets = list( scc )
+        handle_component_sets(compsets, total_expr )  
+

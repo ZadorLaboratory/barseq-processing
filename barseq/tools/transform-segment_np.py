@@ -24,7 +24,7 @@ def aggregate_transform_np(infiles, outfiles, stage=None, cp=None):
     #         arity=single
     #         so inputs will be (flat list of all files from first cycle)
     #.    inputs: 'basecalls.joblib'.  
-    #             'all_segmentation.joblib'   
+    #             'segmentation.joblib'   
     #             'genehyb.joblib'
     #             'tforms_final.joblib'
     #

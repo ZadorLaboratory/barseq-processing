@@ -466,6 +466,13 @@ def assign_rolony_to_cell(mask, coord_x, coord_y):
         cell_id=[] # earlier this was [] and was causing error later
     return cell_id
 
+def make_tilename_idx_map(tilename_list):
+    tilename_idx_map = {}
+    tilename_list = nsort(tilename_list)
+    for i, tilename in enumerate( tilename_list ):
+        tilename_idx_map[tilename] = i
+    return tilename_idx_map
+
 def make_pos_idx_map( tilename_list, image_regex, position_group):
     '''
     make map (dict) from tilename to position INDEX (starting at 0)
